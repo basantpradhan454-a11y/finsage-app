@@ -329,6 +329,16 @@ if analyze_btn and final_ticker:
     st.markdown("### 🔬 The Pulse — Deep Analysis")
     st.markdown(report["pulse"])
 
+    # ── Gemini AI Insight ────────────────────────────────────────────────────
+    if report.get("ai_insight"):
+        st.markdown("### 🤖 AI Insight — Gemini")
+        st.markdown(f"""
+        <div style="background:#0d1f2d; border:1px solid #58a6ff; border-radius:10px; padding:1.2rem 1.5rem; margin-bottom:0.5rem;">
+            <span style="font-size:0.8rem; color:#58a6ff; font-weight:600;">✨ Powered by Gemini 2.5 Flash</span>
+            <p style="color:#c9d1d9; margin-top:0.6rem; line-height:1.6;">{report["ai_insight"]}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
     st.divider()
 
     # ── Risk Matrix ───────────────────────────────────────────────────────────
