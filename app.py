@@ -255,7 +255,7 @@ if analyze_btn and final_ticker:
             y=closes, mode="lines+markers",
             line=dict(color=color, width=2.5),
             marker=dict(size=7, color=color),
-            fill="tozeroy", fillcolor=f"rgba{(*bytes.fromhex(color[1:]), 20)}" if False else "rgba(63,185,80,0.08)",
+            fill="tozeroy", fillcolor="rgba(63,185,80,0.08)" if color == "#3fb950" else "rgba(248,81,73,0.08)",
         ))
         fig.update_layout(
             title=f"{report['name']} — Last 5 Trading Days",
@@ -281,7 +281,7 @@ if analyze_btn and final_ticker:
                     mode="gauge+number",
                     value=curr,
                     gauge={
-                        "axis": {"range": [low * 0.95, high * 1.05], "tickformat": ",.4f"},
+                        "axis": {"range": [low * 0.95, high * 1.05], "tickformat": ",.4f" if curr < 1 else (",.2f" if curr < 1000 else ",.0f")},
                         "bar": {"color": "#58a6ff"},
                         "steps": [
                             {"range": [low * 0.95, low], "color": "#2d1a00"},
@@ -289,8 +289,8 @@ if analyze_btn and final_ticker:
                             {"range": [high, high * 1.05], "color": "#0d2818"},
                         ],
                     },
-                    title={"text": f"Range: ${low:,.4f} — ${high:,.4f}", "font": {"size": 12}},
-                    number={"prefix": "$", "valueformat": ",.4f"}
+                    title={"text": (f"Range: ${low:,.4f} — ${high:,.4f}" if curr < 1 else f"Range: ${low:,.2f} — ${high:,.2f}"), "font": {"size": 12}},
+                    number={"prefix": "$", "valueformat": ",.4f" if curr < 1 else (",.2f" if curr < 1000 else ",.0f")}
                 ))
                 fig_g.update_layout(paper_bgcolor="#161b22", font=dict(color="#c9d1d9"), height=250, margin=dict(t=20,b=10))
                 st.plotly_chart(fig_g, use_container_width=True)
