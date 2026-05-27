@@ -2,12 +2,66 @@
 FinSage AI Analyzer
 ━━━━━━━━━━━━━━━━━━
 Generates structured financial intelligence reports.
-Rule-based analysis engine — works 100% FREE with no API keys.
+Rule-based analysis + Gemini AI insights (gemini-2.5-flash, free tier).
 """
 
+import os
 import logging
+import requests
 
 logger = logging.getLogger("finsage.analyzer")
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+GEMINI_MODEL   = "gemini-2.5-flash"
+GEMINI_URL     = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+
+
+# ── Gemini AI Helper ──────────────────────────────────────────────────────────
+def _ask_gemini(prompt: str) -> str | None:
+    """Call Gemini free API. Returns text or None on failure."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        resp = requests.post(
+            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            json={"contents": [{"parts": [{"text": prompt}]}],
+                  "generationConfig": {"maxOutputTokens": 400, "temperature": 0.7}},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        logger.warning(f"Gemini API error {resp.status_code}: {resp.text[:100]}")
+        return None
+    except Exception as e:
+        logger.warning(f"Gemini call failed: {e}")
+        return None
+
+
+def generate_ai_insight(data: dict, category: str, risk_label: str) -> str | None:
+    """Generate a concise AI insight using Gemini."""
+    if data["asset_type"] == "stock":
+        prompt = f"""You are a sharp financial analyst. Give a 3-sentence insight on this stock in simple English (mix Hindi is fine).
+Asset: {data.get('name')} ({data.get('ticker')})
+Category: {category} | Risk: {risk_label}
+Price: {data.get('currency','$')}{data.get('current_price')} | Change today: {data.get('change_pct',0):.2f}%
+P/E: {data.get('pe_ratio','N/A')} | Market Cap: {data.get('market_cap','N/A')} | Beta: {data.get('beta','N/A')}
+ROE: {(data.get('roe') or 0)*100:.1f}% | Debt/Equity: {data.get('debt_to_equity','N/A')}%
+Analyst rating: {data.get('analyst_key','N/A')} | Target: {data.get('currency','$')}{data.get('target_price','N/A')}
+52W Range: {data.get('52w_low','?')} - {data.get('52w_high','?')}
+
+Give: 1) Current momentum, 2) Key risk, 3) One-line verdict. Be direct and concise. End with a disclaimer that this is not financial advice."""
+    else:
+        is_meme = "Meme" in category or "Speculative" in category
+        prompt = f"""You are a sharp crypto analyst. Give a 3-sentence insight on this {"meme coin" if is_meme else "crypto"} in simple English (mix Hindi is fine).
+Asset: {data.get('name')} ({data.get('ticker')})
+Category: {category} | Risk: {risk_label}
+Price: ${data.get('current_price')} | 24h: {data.get('change_24h',0):.2f}% | 7d: {data.get('change_7d',0):.2f}%
+Market Cap: ${data.get('market_cap','N/A')} | Rank: #{data.get('market_cap_rank','N/A')}
+Sentiment: {data.get('sentiment_up_pct',50):.0f}% bullish | ATH change: {data.get('ath_change_pct','N/A')}%
+
+Give: 1) Current momentum, 2) Key risk, 3) One-line verdict. Be direct. {"Warn about meme coin risks clearly." if is_meme else ""} End with a disclaimer that this is not financial advice."""
+
+    return _ask_gemini(prompt)
 
 
 # ── Category Classification ───────────────────────────────────────────────────
@@ -67,11 +121,11 @@ def calculate_risk_rating(data: dict, category: str) -> tuple:
         )
 
     else:
-        is_meme  = "Meme" in category or "Speculative" in category
+        is_meme   = "Meme" in category or "Speculative" in category
         risk_type = "Extreme Volatility" if is_meme else "Crypto Market Volatility"
-        vol_24h  = float(data.get("volatility_24h_pct") or 0)
-        chg_7d   = abs(float(data.get("change_7d") or 0))
-        mcap     = float(data.get("market_cap") or 0)
+        vol_24h   = float(data.get("volatility_24h_pct") or 0)
+        chg_7d    = abs(float(data.get("change_7d") or 0))
+        mcap      = float(data.get("market_cap") or 0)
         sentiment = float(data.get("sentiment_up_pct") or 50)
 
         if mcap < 100_000_000: score += 3
@@ -169,9 +223,10 @@ def generate_verdict(data: dict, category: str) -> str:
 
 # ── Master Report ─────────────────────────────────────────────────────────────
 def generate_report(data: dict) -> dict:
-    category   = classify_asset(data)
+    category                             = classify_asset(data)
     risk_score, risk_label, risk_explanation = calculate_risk_rating(data, category)
-    verdict    = generate_verdict(data, category)
+    verdict                              = generate_verdict(data, category)
+    ai_insight                           = generate_ai_insight(data, category, risk_label)
 
     def fmt(val, prefix="$") -> str:
         if val is None: return "N/A"
@@ -259,6 +314,7 @@ def generate_report(data: dict) -> dict:
         "risk_label":       risk_label,
         "risk_explanation": risk_explanation,
         "verdict":          verdict,
+        "ai_insight":       ai_insight,
         "asset_type":       data["asset_type"],
         "is_meme":          is_meme if data["asset_type"] == "crypto" else False,
     }
