@@ -1,0 +1,33 @@
+import streamlit as st
+import yfinance as yf
+import plotly.graph_objects as go
+
+st.title("Stock & Crypto Analysis Tool")
+
+# Input field
+ticker = st.text_input("Enter Ticker (e.g., AAPL for Stock, BTC-USD for Crypto):", "BTC-USD")
+time_period = st.selectbox("Select Time Period", ["1mo", "3mo", "6mo", "1y", "5y"])
+
+if st.button("Analyze"):
+    # Data fetch karna
+    data = yf.download(ticker, period=time_period)
+    
+    if not data.empty:
+        st.write(f"Showing data for: {ticker}")
+        
+        # Chart dikhana
+        fig = go.Figure(data=[go.Candlestick(x=data.index,
+                        open=data['Open'],
+                        high=data['High'],
+                        low=data['Low'],
+                        close=data['Close'])])
+        
+        fig.update_layout(title=f"{ticker} Price Chart", xaxis_rangeslider_visible=False)
+        st.plotly_chart(fig)
+        
+        # Basic stats
+        st.write("Recent Data:")
+        st.write(data.tail())
+    else:
+        st.error("Ticker nahi mila! Sahi symbol daalein (e.g., TSLA, ETH-USD).")
+
