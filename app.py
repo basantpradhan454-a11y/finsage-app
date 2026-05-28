@@ -206,6 +206,9 @@ for key in ["stock_data", "stock_report", "crypto_data", "crypto_report",
             "meme_data", "meme_report", "ticker_data", "last_ticker_refresh"]:
     if key not in st.session_state:
         st.session_state[key] = None if "data" in key or "report" in key else ([] if key == "ticker_data" else 0)
+for flag in ["stock_auto_analyze", "crypto_auto_analyze", "meme_auto_analyze"]:
+    if flag not in st.session_state:
+        st.session_state[flag] = False
 
 
 # ── Fetch Ticker Bar ───────────────────────────────────────────────────────────
@@ -387,17 +390,23 @@ with tab1:
         with qcols[i]:
             if st.button(qp, key=f"sq_{qp}"):
                 st.session_state["stock_selected"] = qp
+                st.session_state["stock_auto_analyze"] = True
 
     final_stock = st.session_state.get("stock_selected", stock_ticker).strip().upper()
 
-    if st.button("🔍 Analyze Stock", key="analyze_stock", type="primary", use_container_width=True):
+    manual_analyze_s = st.button("🔍 Analyze Stock", key="analyze_stock", type="primary", use_container_width=True)
+    should_analyze_s = manual_analyze_s or st.session_state.get("stock_auto_analyze", False)
+
+    if should_analyze_s:
+        st.session_state["stock_auto_analyze"] = False
         if final_stock:
             with st.spinner(f"Fetching data for **{final_stock}**..."):
                 data = fetch_stock_data(final_stock)
                 if "error" not in data:
                     st.session_state.stock_data = data
                     st.session_state.stock_report = analyze_stock(data)
-                    st.session_state["stock_selected"] = ""
+                    if manual_analyze_s:
+                        st.session_state["stock_selected"] = ""
                 else:
                     st.error(f"❌ {data['error']}")
         else:
@@ -448,17 +457,23 @@ with tab2:
         with ccols[i]:
             if st.button(qp, key=f"cq_{qp}"):
                 st.session_state["crypto_selected"] = qp
+                st.session_state["crypto_auto_analyze"] = True
 
     final_crypto = st.session_state.get("crypto_selected", crypto_ticker).strip().upper()
 
-    if st.button("🔍 Analyze Crypto", key="analyze_crypto", type="primary", use_container_width=True):
+    manual_analyze_c = st.button("🔍 Analyze Crypto", key="analyze_crypto", type="primary", use_container_width=True)
+    should_analyze_c = manual_analyze_c or st.session_state.get("crypto_auto_analyze", False)
+
+    if should_analyze_c:
+        st.session_state["crypto_auto_analyze"] = False
         if final_crypto:
             with st.spinner(f"Fetching data for **{final_crypto}**..."):
                 data = fetch_crypto_data(final_crypto)
                 if "error" not in data:
                     st.session_state.crypto_data = data
                     st.session_state.crypto_report = analyze_crypto(data)
-                    st.session_state["crypto_selected"] = ""
+                    if manual_analyze_c:
+                        st.session_state["crypto_selected"] = ""
                 else:
                     st.error(f"❌ {data['error']}")
         else:
@@ -515,10 +530,15 @@ with tab3:
         with mcols[i]:
             if st.button(qp, key=f"mq_{qp}"):
                 st.session_state["meme_selected"] = qp
+                st.session_state["meme_auto_analyze"] = True
 
     final_meme = st.session_state.get("meme_selected", meme_ticker).strip().upper()
 
-    if st.button("🔍 Analyze Meme Coin", key="analyze_meme", type="primary", use_container_width=True):
+    manual_analyze_m = st.button("🔍 Analyze Meme Coin", key="analyze_meme", type="primary", use_container_width=True)
+    should_analyze_m = manual_analyze_m or st.session_state.get("meme_auto_analyze", False)
+
+    if should_analyze_m:
+        st.session_state["meme_auto_analyze"] = False
         if final_meme:
             with st.spinner(f"Fetching data for **{final_meme}**..."):
                 data = fetch_crypto_data(final_meme)
@@ -527,7 +547,8 @@ with tab3:
                     data["asset_type"] = "Meme Coin"
                     st.session_state.meme_data = data
                     st.session_state.meme_report = analyze_crypto(data)
-                    st.session_state["meme_selected"] = ""
+                    if manual_analyze_m:
+                        st.session_state["meme_selected"] = ""
                 else:
                     st.error(f"❌ {data['error']}")
         else:
