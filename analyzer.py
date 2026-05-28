@@ -121,6 +121,247 @@ def groq_crypto_insight(data):
     return ""
 
 
+
+
+def trading_signals_stock(data: dict) -> str:
+    """Generate Entry / Stop-Loss / Target / Risk levels for a stock."""
+    price    = data.get("current_price") or 0
+    change   = data.get("change_pct", 0) or 0
+    currency = data.get("currency", "USD")
+    risk     = data.get("risk_score", 5)
+    vol      = data.get("volatility_annualized", 0) or 0
+    day_high = data.get("day_high") or price
+    day_low  = data.get("day_low")  or price
+    wk_high  = data.get("week_52_high") or price
+    wk_low   = data.get("week_52_low")  or price
+    rec      = (data.get("recommendation") or "").upper()
+    target   = data.get("analyst_target")
+    beta     = data.get("beta") or 1.0
+
+    if not price or price <= 0:
+        return ""
+
+    # ── Stop-Loss: based on volatility + risk score ──────────────────────────
+    sl_pct = 5.0          # default 5%
+    if vol > 60 or risk >= 8:  sl_pct = 10.0
+    elif vol > 35 or risk >= 6: sl_pct = 7.0
+    elif vol <= 15 or risk <= 3: sl_pct = 3.0
+    stop_loss = round(price * (1 - sl_pct / 100), 2)
+
+    # ── Entry Zone ────────────────────────────────────────────────────────────
+    # Ideal entry: slight dip from current or if already dipped, current zone
+    if change > 3:  # running up — wait for pullback
+        entry_low  = round(price * 0.97, 2)
+        entry_high = round(price * 0.99, 2)
+        entry_note = "⏳ Stock oopar ja raha hai — thoda pullback ka wait karo"
+    elif change < -3:  # dipped — potential buy zone
+        entry_low  = round(price * 1.00, 2)
+        entry_high = round(price * 1.02, 2)
+        entry_note = "🟢 Dip mein entry ka mauka — confirm karo ki trend reverse ho raha hai"
+    else:
+        entry_low  = round(price * 0.99, 2)
+        entry_high = round(price * 1.01, 2)
+        entry_note = "📊 Current zone theek hai — SIP ya staggered entry better hai"
+
+    # ── Targets ───────────────────────────────────────────────────────────────
+    t1_pct = sl_pct * 1.5   # minimum reward = 1.5x risk
+    t2_pct = sl_pct * 2.5
+    t3_pct = sl_pct * 4.0
+
+    t1 = round(price * (1 + t1_pct / 100), 2)
+    t2 = round(price * (1 + t2_pct / 100), 2)
+    t3 = round(price * (1 + t3_pct / 100), 2)
+
+    # Use analyst target if it gives a better T3
+    if target and target > t3:
+        t3 = round(target, 2)
+    
+    # ── Risk:Reward ───────────────────────────────────────────────────────────
+    risk_amt  = price - stop_loss
+    reward_t1 = t1 - price
+    rr_ratio  = round(reward_t1 / risk_amt, 1) if risk_amt > 0 else 0
+
+    # ── Action Signal ─────────────────────────────────────────────────────────
+    if rec in ("STRONG_BUY", "BUY") and risk <= 5:
+        action = "🟢 BUY / ACCUMULATE"
+        action_color = "green"
+    elif rec in ("STRONG_BUY", "BUY") and risk <= 7:
+        action = "🟡 CAUTIOUS BUY"
+        action_color = "yellow"
+    elif rec in ("SELL", "STRONG_SELL") or risk >= 8:
+        action = "🔴 AVOID / WAIT"
+        action_color = "red"
+    elif risk >= 6:
+        action = "🟠 HOLD / SMALL POSITION"
+        action_color = "orange"
+    else:
+        action = "🟡 WATCH & WAIT"
+        action_color = "yellow"
+
+    # ── Position Sizing ───────────────────────────────────────────────────────
+    if risk <= 3:   pos_size = "Portfolio ka 10-15%"
+    elif risk <= 5: pos_size = "Portfolio ka 5-10%"
+    elif risk <= 7: pos_size = "Portfolio ka 2-5%"
+    else:           pos_size = "Portfolio ka max 1-2% (bahut risky)"
+
+    # ── When to Sell ──────────────────────────────────────────────────────────
+    sell_rules = []
+    sell_rules.append(f"**T1 hit ho jaye** ({fmt_price(t1, currency)}) → 30-40% position book karo")
+    sell_rules.append(f"**T2 hit ho jaye** ({fmt_price(t2, currency)}) → aur 30% nikalo, stop-loss trail karo")
+    sell_rules.append(f"**T3 / Full Target** ({fmt_price(t3, currency)}) → baaki position exit")
+    sell_rules.append(f"**Stop-Loss breach** ({fmt_price(stop_loss, currency)}) → TURANT exit, argument mat karo")
+    sell_rules.append("**Fundamentals change ho jaye** → earnings miss, fraud, management change → immediate exit")
+
+    return f"""
+---
+
+## 🎯 Trading Signals & Action Plan
+
+> ⚡ **Signal:** {action}
+
+| Parameter | Value |
+|-----------|-------|
+| **Current Price** | {fmt_price(price, currency)} |
+| **Entry Zone** | {fmt_price(entry_low, currency)} – {fmt_price(entry_high, currency)} |
+| **Stop-Loss** | 🛑 {fmt_price(stop_loss, currency)} ({sl_pct:.0f}% neeche) |
+| **Target 1 (Conservative)** | 🎯 {fmt_price(t1, currency)} (+{t1_pct:.0f}%) |
+| **Target 2 (Moderate)** | 🎯 {fmt_price(t2, currency)} (+{t2_pct:.0f}%) |
+| **Target 3 (Full Potential)** | 🎯 {fmt_price(t3, currency)} (+{t3_pct:.0f}%) |
+| **Risk : Reward Ratio** | {rr_ratio}:1 {'✅ Achha' if rr_ratio >= 1.5 else '⚠️ Kam'} |
+| **Suggested Position Size** | {pos_size} |
+| **Stop-Loss %** | {sl_pct:.0f}% (Risk Score {risk}/10 ke basis par) |
+
+### 📍 Entry Strategy
+{entry_note}
+
+> **Tip:** Ek saath poora amount mat lagao — 3 parts mein entry karo (SIP style).
+
+### 📤 Sell / Exit Rules
+{"".join(chr(10) + "- " + r for r in sell_rules)}
+
+### ⚠️ Risk in Rupees (Example)
+| Investment | Max Loss (at Stop-Loss) | T1 Profit |
+|-----------|------------------------|-----------|
+| ₹10,000 | ₹{int(10000 * sl_pct/100):,} | ₹{int(10000 * t1_pct/100):,} |
+| ₹50,000 | ₹{int(50000 * sl_pct/100):,} | ₹{int(50000 * t1_pct/100):,} |
+| ₹1,00,000 | ₹{int(100000 * sl_pct/100):,} | ₹{int(100000 * t1_pct/100):,} |
+
+"""
+
+
+def trading_signals_crypto(data: dict) -> str:
+    """Generate Entry / Stop-Loss / Target / Risk levels for crypto/meme coins."""
+    price    = data.get("current_price") or 0
+    change   = data.get("change_pct", 0) or 0
+    change_7d = data.get("change_7d", 0) or 0
+    risk     = data.get("risk_score", 5)
+    vol      = data.get("volatility_annualized", 0) or 0
+    high_24h = data.get("high_24h") or price
+    low_24h  = data.get("low_24h")  or price
+    ath      = data.get("ath") or price
+    ath_chg  = data.get("ath_change_pct", 0) or 0
+    is_meme  = data.get("asset_type") == "Meme Coin"
+
+    if not price or price <= 0:
+        return ""
+
+    # ── Stop-Loss: crypto needs wider stops ───────────────────────────────────
+    if is_meme:          sl_pct = 20.0
+    elif vol > 100:      sl_pct = 15.0
+    elif vol > 60:       sl_pct = 10.0
+    elif risk >= 7:      sl_pct = 12.0
+    else:                sl_pct = 8.0
+    stop_loss = price * (1 - sl_pct / 100)
+
+    # ── Entry Zone ────────────────────────────────────────────────────────────
+    if change > 5:
+        entry_low  = price * 0.95
+        entry_high = price * 0.98
+        entry_note = "⏳ Strong pump chal raha hai — pullback ka wait karo, FOMO mein mat kudo"
+    elif change < -5 and change_7d < -10:
+        entry_low  = price * 1.00
+        entry_high = price * 1.03
+        entry_note = "🟢 Significant dip — small position le sakte ho, par DCA karo"
+    else:
+        entry_low  = price * 0.98
+        entry_high = price * 1.02
+        entry_note = "📊 Sideways phase — accumulate carefully, zyada leverage mat lo"
+
+    # ── Targets ───────────────────────────────────────────────────────────────
+    t1_pct = sl_pct * 1.5
+    t2_pct = sl_pct * 2.5
+    t3_pct = sl_pct * 4.0 if not is_meme else sl_pct * 3.0
+
+    t1 = price * (1 + t1_pct / 100)
+    t2 = price * (1 + t2_pct / 100)
+    t3 = price * (1 + t3_pct / 100)
+
+    risk_amt  = price - stop_loss
+    reward_t1 = t1 - price
+    rr_ratio  = round(reward_t1 / risk_amt, 1) if risk_amt > 0 else 0
+
+    # ── Action Signal ─────────────────────────────────────────────────────────
+    if is_meme:
+        action = "🔴 HIGHLY SPECULATIVE — Sirf gamble money use karo"
+    elif risk <= 4 and change_7d > 0:
+        action = "🟢 BUY / ACCUMULATE (DCA recommended)"
+    elif risk <= 6:
+        action = "🟡 CAUTIOUS — Small position only"
+    else:
+        action = "🔴 HIGH RISK — Expert traders only"
+
+    # ── Position Size ─────────────────────────────────────────────────────────
+    if is_meme:       pos_size = "Portfolio ka max 1-2% (meme = pure speculation)"
+    elif risk <= 4:   pos_size = "Portfolio ka 5-10%"
+    elif risk <= 6:   pos_size = "Portfolio ka 2-5%"
+    else:             pos_size = "Portfolio ka max 1-3%"
+
+    # ── Sell Rules ────────────────────────────────────────────────────────────
+    sell_rules = []
+    sell_rules.append(f"**T1 hit** ({fmt_price(t1)}) → 40% nikalo, baki hold karo")
+    sell_rules.append(f"**T2 hit** ({fmt_price(t2)}) → aur 30% exit, stop-loss trail karo cost price par")
+    sell_rules.append(f"**T3** ({fmt_price(t3)}) → poori position exit")
+    sell_rules.append(f"**Stop-Loss** ({fmt_price(stop_loss)}) → TURANT exit — crypto mein fast move hota hai")
+    if is_meme:
+        sell_rules.append("**Meme coins:** Jaise hi 2x ya 3x ho, original investment nikalo — baaki 'free ride' hai")
+    sell_rules.append("**News-based exit:** Exchange hack, regulatory ban, whale dump → turant niklo")
+
+    return f"""
+---
+
+## 🎯 Trading Signals & Action Plan
+
+> ⚡ **Signal:** {action}
+{">" + chr(10) + "> ⚠️ **MEME COIN WARNING:** Yeh asset pure speculation hai. Sirf itna lagao jo doob jaye toh chale." if is_meme else ""}
+
+| Parameter | Value |
+|-----------|-------|
+| **Current Price** | {fmt_price(price)} |
+| **Entry Zone** | {fmt_price(entry_low)} – {fmt_price(entry_high)} |
+| **Stop-Loss** | 🛑 {fmt_price(stop_loss)} ({sl_pct:.0f}% neeche) |
+| **Target 1** | 🎯 {fmt_price(t1)} (+{t1_pct:.0f}%) |
+| **Target 2** | 🎯 {fmt_price(t2)} (+{t2_pct:.0f}%) |
+| **Target 3** | 🎯 {fmt_price(t3)} (+{t3_pct:.0f}%) |
+| **Risk : Reward** | {rr_ratio}:1 {'✅' if rr_ratio >= 1.5 else '⚠️'} |
+| **Position Size** | {pos_size} |
+
+### 📍 Entry Strategy
+{entry_note}
+
+### 📤 Kab Sell Karna Hai
+{"".join(chr(10) + "- " + r for r in sell_rules)}
+
+### ⚠️ Risk in Rupees (Example — ₹10,000 investment par)
+| Investment | Max Loss (Stop-Loss) | T1 Profit |
+|-----------|---------------------|-----------|
+| ₹10,000 | ₹{int(10000 * sl_pct/100):,} | ₹{int(10000 * t1_pct/100):,} |
+| ₹50,000 | ₹{int(50000 * sl_pct/100):,} | ₹{int(50000 * t1_pct/100):,} |
+| ₹1,00,000 | ₹{int(100000 * sl_pct/100):,} | ₹{int(100000 * t1_pct/100):,} |
+
+"""
+
+
+
 def get_trend(change_pct: float) -> str:
     if change_pct > 5: return "Strong Uptrend 📈"
     elif change_pct > 1: return "Uptrend 🔼"
@@ -331,6 +572,9 @@ def analyze_stock(data: dict) -> str:
     elif change < -5:
         report += " Recent decline may present a buying opportunity for long-term investors — confirm with broader market trends before entry."
 
+    # Trading Signals Section
+    report += trading_signals_stock(data)
+
     report += f"""
 
 ---
@@ -481,6 +725,9 @@ def analyze_crypto(data: dict) -> str:
         report += "This asset carries **significant volatility** typical of the crypto market. Use dollar-cost averaging (DCA) as an entry strategy. Set clear stop-loss levels and take-profit targets before entering a position."
     else:
         report += "This asset exhibits **extreme volatility**. Suitable only for active traders with strict risk management. Position sizing should be minimal (1-3% of portfolio maximum). Always use stop-loss orders."
+
+    # Trading Signals Section
+    report += trading_signals_crypto(data)
 
     report += f"""
 
