@@ -52,20 +52,30 @@ def groq_stock_insight(data):
     wk_high  = data.get("week_52_high", "N/A")
     wk_low   = data.get("week_52_low", "N/A")
 
+    # Include latest news headlines for context
+    news_list = data.get("news", [])
+    news_block = ""
+    if news_list:
+        headlines = [n.get("title", "") for n in news_list[:4] if n.get("title")]
+        if headlines:
+            news_block = "\nLatest News Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n"
+
     prompt = (
         "You are a sharp financial analyst for Indian retail investors.\n"
-        "Analyze this stock and give a 4-5 sentence insight in simple Hinglish.\n\n"
+        "Analyze this stock using the data AND latest news headlines below.\n"
+        "Give a 4-5 sentence insight in simple Hinglish (English + Hindi mix).\n\n"
         f"Stock: {name} ({ticker}) | Sector: {sector}\n"
         f"Price: {currency} {price} | 24H Change: {change:+.2f}%\n"
         f"Market Cap: {mktcap} | P/E Ratio: {pe} | Beta: {beta}\n"
         f"52W Range: {wk_low} to {wk_high}\n"
-        f"Analyst Rating: {rec} | Target Price: {currency} {target}\n\n"
-        "Cover: (1) Current momentum/trend, (2) Key risk ya opportunity, (3) Ek clear verdict.\n"
+        f"Analyst Rating: {rec} | Target Price: {currency} {target}\n"
+        + news_block +
+        "\nCover: (1) News-driven momentum ya catalyst, (2) Key risk, (3) Ek clear verdict.\n"
         "Last sentence must be: 'Yeh financial advice nahi hai — sirf educational analysis hai.'"
     )
-    result = _ask_groq(prompt, max_tokens=300)
+    result = _ask_groq(prompt, max_tokens=350)
     if result:
-        return "\n\n---\n\n### 🤖 AI Insight — Groq LLaMA 3.3\n\n" + result + "\n"
+        return "\n\n---\n\n### 🤖 AI Insight (News-Powered) — Groq LLaMA 3.3\n\n" + result + "\n"
     return ""
 
 
@@ -82,22 +92,32 @@ def groq_crypto_insight(data):
     ath_chg = data.get("ath_change_pct", 0) or 0
     is_meme = (atype == "Meme Coin")
 
+    # Include latest news headlines for context
+    news_list = data.get("news", [])
+    news_block = ""
+    if news_list:
+        headlines = [n.get("title", "") for n in news_list[:4] if n.get("title")]
+        if headlines:
+            news_block = "\nLatest News Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n"
+
     meme_warning = "IMPORTANT: Yeh ek MEME COIN hai — bahut speculative, koi fundamental value nahi. Clearly warn karo.\n" if is_meme else ""
 
     prompt = (
         "You are a sharp crypto analyst for Indian retail investors.\n"
-        f"Analyze this {'MEME COIN' if is_meme else 'cryptocurrency'} in 4-5 sentences in simple Hinglish.\n"
+        f"Analyze this {'MEME COIN' if is_meme else 'cryptocurrency'} using data AND latest news.\n"
+        "Give a 4-5 sentence insight in simple Hinglish (English + Hindi mix).\n"
         + meme_warning + "\n"
         f"Asset: {name} ({ticker}) | Type: {atype}\n"
         f"Price: ${price} | 24H: {chg24:+.2f}% | 7D: {chg7d:+.2f}%\n"
         f"Market Cap: ${mktcap:,.0f} | CMC Rank: #{rank}\n"
-        f"ATH: ${ath} | ATH Change: {ath_chg:+.1f}%\n\n"
-        "Cover: (1) Momentum, (2) Key risk, (3) Short verdict.\n"
+        f"ATH: ${ath} | ATH Change: {ath_chg:+.1f}%\n"
+        + news_block +
+        "\nCover: (1) News-driven momentum ya catalyst, (2) Key risk, (3) Short verdict.\n"
         "Last sentence must be: 'Yeh financial advice nahi hai — sirf educational analysis hai.'"
     )
-    result = _ask_groq(prompt, max_tokens=300)
+    result = _ask_groq(prompt, max_tokens=350)
     if result:
-        return "\n\n---\n\n### 🤖 AI Insight — Groq LLaMA 3.3\n\n" + result + "\n"
+        return "\n\n---\n\n### 🤖 AI Insight (News-Powered) — Groq LLaMA 3.3\n\n" + result + "\n"
     return ""
 
 
