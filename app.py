@@ -290,32 +290,60 @@ def render_results(data, report):
     with col_chart:
         history = data.get("history")
         if history is not None and isinstance(history, pd.DataFrame) and not history.empty:
-            st.markdown("#### 📈 30-Day Price Chart")
+            has_ohlc = all(c in history.columns for c in ["Open", "High", "Low", "Close"])
+            chart_label = "📊 Price Chart"
+            chart_key = f"chart_type_{ticker}"
+            chart_type = st.radio(
+                chart_label,
+                options=["📈 Line", "🕯️ Candlestick"] if has_ohlc else ["📈 Line"],
+                horizontal=True,
+                key=chart_key,
+                label_visibility="collapsed",
+            )
             close_col = "Close" if "Close" in history.columns else history.columns[0]
             y_data = history[close_col]
             x_data = history.index
-            if len(y_data) > 1:
-                color = "#3fb950" if float(y_data.iloc[-1]) >= float(y_data.iloc[0]) else "#f85149"
-                fill_color = "rgba(63,185,80,0.1)" if color == "#3fb950" else "rgba(248,81,73,0.1)"
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=x_data, y=y_data,
-                    mode="lines",
-                    line=dict(color=color, width=2),
-                    fill="tozeroy",
-                    fillcolor=fill_color,
-                    name="Price",
-                    hovertemplate=f"<b>%{{x}}</b><br>Price: %{{y:,.4f}}<extra></extra>"
+            color = "#3fb950" if float(y_data.iloc[-1]) >= float(y_data.iloc[0]) else "#f85149"
+            fig = go.Figure()
+            if has_ohlc and chart_type == "🕯️ Candlestick":
+                fig.add_trace(go.Candlestick(
+                    x=x_data,
+                    open=history["Open"], high=history["High"],
+                    low=history["Low"], close=history["Close"],
+                    increasing=dict(line=dict(color="#3fb950"), fillcolor="rgba(63,185,80,0.7)"),
+                    decreasing=dict(line=dict(color="#f85149"), fillcolor="rgba(248,81,73,0.7)"),
+                    name="OHLC",
                 ))
-                fig.update_layout(
-                    plot_bgcolor="#0d1117", paper_bgcolor="#0d1117",
-                    font=dict(color="#c9d1d9"),
-                    xaxis=dict(gridcolor="#21262d"),
-                    yaxis=dict(gridcolor="#21262d"),
-                    margin=dict(l=0, r=0, t=20, b=0),
-                    height=280, showlegend=False,
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                # Volume bars at bottom
+                if "Volume" in history.columns:
+                    vol_colors = ["#3fb950" if c >= o else "#f85149"
+                                  for c, o in zip(history["Close"], history["Open"])]
+                    fig.add_trace(go.Bar(
+                        x=x_data, y=history["Volume"],
+                        marker_color=vol_colors, opacity=0.3,
+                        name="Volume", yaxis="y2",
+                    ))
+                fig.update_layout(yaxis2=dict(overlaying="y", side="right", showgrid=False,
+                                               showticklabels=False, range=[0, history["Volume"].max()*5]
+                                               if "Volume" in history.columns else {}))
+            else:
+                fill_color = "rgba(63,185,80,0.1)" if color == "#3fb950" else "rgba(248,81,73,0.1)"
+                fig.add_trace(go.Scatter(
+                    x=x_data, y=y_data, mode="lines",
+                    line=dict(color=color, width=2),
+                    fill="tozeroy", fillcolor=fill_color,
+                    name="Price",
+                    hovertemplate="<b>%{x|%b %d}</b><br>Price: %{y:,.4f}<extra></extra>",
+                ))
+            fig.update_layout(
+                plot_bgcolor="#0d1117", paper_bgcolor="#0d1117",
+                font=dict(color="#c9d1d9"),
+                xaxis=dict(gridcolor="#21262d", rangeslider=dict(visible=False)),
+                yaxis=dict(gridcolor="#21262d"),
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=300, showlegend=False,
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
     with col_info:
         st.markdown("#### 📋 Key Metrics")
@@ -358,6 +386,38 @@ def render_results(data, report):
         mime="text/markdown",
         use_container_width=True,
     )
+
+    # ── Latest News ───────────────────────────────────────────────────────────
+    news_list = data.get("news", [])
+    if news_list:
+        st.markdown("---")
+        st.markdown("#### 📰 Latest News")
+        for i, article in enumerate(news_list[:6]):
+            art_title = article.get("title", "")
+            art_url   = article.get("url", "#")
+            art_sum   = article.get("summary", "")
+            art_src   = article.get("source", "")
+            art_pub   = article.get("published", "")
+            # Format date
+            try:
+                from datetime import datetime as _dt
+                if "T" in str(art_pub):
+                    parsed = _dt.fromisoformat(str(art_pub).replace("Z", "+00:00"))
+                    art_date = parsed.strftime("%b %d, %Y")
+                else:
+                    art_date = str(art_pub)[:16] if art_pub else ""
+            except Exception:
+                art_date = str(art_pub)[:16] if art_pub else ""
+            
+            link_html = f'<a href="{art_url}" target="_blank" style="color:#58a6ff;text-decoration:none;font-weight:600;font-size:0.92rem;">{art_title}</a>' if art_url and art_url != "#" else f'<span style="color:#c9d1d9;font-weight:600;font-size:0.92rem;">{art_title}</span>'
+            meta_html = f'<span style="color:#8b949e;font-size:0.78rem;">{art_src}{" · " + art_date if art_date else ""}</span>'
+            sum_html  = f'<p style="color:#8b949e;font-size:0.82rem;margin:2px 0 0;">{art_sum}</p>' if art_sum else ""
+            
+            st.markdown(
+                f'<div style="border-left:3px solid #30363d;padding:8px 12px;margin-bottom:8px;background:rgba(22,27,34,0.6);border-radius:0 8px 8px 0;">'
+                f'{link_html}<br>{meta_html}{sum_html}</div>',
+                unsafe_allow_html=True
+            )
 
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
