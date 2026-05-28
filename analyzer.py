@@ -1,320 +1,380 @@
 """
-FinSage AI Analyzer
-━━━━━━━━━━━━━━━━━━
-Generates structured financial intelligence reports.
-Rule-based analysis + Gemini AI insights (gemini-2.5-flash, free tier).
+FinSage Analyzer
+Generates professional English analysis reports from real market data.
+100% rule-based intelligence — no API key required.
 """
 
-import os
-import logging
-import requests
-
-logger = logging.getLogger("finsage.analyzer")
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL   = "gemini-2.5-flash"
-GEMINI_URL     = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+from datetime import datetime
 
 
-# ── Gemini AI Helper ──────────────────────────────────────────────────────────
-def _ask_gemini(prompt: str) -> str | None:
-    """Call Gemini free API. Returns text or None on failure."""
-    if not GEMINI_API_KEY:
-        return None
-    try:
-        resp = requests.post(
-            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
-            json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"maxOutputTokens": 400, "temperature": 0.7}},
-            timeout=15,
-        )
-        if resp.status_code == 200:
-            return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-        logger.warning(f"Gemini API error {resp.status_code}: {resp.text[:100]}")
-        return None
-    except Exception as e:
-        logger.warning(f"Gemini call failed: {e}")
-        return None
+def get_trend(change_pct: float) -> str:
+    if change_pct > 5: return "Strong Uptrend 📈"
+    elif change_pct > 1: return "Uptrend 🔼"
+    elif change_pct > -1: return "Sideways / Neutral ➡️"
+    elif change_pct > -5: return "Downtrend 🔽"
+    else: return "Strong Downtrend 📉"
 
 
-def generate_ai_insight(data: dict, category: str, risk_label: str) -> str | None:
-    """Generate a concise AI insight using Gemini."""
-    if data["asset_type"] == "stock":
-        prompt = f"""You are a sharp financial analyst. Give a 3-sentence insight on this stock in simple English (mix Hindi is fine).
-Asset: {data.get('name')} ({data.get('ticker')})
-Category: {category} | Risk: {risk_label}
-Price: {data.get('currency','$')}{data.get('current_price')} | Change today: {data.get('change_pct',0):.2f}%
-P/E: {data.get('pe_ratio','N/A')} | Market Cap: {data.get('market_cap','N/A')} | Beta: {data.get('beta','N/A')}
-ROE: {(data.get('roe') or 0)*100:.1f}% | Debt/Equity: {data.get('debt_to_equity','N/A')}%
-Analyst rating: {data.get('analyst_key','N/A')} | Target: {data.get('currency','$')}{data.get('target_price','N/A')}
-52W Range: {data.get('52w_low','?')} - {data.get('52w_high','?')}
-
-Give: 1) Current momentum, 2) Key risk, 3) One-line verdict. Be direct and concise. End with a disclaimer that this is not financial advice."""
-    else:
-        is_meme = "Meme" in category or "Speculative" in category
-        prompt = f"""You are a sharp crypto analyst. Give a 3-sentence insight on this {"meme coin" if is_meme else "crypto"} in simple English (mix Hindi is fine).
-Asset: {data.get('name')} ({data.get('ticker')})
-Category: {category} | Risk: {risk_label}
-Price: ${data.get('current_price')} | 24h: {data.get('change_24h',0):.2f}% | 7d: {data.get('change_7d',0):.2f}%
-Market Cap: ${data.get('market_cap','N/A')} | Rank: #{data.get('market_cap_rank','N/A')}
-Sentiment: {data.get('sentiment_up_pct',50):.0f}% bullish | ATH change: {data.get('ath_change_pct','N/A')}%
-
-Give: 1) Current momentum, 2) Key risk, 3) One-line verdict. Be direct. {"Warn about meme coin risks clearly." if is_meme else ""} End with a disclaimer that this is not financial advice."""
-
-    return _ask_gemini(prompt)
+def get_risk_label(score: int) -> str:
+    if score <= 2: return "Very Low Risk 🟢"
+    elif score <= 4: return "Low Risk 🟡"
+    elif score <= 6: return "Moderate Risk 🟠"
+    elif score <= 8: return "High Risk 🔴"
+    else: return "Very High Risk ⛔"
 
 
-# ── Category Classification ───────────────────────────────────────────────────
-def classify_asset(data: dict) -> str:
-    if data["asset_type"] == "stock":
-        sector = (data.get("sector") or "").lower()
-        mcap   = data.get("market_cap") or 0
-        pe     = data.get("pe_ratio") or 0
-        if mcap > 200_000_000_000:
-            return "🔵 Blue-Chip Stock"
-        elif "technology" in sector or "software" in sector or pe > 40:
-            return "🚀 High-Growth Tech Stock"
+def get_sentiment(change_pct: float, change_7d: float = 0) -> str:
+    combined = (change_pct + change_7d) / 2 if change_7d else change_pct
+    if combined > 10: return "Very Bullish 🚀"
+    elif combined > 3: return "Bullish 📈"
+    elif combined > -3: return "Neutral 😐"
+    elif combined > -10: return "Bearish 📉"
+    else: return "Very Bearish 🐻"
+
+
+def fmt_price(price, currency="USD") -> str:
+    if price is None: return "N/A"
+    if price < 0.000001: return f"{currency} {price:.10f}"
+    elif price < 0.01: return f"{currency} {price:.8f}"
+    elif price < 1: return f"{currency} {price:.6f}"
+    elif price < 100: return f"{currency} {price:.4f}"
+    else: return f"{currency} {price:,.2f}"
+
+
+def format_number(n) -> str:
+    if n is None or n == 0: return "N/A"
+    if n >= 1_000_000_000_000: return f"${n/1_000_000_000_000:.2f}T"
+    elif n >= 1_000_000_000: return f"${n/1_000_000_000:.2f}B"
+    elif n >= 1_000_000: return f"${n/1_000_000:.2f}M"
+    elif n >= 1_000: return f"${n:,.0f}"
+    else: return f"${n:.2f}"
+
+
+def analyze_stock(data: dict) -> str:
+    name = data.get("name", data.get("ticker", "N/A"))
+    ticker = data.get("ticker", "N/A")
+    price = data.get("current_price")
+    currency = data.get("currency", "USD")
+    change = data.get("change_pct", 0) or 0
+    risk = data.get("risk_score", 5)
+    vol = data.get("volatility_annualized", 0) or 0
+    beta = data.get("beta")
+    pe = data.get("pe_ratio")
+    eps = data.get("eps")
+    mktcap = data.get("market_cap")
+    div = data.get("dividend_yield")
+    rec = data.get("recommendation", "N/A")
+    target = data.get("analyst_target")
+    week_high = data.get("week_52_high")
+    week_low = data.get("week_52_low")
+    sector = data.get("sector", "N/A")
+    day_high = data.get("day_high")
+    day_low = data.get("day_low")
+    volume = data.get("volume", 0) or 0
+    avg_vol = data.get("avg_volume", 0) or 0
+
+    now = datetime.now().strftime("%B %d, %Y %H:%M IST")
+    trend = get_trend(change)
+    risk_label = get_risk_label(risk)
+    sentiment = get_sentiment(change)
+
+    # Volume analysis
+    vol_analysis = ""
+    if volume and avg_vol and avg_vol > 0:
+        vol_ratio = volume / avg_vol
+        if vol_ratio > 1.5:
+            vol_analysis = f"Trading volume is **{vol_ratio:.1f}x above average** — strong institutional interest or news-driven activity."
+        elif vol_ratio < 0.5:
+            vol_analysis = f"Trading volume is **below average ({vol_ratio:.1f}x)** — low conviction in current price movement."
         else:
-            return "📊 Growth / Value Stock"
-    else:
-        name     = (data.get("name") or "").lower()
-        coin_id  = (data.get("coin_id") or "").lower()
-        cats     = [c.lower() for c in data.get("categories", [])]
-        MEME_KW  = ["meme", "dog", "shib", "pepe", "floki", "bonk", "wif", "trump", "doge", "baby", "wojak"]
-        is_meme  = (
-            any(k in name for k in MEME_KW) or
-            any(k in coin_id for k in MEME_KW) or
-            any("meme" in c for c in cats)
-        )
-        if is_meme:
-            return "🎭 Speculative / Meme Asset"
-        LARGE_CAPS = ["bitcoin", "ethereum", "solana", "binancecoin", "ripple",
-                      "cardano", "polkadot", "the-open-network", "tron"]
-        if coin_id in LARGE_CAPS:
-            return "⚡ Utility Crypto (Large Cap)"
-        return "💎 Mid-Cap Cryptocurrency"
+            vol_analysis = "Trading volume is **near average** — normal market activity."
 
-
-# ── Risk Rating ───────────────────────────────────────────────────────────────
-def calculate_risk_rating(data: dict, category: str) -> tuple:
-    score = 5
-
-    if data["asset_type"] == "stock":
-        risk_type = "Market Cyclicality"
-        beta  = float(data.get("beta") or 1.0)
-        de    = float(data.get("debt_to_equity") or 0)
-        vol   = float(data.get("volatility_5d_pct") or 0)
-        mcap  = float(data.get("market_cap") or 0)
-
-        if mcap > 500_000_000_000: score -= 1
-        elif mcap < 2_000_000_000: score += 2
-        if beta > 1.5: score += 2
-        elif beta < 0.8: score -= 1
-        if de > 200: score += 2
-        elif de > 100: score += 1
-        if vol > 3: score += 1
-
-        explanation = (
-            f"Beta {beta:.2f} indicates {'high' if beta > 1.2 else 'moderate'} market sensitivity. "
-            f"Debt/Equity {de:.0f}% {'—elevated leverage' if de > 150 else '—manageable'}. "
-            f"5-day volatility: {vol:.2f}%. Risk driven by **{risk_type}** — macro cycles, earnings surprises."
-        )
-
-    else:
-        is_meme   = "Meme" in category or "Speculative" in category
-        risk_type = "Extreme Volatility" if is_meme else "Crypto Market Volatility"
-        vol_24h   = float(data.get("volatility_24h_pct") or 0)
-        chg_7d    = abs(float(data.get("change_7d") or 0))
-        mcap      = float(data.get("market_cap") or 0)
-        sentiment = float(data.get("sentiment_up_pct") or 50)
-
-        if mcap < 100_000_000: score += 3
-        elif mcap < 1_000_000_000: score += 2
-        elif mcap < 10_000_000_000: score += 1
-        if vol_24h > 10: score += 2
-        elif vol_24h > 5: score += 1
-        if chg_7d > 30: score += 1
-        if is_meme: score += 1
-
-        if is_meme:
-            explanation = (
-                f"⚠️ **{risk_type}** dominates. 24h volatility: {vol_24h:.2f}%. "
-                f"7-day swing: {chg_7d:.1f}%. Community sentiment: {sentiment:.0f}% bullish. "
-                f"Meme coins are driven by social hype — NOT fundamentals. Can drop 80%+ in hours."
-            )
+    # 52-week range
+    range_analysis = ""
+    if week_high and week_low and price and (week_high - week_low) > 0:
+        range_pct = ((price - week_low) / (week_high - week_low)) * 100
+        if range_pct > 80:
+            range_analysis = f"Trading near **52-week high** ({range_pct:.0f}% of annual range) — potential resistance zone ahead."
+        elif range_pct < 20:
+            range_analysis = f"Trading near **52-week low** ({range_pct:.0f}% of annual range) — potential support/value zone."
         else:
-            explanation = (
-                f"**{risk_type}** primary driver. 24h volatility: {vol_24h:.2f}%. "
-                f"7-day move: {chg_7d:.1f}%. Market cap {'strong' if mcap > 10_000_000_000 else 'moderate'} liquidity. "
-                f"Susceptible to regulatory shifts and macro correlation."
-            )
+            range_analysis = f"At **{range_pct:.0f}% of 52-week range** — mid-range positioning with room in both directions."
 
-    score = max(1, min(10, score))
-    label = (
-        "🟢 Low Risk"      if score <= 3 else
-        "🟡 Moderate Risk" if score <= 5 else
-        "🟠 High Risk"     if score <= 7 else
-        "🔴 Very High Risk"
-    )
-    return score, label, explanation
+    # Valuation
+    val_analysis = ""
+    if pe:
+        if pe > 50:
+            val_analysis = f"P/E of **{pe:.1f}x** — stock is **richly valued**, priced for high growth expectations."
+        elif pe > 25:
+            val_analysis = f"P/E of **{pe:.1f}x** — moderate growth premium priced in."
+        elif pe > 0:
+            val_analysis = f"P/E of **{pe:.1f}x** — **reasonably valued** relative to earnings."
+        else:
+            val_analysis = "Negative P/E — company is currently **loss-making**."
 
-
-# ── Verdict ───────────────────────────────────────────────────────────────────
-def generate_verdict(data: dict, category: str) -> str:
-    if data["asset_type"] == "stock":
-        change  = float(data.get("change_pct") or 0)
-        target  = data.get("target_price")
-        rating  = data.get("analyst_key", "")
-        current = float(data.get("current_price") or 0)
-        upside  = ((target - current) / current * 100) if (target and current) else None
-        cur     = data.get("currency", "$")
-
-        bullish, bearish = [], []
-        if upside and upside > 10:
-            bullish.append(f"Analyst target implies **{upside:.1f}% upside** ({cur}{target:.2f})")
-        if rating in ["buy", "strong_buy"]:
-            bullish.append(f"Analyst rating: **{rating.replace('_', ' ').title()}**")
-        if change > 1:
-            bullish.append(f"Positive today: +{change:.2f}%")
-        if (data.get("roe") or 0) > 0.15:
-            bullish.append(f"Strong ROE: {(data['roe']*100):.1f}%")
-        if upside and upside < -5:
-            bearish.append("Trading above analyst target — overvaluation risk")
-        if (data.get("debt_to_equity") or 0) > 150:
-            bearish.append("High leverage — rate-sensitive")
-        if change < -1:
-            bearish.append(f"Sell pressure: {change:.2f}% today")
-    else:
-        chg_24h   = float(data.get("change_24h") or 0)
-        chg_7d    = float(data.get("change_7d") or 0)
-        sentiment = float(data.get("sentiment_up_pct") or 50)
-        ath_chg   = float(data.get("ath_change_pct") or 0)
-        is_meme   = "Meme" in category or "Speculative" in category
-
-        bullish, bearish = [], []
-        if sentiment > 65:
-            bullish.append(f"Strongly bullish sentiment: {sentiment:.0f}% positive")
-        if chg_24h > 5:
-            bullish.append(f"Strong 24h momentum: +{chg_24h:.2f}%")
-        if chg_7d > 10:
-            bullish.append(f"Weekly uptrend: +{chg_7d:.2f}%")
-        if ath_chg > -20:
-            bullish.append(f"Near ATH — only {abs(ath_chg):.1f}% below peak")
-        if sentiment < 40:
-            bearish.append(f"Negative sentiment: {sentiment:.0f}% bullish only")
-        if chg_24h < -5:
-            bearish.append(f"Sell pressure: {chg_24h:.2f}% (24h)")
-        if ath_chg < -80:
-            bearish.append(f"Deep ATH discount ({ath_chg:.1f}%) — recovery uncertain")
-        if is_meme:
-            bullish.append("Viral moment / influencer tweet → potential 2x–10x spike")
-            bearish.append("No catalyst = gradual bleed risk")
-            bearish.append("No intrinsic value floor — near-zero possible")
-
-    parts = []
-    if bullish:
-        parts.append("**📈 Bullish Triggers:**\n" + "\n".join(f"- {b}" for b in bullish))
-    if bearish:
-        parts.append("**📉 Bearish Triggers:**\n" + "\n".join(f"- {b}" for b in bearish))
-    if not parts:
-        parts.append("**↔️ Neutral:** No strong directional signals. Monitor volume and news.")
-    return "\n\n".join(parts)
-
-
-# ── Master Report ─────────────────────────────────────────────────────────────
-def generate_report(data: dict) -> dict:
-    category                             = classify_asset(data)
-    risk_score, risk_label, risk_explanation = calculate_risk_rating(data, category)
-    verdict                              = generate_verdict(data, category)
-    ai_insight                           = generate_ai_insight(data, category, risk_label)
-
-    def fmt(val, prefix="$") -> str:
-        if val is None: return "N/A"
-        try:
-            v = float(val)
-            if v >= 1e12: return f"{prefix}{v/1e12:.2f}T"
-            if v >= 1e9:  return f"{prefix}{v/1e9:.2f}B"
-            if v >= 1e6:  return f"{prefix}{v/1e6:.2f}M"
-            if v >= 1e3:  return f"{prefix}{v/1e3:.1f}K"
-            return f"{prefix}{v:,.4f}"
-        except: return str(val)
-
-    if data["asset_type"] == "stock":
-        cur = data.get("currency", "$")
-        metrics = {
-            "Current Price":  f"{cur} {data.get('current_price', 'N/A')}",
-            "24h Change":     f"{data.get('change_pct', 0):.2f}%" if data.get('change_pct') is not None else "N/A",
-            "Market Cap":     fmt(data.get("market_cap")),
-            "P/E Ratio":      f"{data.get('pe_ratio', 'N/A')}",
-            "Volume":         fmt(data.get("volume"), ""),
-            "Avg Volume":     fmt(data.get("avg_volume"), ""),
-            "5d Volatility":  f"{data.get('volatility_5d_pct', 'N/A')}%",
-            "52W High":       f"{cur} {data.get('52w_high', 'N/A')}",
-            "52W Low":        f"{cur} {data.get('52w_low', 'N/A')}",
-            "Beta":           f"{data.get('beta', 'N/A')}",
+    # Analyst recommendation
+    rec_text = ""
+    if rec and rec not in ("N/A", ""):
+        rec_map = {
+            "STRONG_BUY": "Analysts have a **Strong Buy** consensus",
+            "BUY": "Analysts maintain a **Buy** recommendation",
+            "HOLD": "Analysts suggest **Hold** — wait for a better entry point",
+            "SELL": "Analysts recommend **Sell** — caution advised",
+            "STRONG_SELL": "Analysts have a **Strong Sell** consensus — significant downside risk",
         }
-        beta  = data.get("beta") or 1.0
-        roe   = (data.get("roe") or 0) * 100
-        de    = data.get("debt_to_equity") or 0
-        chg   = abs(data.get("change_pct") or 0)
-        pulse = (
-            f"**Financial Health:** "
-            f"{'Profitable' if (data.get('profit_margin') or 0) > 0 else 'Unprofitable'} — "
-            f"ROE {roe:.1f}%, Debt/Equity {de:.0f}%.\n\n"
-            f"**Market Trend:** Price {'up' if (data.get('change_pct') or 0) > 0 else 'down'} "
-            f"{chg:.2f}% today. 52W: {data.get('currency','')}{data.get('52w_low','?')} — "
-            f"{data.get('currency','')}{data.get('52w_high','?')}. "
-            f"Analyst: **{(data.get('analyst_key') or 'N/A').replace('_',' ').title()}** "
-            f"(target: {data.get('currency','')}{data.get('target_price', 'N/A')}).\n\n"
-            f"**Macro Sensitivity:** Beta {beta:.2f} — moves "
-            f"{'more' if beta > 1 else 'less'} than the broader market."
-        )
-    else:
-        is_meme = "Meme" in category or "Speculative" in category
-        metrics = {
-            "Current Price":  f"${data.get('current_price', 'N/A')}",
-            "24h Change":     f"{data.get('change_24h', 0):.2f}%" if data.get('change_24h') is not None else "N/A",
-            "7d Change":      f"{data.get('change_7d', 0):.2f}%" if data.get('change_7d') is not None else "N/A",
-            "Market Cap":     fmt(data.get("market_cap")),
-            "24h Volume":     fmt(data.get("total_volume")),
-            "24h Volatility": f"{data.get('volatility_24h_pct', 'N/A')}%",
-            "ATH":            f"${data.get('ath', 'N/A')}",
-            "ATH Change":     f"{data.get('ath_change_pct', 'N/A')}%",
-            "CMC Rank":       f"#{data.get('market_cap_rank', 'N/A')}",
-            "Sentiment":      f"{data.get('sentiment_up_pct', 'N/A'):.0f}% Bullish",
-        }
-        sent = float(data.get("sentiment_up_pct") or 50)
-        pulse = (
-            f"**Community Sentiment:** {sent:.0f}% bullish. "
-            f"Twitter: {fmt(data.get('twitter_followers'), '')} followers. "
-            f"Reddit: {fmt(data.get('reddit_subscribers'), '')} subscribers.\n\n"
-            f"**Volume Volatility:** 24h volume {fmt(data.get('total_volume'))}. "
-            f"{'Active speculation.' if is_meme else 'Healthy liquidity.'}\n\n"
-        )
-        if is_meme:
-            pulse += (
-                "**⚠️ Social Hype Risk:** NO fundamental value — no earnings, no cash flows. "
-                "Price moves 100% on narrative, tweets, and herd behavior. "
-                "A single influencer post can move price ±50%. Treat as pure speculation."
-            )
-        else:
-            pulse += (
-                f"**On-Chain Trend:** {'Strong' if sent > 55 else 'Weak'} community conviction. "
-                f"30-day change: {data.get('change_30d', 'N/A')}%."
-            )
+        rec_text = rec_map.get(rec.upper().replace(" ", "_"), f"Analyst consensus: **{rec}**")
+        if target and price:
+            upside = ((target - price) / price) * 100
+            rec_text += f". Mean price target: **{fmt_price(target, currency)}** ({'+' if upside > 0 else ''}{upside:.1f}% from current)."
 
-    return {
-        "name":             data.get("name"),
-        "ticker":           data.get("ticker"),
-        "exchange":         data.get("exchange") or "CoinGecko / Crypto Market",
-        "category":         category,
-        "metrics":          metrics,
-        "pulse":            pulse,
-        "risk_score":       risk_score,
-        "risk_label":       risk_label,
-        "risk_explanation": risk_explanation,
-        "verdict":          verdict,
-        "ai_insight":       ai_insight,
-        "asset_type":       data["asset_type"],
-        "is_meme":          is_meme if data["asset_type"] == "crypto" else False,
-    }
+    # Market cap label
+    if mktcap:
+        if mktcap > 200e9: cap_label = "Mega Cap (>$200B)"
+        elif mktcap > 10e9: cap_label = "Large Cap (>$10B)"
+        elif mktcap > 2e9: cap_label = "Mid Cap"
+        else: cap_label = "Small Cap"
+    else:
+        cap_label = "N/A"
+
+    # Volatility label
+    if vol > 60: vol_label = "Very High"
+    elif vol > 35: vol_label = "High"
+    elif vol > 20: vol_label = "Moderate"
+    else: vol_label = "Low"
+
+    report = f"""## 📊 FinSage Analysis Report — {name} ({ticker})
+**Generated:** {now}  
+**Asset Class:** Global Stock | **Exchange:** {data.get('exchange', 'N/A')} | **Sector:** {sector}
+
+---
+
+### 💰 Current Market Data
+
+| Metric | Value |
+|--------|-------|
+| **Current Price** | {fmt_price(price, currency)} |
+| **24H Change** | {'🔴' if change < 0 else '🟢'} {change:+.2f}% |
+| **Day High / Low** | {fmt_price(day_high, currency)} / {fmt_price(day_low, currency)} |
+| **52-Week High** | {fmt_price(week_high, currency)} |
+| **52-Week Low** | {fmt_price(week_low, currency)} |
+| **Market Cap** | {format_number(mktcap)} |
+| **P/E Ratio** | {f'{pe:.2f}x' if pe else 'N/A'} |
+| **EPS** | {fmt_price(eps, currency) if eps else 'N/A'} |
+| **Dividend Yield** | {f'{div*100:.2f}%' if div else 'N/A'} |
+| **Beta** | {f'{beta:.2f}' if beta else 'N/A'} |
+| **Annualized Volatility** | {vol:.1f}% |
+
+---
+
+### 📈 Trend & Sentiment Analysis
+
+- **Current Trend:** {trend}
+- **Market Sentiment:** {sentiment}
+- **Risk Score:** {risk}/10 — {risk_label}
+
+{range_analysis}
+
+{vol_analysis}
+
+---
+
+### 🔍 Fundamental Analysis
+
+{val_analysis}
+
+{rec_text}
+
+**Dividend:** {'This stock pays a **' + f'{div*100:.2f}% annual dividend yield**' + ' — attractive for income investors.' if div and div > 0 else 'This stock currently pays **no dividend** — growth-focused.'}
+
+{'**Beta:** ' + f'Beta of **{beta:.2f}** — stock is **{"more volatile" if beta > 1.2 else "less volatile" if beta < 0.8 else "similarly volatile"}** compared to the broader market.' if beta else ''}
+
+---
+
+### ⚠️ Risk Assessment
+
+| Factor | Assessment |
+|--------|-----------|
+| **Overall Risk** | {risk_label} ({risk}/10) |
+| **Volatility** | {vol_label} ({vol:.1f}% annualized) |
+| **Market Cap** | {cap_label} |
+| **Sector** | {sector} |
+
+---
+
+### 💡 Investment Perspective
+
+"""
+
+    if risk <= 3:
+        report += "This asset exhibits **conservative risk characteristics** — suitable for long-term, risk-averse investors seeking stable capital appreciation."
+    elif risk <= 6:
+        report += "This asset carries **moderate risk** — suitable for balanced investors with a medium-term horizon (1–3 years). Consider systematic investment (SIP) for better cost averaging."
+    else:
+        report += "This asset carries **elevated risk** — suitable only for experienced investors with high risk tolerance and clearly defined stop-loss levels."
+
+    if change > 5:
+        report += " Recent strong momentum suggests bullish participation, but watch for potential pullbacks near resistance."
+    elif change < -5:
+        report += " Recent decline may present a buying opportunity for long-term investors — confirm with broader market trends before entry."
+
+    report += f"""
+
+---
+
+### ⚖️ Legal Disclaimer
+
+> This report is generated by **FinSage** for **educational and informational purposes only**. It does **not** constitute financial advice, investment recommendation, or solicitation to buy or sell any security. Past performance is not indicative of future results. Investing involves risk, including possible loss of principal. Please consult a SEBI-registered financial advisor before making any investment decisions. **FinSage is not a SEBI-registered investment advisor.**
+
+*Report generated by FinSage Global Financial Intelligence Platform | {now}*
+"""
+    return report
+
+
+def analyze_crypto(data: dict) -> str:
+    name = data.get("name", data.get("ticker", "N/A"))
+    ticker = data.get("ticker", "N/A")
+    asset_type = data.get("asset_type", "Cryptocurrency")
+    price = data.get("current_price", 0) or 0
+    change_24h = data.get("change_pct", 0) or 0
+    change_7d = data.get("change_7d", 0) or 0
+    change_30d = data.get("change_30d", 0) or 0
+    market_cap = data.get("market_cap", 0) or 0
+    volume_24h = data.get("volume_24h", 0) or 0
+    risk = data.get("risk_score", 5)
+    vol = data.get("volatility_annualized", 0) or 0
+    ath = data.get("ath")
+    ath_chg = data.get("ath_change_pct") or 0
+    supply = data.get("circulating_supply")
+    rank = data.get("market_cap_rank")
+    high_24h = data.get("high_24h", 0) or 0
+    low_24h = data.get("low_24h", 0) or 0
+
+    now = datetime.now().strftime("%B %d, %Y %H:%M IST")
+    trend = get_trend(change_24h)
+    risk_label = get_risk_label(risk)
+    sentiment = get_sentiment(change_24h, change_7d)
+    is_meme = asset_type == "Meme Coin"
+
+    # ATH analysis
+    ath_text = ""
+    if ath and ath_chg is not None:
+        if ath_chg > -10:
+            ath_text = f"Trading **near All-Time High** ({ath_chg:+.1f}% from ATH of {fmt_price(ath)}) — extremely bullish but correction risk is elevated."
+        elif ath_chg > -50:
+            ath_text = f"Trading **{abs(ath_chg):.0f}% below All-Time High** of {fmt_price(ath)} — potential recovery opportunity for risk-tolerant investors."
+        else:
+            ath_text = f"Trading **{abs(ath_chg):.0f}% below All-Time High** of {fmt_price(ath)} — significant recovery needed; high caution advised."
+
+    # Volume/market cap ratio
+    vol_ratio_text = ""
+    if market_cap and volume_24h and market_cap > 0:
+        ratio = volume_24h / market_cap
+        if ratio > 0.5:
+            vol_ratio_text = f"**Extremely high volume/market cap ratio ({ratio:.1%})** — unusual trading activity, possible volatility ahead."
+        elif ratio > 0.1:
+            vol_ratio_text = f"**Strong trading activity** — 24H volume is {ratio:.1%} of market cap, indicating healthy market interest."
+        else:
+            vol_ratio_text = f"**Normal trading volume** ({ratio:.1%} of market cap) — steady market participation."
+
+    # Market cap label
+    if market_cap > 100e9: cap_label = "Large Cap (>$100B)"
+    elif market_cap > 10e9: cap_label = "Mid Cap (>$10B)"
+    elif market_cap > 1e9: cap_label = "Small Cap (>$1B)"
+    elif market_cap > 100e6: cap_label = "Micro Cap (>$100M)"
+    else: cap_label = "Nano Cap (<$100M)"
+
+    # Volatility label
+    if vol > 150: vol_label = "Extreme"
+    elif vol > 80: vol_label = "Very High"
+    elif vol > 40: vol_label = "High"
+    else: vol_label = "Moderate"
+
+    report = f"""## {'🎭' if is_meme else '₿'} FinSage Analysis Report — {name} ({ticker})
+**Generated:** {now}  
+**Asset Class:** {asset_type} | **Market Rank:** {'#' + str(rank) if rank else 'N/A'}
+
+---
+
+### 💰 Current Market Data
+
+| Metric | Value |
+|--------|-------|
+| **Current Price** | {fmt_price(price)} |
+| **24H Change** | {'🔴' if change_24h < 0 else '🟢'} {change_24h:+.2f}% |
+| **7D Change** | {'🔴' if change_7d < 0 else '🟢'} {change_7d:+.2f}% |
+| **30D Change** | {'🔴' if change_30d < 0 else '🟢'} {change_30d:+.2f}% |
+| **24H High / Low** | {fmt_price(high_24h)} / {fmt_price(low_24h)} |
+| **Market Cap** | {format_number(market_cap)} |
+| **24H Volume** | {format_number(volume_24h)} |
+| **Circulating Supply** | {f'{supply:,.0f} {ticker}' if supply else 'N/A'} |
+| **All-Time High** | {fmt_price(ath) if ath else 'N/A'} |
+| **ATH Change** | {f'{ath_chg:+.1f}%' if ath_chg else 'N/A'} |
+| **Annualized Volatility** | {vol:.1f}% |
+
+---
+
+### 📈 Trend & Sentiment Analysis
+
+- **Current Trend:** {trend}
+- **Market Sentiment:** {sentiment}
+- **Risk Score:** {risk}/10 — {risk_label}
+
+{ath_text}
+
+{vol_ratio_text}
+
+---
+
+### 🔍 Market Analysis
+
+**Short-Term (24H):** {'Positive momentum' if change_24h > 0 else 'Negative pressure'} — {abs(change_24h):.2f}% {'gain' if change_24h > 0 else 'decline'}.
+
+**Medium-Term (7D):** {'Bulls in control' if change_7d > 0 else 'Bears dominating'} — {abs(change_7d):.2f}% {'gain' if change_7d > 0 else 'loss'} over the past week.
+
+**Monthly Trend (30D):** {'Strong upward trajectory' if change_30d > 5 else 'Significant decline — consider waiting for stabilization' if change_30d < -10 else 'Consolidation phase'} — {change_30d:+.2f}% over 30 days.
+
+---
+
+### ⚠️ Risk Assessment
+
+| Factor | Assessment |
+|--------|-----------|
+| **Overall Risk** | {risk_label} ({risk}/10) |
+| **Volatility** | {vol_label} ({vol:.1f}% annualized) |
+| **Market Cap** | {format_number(market_cap)} ({cap_label}) |
+| **Asset Class** | {asset_type} — {'⚠️ Highly speculative, community-driven' if is_meme else '✅ Established digital asset'} |
+
+---
+
+### 💡 Investment Perspective
+
+"""
+
+    if is_meme:
+        report += """**Meme coins are highly speculative assets** driven primarily by social media sentiment, community hype, and influencer activity — not by fundamental value or utility.
+
+**Key Risks to Understand:**
+- Extreme price volatility — can drop 80-90% rapidly without warning
+- No underlying fundamental value or real-world utility
+- Susceptible to pump-and-dump schemes and whale manipulation
+- Highly sensitive to celebrity statements and social media trends
+
+**If considering an allocation:** Only use capital you can afford to lose entirely. Limit position to 1-5% of total portfolio maximum. Never invest borrowed money in meme coins."""
+    elif risk <= 4:
+        report += "This cryptocurrency demonstrates **relatively stable characteristics** for the crypto asset class. Suitable for investors seeking blockchain exposure with managed risk. A systematic DCA (Dollar-Cost Averaging) approach is recommended over lump-sum investment."
+    elif risk <= 7:
+        report += "This asset carries **significant volatility** typical of the crypto market. Use dollar-cost averaging (DCA) as an entry strategy. Set clear stop-loss levels and take-profit targets before entering a position."
+    else:
+        report += "This asset exhibits **extreme volatility**. Suitable only for active traders with strict risk management. Position sizing should be minimal (1-3% of portfolio maximum). Always use stop-loss orders."
+
+    report += f"""
+
+---
+
+### ⚖️ Legal Disclaimer
+
+> This report is generated by **FinSage** for **educational and informational purposes only**. It does **not** constitute financial advice, investment recommendation, or solicitation to buy or sell any cryptocurrency. Cryptocurrency investments are subject to high market risk and are **not regulated by SEBI**. Past performance is not indicative of future results. Please consult a qualified financial advisor before making any investment decisions. **FinSage is not a SEBI-registered investment advisor.**
+
+*Report generated by FinSage Global Financial Intelligence Platform | {now}*
+"""
+    return report
