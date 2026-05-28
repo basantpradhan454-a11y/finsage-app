@@ -1,6 +1,6 @@
 """
 FinSage — Global Financial Intelligence Platform
-100% Free APIs | Stocks | Crypto | Meme Coins
+Real-Time Data | Stocks | Crypto | Meme Coins
 """
 
 import streamlit as st
@@ -226,9 +226,6 @@ st.markdown("""
         <span class="navbar-tagline">&nbsp;&nbsp;Global Financial Intelligence Platform</span>
     </div>
     <div style="color:#8b949e;font-size:0.8rem;">
-        <span style="background:#1f3a1f;color:#3fb950;padding:0.2rem 0.7rem;border-radius:20px;font-weight:600;">
-            ✅ 100% FREE
-        </span>
         &nbsp; Stocks · Crypto · Meme Coins
     </div>
 </div>
