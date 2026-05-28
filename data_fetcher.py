@@ -1,304 +1,250 @@
 """
 FinSage Data Fetcher
-━━━━━━━━━━━━━━━━━━━
-100% FREE data sources:
-  • yfinance    — Yahoo Finance (stocks, ETFs, global exchanges)
-  • CoinGecko   — Crypto & Meme coins (free public API)
-
-Security features:
-  • Input sanitization (regex validation)
-  • Retry with exponential backoff
-  • Request timeouts
-  • In-memory TTL cache
-  • Graceful error handling
+Fetches real market data from yfinance (stocks) and CoinGecko (crypto/meme coins).
+No API key required — 100% free.
 """
-
-import time
-import logging
-import re
-import hashlib
 
 import yfinance as yf
 import requests
-
-from config import (
-    MAX_RETRIES, REQUEST_TIMEOUT, BACKOFF_BASE,
-    CACHE_TTL_SECONDS, coingecko_base, coingecko_headers
-)
-
-logger = logging.getLogger("finsage.fetcher")
-
-# ── In-Memory Cache (TTL-based) ───────────────────────────────────────────────
-_cache: dict = {}
-
-def _cache_key(*args) -> str:
-    return hashlib.md5("_".join(str(a) for a in args).encode()).hexdigest()
-
-def _get_cached(key: str):
-    if key in _cache:
-        value, expires_at = _cache[key]
-        if time.time() < expires_at:
-            logger.debug(f"Cache HIT: {key}")
-            return value
-        del _cache[key]
-    return None
-
-def _set_cache(key: str, value):
-    _cache[key] = (value, time.time() + CACHE_TTL_SECONDS)
+import pandas as pd
+from datetime import datetime, timedelta
 
 
-# ── Input Sanitization ────────────────────────────────────────────────────────
-def sanitize_ticker(ticker: str) -> str:
-    """Only alphanumeric + dot, hyphen, slash, underscore. Max 20 chars."""
-    cleaned = re.sub(r"[^\w.\-/]", "", ticker.strip().upper())
-    if len(cleaned) > 20:
-        raise ValueError("Ticker too long — possible injection attempt.")
-    if not cleaned:
-        raise ValueError("Invalid ticker symbol.")
-    return cleaned
-
-def sanitize_coin_id(coin_id: str) -> str:
-    """CoinGecko IDs: lowercase alphanumeric + hyphens only."""
-    cleaned = re.sub(r"[^a-z0-9\-]", "", coin_id.strip().lower())
-    if len(cleaned) > 60:
-        raise ValueError("Coin ID too long.")
-    if not cleaned:
-        raise ValueError("Invalid coin ID.")
-    return cleaned
-
-
-# ── Retry with Exponential Backoff ────────────────────────────────────────────
-def _retry_request(fn, *args, **kwargs):
-    """Retry fn() up to MAX_RETRIES times with exponential backoff."""
-    last_err = None
-    for attempt in range(MAX_RETRIES):
-        try:
-            return fn(*args, **kwargs)
-        except Exception as e:
-            last_err = e
-            wait = BACKOFF_BASE * (2 ** attempt)
-            logger.warning(f"Attempt {attempt+1}/{MAX_RETRIES} failed: {e}. Retrying in {wait:.0f}s…")
-            time.sleep(wait)
-    raise last_err
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# STOCK DATA — yfinance (100% FREE, No API Key)
-# ══════════════════════════════════════════════════════════════════════════════
-def fetch_stock_data(ticker: str) -> dict:
-    """
-    Fetch stock data via yfinance (Yahoo Finance).
-    FREE — no API key needed.
-    Supports: NSE (.NS), BSE (.BO), NASDAQ, NYSE, LSE (.L), F'furt (.DE), etc.
-    """
-    ticker = sanitize_ticker(ticker)
-    cache_key = _cache_key("stock", ticker)
-    cached = _get_cached(cache_key)
-    if cached:
-        return cached
-
-    def _fetch():
-        stock = yf.Ticker(ticker)
-        info  = stock.info
-        hist  = stock.history(period="5d")
-
-        if not info or (not info.get("currentPrice") and not info.get("regularMarketPrice") and hist.empty):
-            raise ValueError(
-                f"No data found for '{ticker}'. "
-                "Check the symbol — for NSE use .NS suffix (e.g. RELIANCE.NS), for BSE use .BO."
-            )
-
-        current_price = (
-            info.get("currentPrice") or
-            info.get("regularMarketPrice") or
-            (float(hist["Close"].iloc[-1]) if not hist.empty else None)
-        )
-        prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
-        change_pct = ((current_price - prev_close) / prev_close * 100) if (current_price and prev_close) else None
-
-        # 5-day realized volatility
-        volatility_5d = None
-        if len(hist) >= 2:
-            daily_returns = hist["Close"].pct_change().dropna()
-            volatility_5d = round(float(daily_returns.std() * 100), 2)
-
-        return {
-            "ticker":          ticker,
-            "name":            info.get("longName") or info.get("shortName", ticker),
-            "exchange":        info.get("exchange", "Unknown"),
-            "sector":          info.get("sector", "N/A"),
-            "industry":        info.get("industry", "N/A"),
-            "currency":        info.get("currency", "USD"),
-            "current_price":   round(current_price, 4) if current_price else None,
-            "prev_close":      round(prev_close, 4) if prev_close else None,
-            "change_pct":      round(change_pct, 2) if change_pct is not None else None,
-            "volume":          info.get("volume") or info.get("regularMarketVolume"),
-            "avg_volume":      info.get("averageVolume"),
-            "market_cap":      info.get("marketCap"),
-            "pe_ratio":        info.get("trailingPE"),
-            "forward_pe":      info.get("forwardPE"),
-            "pb_ratio":        info.get("priceToBook"),
-            "eps":             info.get("trailingEps"),
-            "revenue":         info.get("totalRevenue"),
-            "profit_margin":   info.get("profitMargins"),
-            "debt_to_equity":  info.get("debtToEquity"),
-            "roe":             info.get("returnOnEquity"),
-            "52w_high":        info.get("fiftyTwoWeekHigh"),
-            "52w_low":         info.get("fiftyTwoWeekLow"),
-            "beta":            info.get("beta"),
-            "dividend_yield":  info.get("dividendYield"),
-            "volatility_5d_pct": volatility_5d,
-            "analyst_rating":  info.get("recommendationMean"),
-            "analyst_key":     info.get("recommendationKey"),
-            "target_price":    info.get("targetMeanPrice"),
-            "hist_closes":     [float(x) for x in hist["Close"].tolist()[-5:]] if not hist.empty else [],
-            "asset_type":      "stock",
-            "data_source":     "yfinance (Yahoo Finance) — FREE",
-        }
-
-    result = _retry_request(_fetch)
-    _set_cache(cache_key, result)
-    return result
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# CRYPTO / MEME COIN DATA — CoinGecko (100% FREE, No API Key)
-# ══════════════════════════════════════════════════════════════════════════════
-
-# Ticker → CoinGecko ID map
-SYMBOL_TO_ID = {
-    # Major Crypto
-    "BTC": "bitcoin",          "ETH": "ethereum",         "SOL": "solana",
-    "BNB": "binancecoin",      "XRP": "ripple",            "ADA": "cardano",
-    "AVAX": "avalanche-2",     "DOT": "polkadot",          "MATIC": "matic-network",
-    "LINK": "chainlink",       "UNI": "uniswap",           "LTC": "litecoin",
-    "ATOM": "cosmos",          "NEAR": "near",             "APT": "aptos",
-    "OP": "optimism",          "ARB": "arbitrum",          "SUI": "sui",
-    "TON": "the-open-network", "TRX": "tron",              "USDT": "tether",
-    "USDC": "usd-coin",
+# ── CoinGecko coin ID mapping ─────────────────────────────────────────────────
+COINGECKO_IDS = {
+    # Crypto
+    "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin",
+    "SOL": "solana", "XRP": "ripple", "ADA": "cardano",
+    "AVAX": "avalanche-2", "DOT": "polkadot", "MATIC": "matic-network",
+    "LINK": "chainlink", "UNI": "uniswap", "LTC": "litecoin",
+    "ATOM": "cosmos", "TRX": "tron", "TON": "the-open-network",
     # Meme Coins
-    "DOGE": "dogecoin",        "SHIB": "shiba-inu",        "PEPE": "pepe",
-    "FLOKI": "floki",          "BONK": "bonk",             "WIF": "dogwifcoin",
-    "TRUMP": "official-trump", "MEME": "memecoin",         "WOJAK": "wojak",
-    "BABYDOGE": "baby-doge-coin",
+    "DOGE": "dogecoin", "SHIB": "shiba-inu", "PEPE": "pepe",
+    "FLOKI": "floki", "BONK": "bonk", "WIF": "dogwifcoin",
+    "MEME": "memecoin-2", "TURBO": "turbo", "BRETT": "brett",
+    "NEIRO": "neiro-on-eth",
 }
 
-def resolve_coin_id(symbol_or_id: str) -> str:
-    """Map ticker symbol → CoinGecko coin ID."""
-    # Strip /USD, /USDT suffixes
-    symbol = symbol_or_id.upper().replace("/USD", "").replace("/USDT", "").strip()
-    if symbol in SYMBOL_TO_ID:
-        return SYMBOL_TO_ID[symbol]
-    # Try lowercase as direct CoinGecko ID (e.g. 'bitcoin')
-    return sanitize_coin_id(symbol_or_id.lower().replace("/", "-"))
 
-
-def fetch_crypto_data(symbol_or_id: str) -> dict:
-    """
-    Fetch crypto/meme coin data from CoinGecko.
-    FREE — public API, no key required. (30 req/min limit)
-    Optional: set COINGECKO_API_KEY for free demo key (higher limits).
-    """
-    coin_id   = resolve_coin_id(symbol_or_id)
-    cache_key = _cache_key("crypto", coin_id)
-    cached    = _get_cached(cache_key)
-    if cached:
-        return cached
-
-    def _fetch():
-        url = f"{coingecko_base()}/coins/{coin_id}"
-        params = {
-            "localization":    "false",
-            "tickers":         "false",
-            "market_data":     "true",
-            "community_data":  "true",
-            "developer_data":  "false",
-            "sparkline":       "false",
-        }
-        resp = requests.get(
-            url, params=params,
-            headers=coingecko_headers(),  # Empty for free, or demo key header
-            timeout=REQUEST_TIMEOUT
-        )
-        if resp.status_code == 429:
-            raise Exception(
-                "CoinGecko rate limit reached (30 req/min free tier). "
-                "Wait 60 seconds and try again. Or get a FREE demo key at coingecko.com."
-            )
-        if resp.status_code == 404:
-            raise ValueError(
-                f"Coin '{coin_id}' not found on CoinGecko. "
-                "Try the full name (e.g. 'dogecoin') or check https://coingecko.com"
-            )
-        resp.raise_for_status()
-        return resp.json()
-
-    raw  = _retry_request(_fetch)
-    mkt  = raw.get("market_data", {})
-    comm = raw.get("community_data", {})
-    sent = float(raw.get("sentiment_votes_up_percentage") or 50)
-
-    result = {
-        "coin_id":               coin_id,
-        "ticker":                raw.get("symbol", "").upper(),
-        "name":                  raw.get("name", coin_id),
-        "asset_type":            "crypto",
-        "categories":            raw.get("categories", []),
-        "current_price":         mkt.get("current_price", {}).get("usd"),
-        "market_cap":            mkt.get("market_cap", {}).get("usd"),
-        "market_cap_rank":       mkt.get("market_cap_rank"),
-        "fully_diluted_val":     mkt.get("fully_diluted_valuation", {}).get("usd"),
-        "total_volume":          mkt.get("total_volume", {}).get("usd"),
-        "change_24h":            mkt.get("price_change_percentage_24h"),
-        "change_7d":             mkt.get("price_change_percentage_7d"),
-        "change_30d":            mkt.get("price_change_percentage_30d"),
-        "ath":                   mkt.get("ath", {}).get("usd"),
-        "ath_change_pct":        mkt.get("ath_change_percentage", {}).get("usd"),
-        "atl":                   mkt.get("atl", {}).get("usd"),
-        "circulating_supply":    mkt.get("circulating_supply"),
-        "total_supply":          mkt.get("total_supply"),
-        "max_supply":            mkt.get("max_supply"),
-        "high_24h":              mkt.get("high_24h", {}).get("usd"),
-        "low_24h":               mkt.get("low_24h", {}).get("usd"),
-        "volatility_24h_pct":    abs(mkt.get("price_change_percentage_24h") or 0),
-        # Community / Social
-        "sentiment_up_pct":      sent,
-        "sentiment_down_pct":    100 - sent,
-        "twitter_followers":     comm.get("twitter_followers"),
-        "reddit_subscribers":    comm.get("reddit_subscribers"),
-        "reddit_active_48h":     comm.get("reddit_accounts_active_48h"),
-        "description":           raw.get("description", {}).get("en", "")[:400],
-        "genesis_date":          raw.get("genesis_date"),
-        "last_updated":          raw.get("last_updated"),
-        "data_source":           "CoinGecko API — FREE",
-    }
-    _set_cache(cache_key, result)
-    return result
-
-
-# ── Global Live Prices (for dashboard ticker bar) ─────────────────────────────
-def fetch_live_prices() -> dict:
-    """Fetch quick prices for top assets. Used for live ticker bar."""
-    cache_key = _cache_key("live_prices")
-    cached = _get_cached(cache_key)
-    if cached:
-        return cached
-
-    def _fetch():
-        ids = "bitcoin,ethereum,dogecoin,solana,shiba-inu,binancecoin"
-        r = requests.get(
-            f"{coingecko_base()}/simple/price",
-            params={"ids": ids, "vs_currencies": "usd", "include_24hr_change": "true"},
-            headers=coingecko_headers(),
-            timeout=REQUEST_TIMEOUT
-        )
-        r.raise_for_status()
-        return r.json()
-
+def fetch_stock_data(ticker: str) -> dict:
+    """Fetch stock data from yfinance."""
     try:
-        result = _retry_request(_fetch)
-        _set_cache(cache_key, result)
-        return result
+        stock = yf.Ticker(ticker.upper())
+        info = stock.info
+        hist = stock.history(period="1mo")
+
+        if hist.empty or not info:
+            return {"error": f"No data found for ticker '{ticker}'. Please check the symbol."}
+
+        current_price = info.get("currentPrice") or info.get("regularMarketPrice") or (hist["Close"].iloc[-1] if not hist.empty else None)
+        prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
+
+        change_pct = 0.0
+        if current_price and prev_close and prev_close > 0:
+            change_pct = ((current_price - prev_close) / prev_close) * 100
+
+        # 52-week high/low
+        week_high = info.get("fiftyTwoWeekHigh")
+        week_low = info.get("fiftyTwoWeekLow")
+
+        # Volume
+        volume = info.get("volume") or info.get("regularMarketVolume", 0)
+        avg_volume = info.get("averageVolume", 0)
+
+        # Volatility (30-day)
+        volatility = 0.0
+        if len(hist) > 5:
+            returns = hist["Close"].pct_change().dropna()
+            volatility = float(returns.std() * (252 ** 0.5) * 100)
+
+        # Risk Score (1-10)
+        risk_score = calculate_risk_score(
+            change_pct=change_pct,
+            volatility=volatility,
+            market_cap=info.get("marketCap", 0),
+            asset_type="stock"
+        )
+
+        return {
+            "ticker": ticker.upper(),
+            "name": info.get("longName") or info.get("shortName", ticker.upper()),
+            "asset_type": "Stock",
+            "exchange": info.get("exchange", "N/A"),
+            "sector": info.get("sector", "N/A"),
+            "industry": info.get("industry", "N/A"),
+            "current_price": round(current_price, 4) if current_price else None,
+            "currency": info.get("currency", "USD"),
+            "change_pct": round(change_pct, 2),
+            "prev_close": round(prev_close, 4) if prev_close else None,
+            "open_price": info.get("open") or info.get("regularMarketOpen"),
+            "day_high": info.get("dayHigh") or info.get("regularMarketDayHigh"),
+            "day_low": info.get("dayLow") or info.get("regularMarketDayLow"),
+            "week_52_high": week_high,
+            "week_52_low": week_low,
+            "market_cap": info.get("marketCap"),
+            "pe_ratio": info.get("trailingPE"),
+            "eps": info.get("trailingEps"),
+            "dividend_yield": info.get("dividendYield"),
+            "volume": volume,
+            "avg_volume": avg_volume,
+            "beta": info.get("beta"),
+            "volatility_annualized": round(volatility, 2),
+            "risk_score": risk_score,
+            "history": hist,
+            "analyst_target": info.get("targetMeanPrice"),
+            "recommendation": info.get("recommendationKey", "N/A").upper(),
+        }
+
     except Exception as e:
-        logger.warning(f"Live prices fetch failed: {e}")
-        return {}
+        return {"error": f"Error fetching stock data: {str(e)}"}
+
+
+def fetch_crypto_data(symbol: str) -> dict:
+    """Fetch crypto/meme coin data from CoinGecko (free, no key)."""
+    try:
+        symbol_upper = symbol.upper()
+        coin_id = COINGECKO_IDS.get(symbol_upper)
+
+        if not coin_id:
+            # Try searching by symbol
+            search_url = f"https://api.coingecko.com/api/v3/search?query={symbol}"
+            search_resp = requests.get(search_url, timeout=10)
+            search_data = search_resp.json()
+            coins = search_data.get("coins", [])
+            if coins:
+                coin_id = coins[0]["id"]
+            else:
+                return {"error": f"Coin '{symbol}' not found. Try BTC, ETH, DOGE, SHIB etc."}
+
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
+        params = {
+            "localization": "false",
+            "tickers": "false",
+            "market_data": "true",
+            "community_data": "false",
+            "developer_data": "false",
+        }
+        resp = requests.get(url, params=params, timeout=15)
+
+        if resp.status_code == 429:
+            return {"error": "CoinGecko rate limit hit. Please wait 30 seconds and try again."}
+        if resp.status_code != 200:
+            return {"error": f"CoinGecko API error: {resp.status_code}"}
+
+        data = resp.json()
+        mkt = data.get("market_data", {})
+
+        current_price = mkt.get("current_price", {}).get("usd", 0)
+        change_24h = mkt.get("price_change_percentage_24h", 0) or 0
+        change_7d = mkt.get("price_change_percentage_7d", 0) or 0
+        change_30d = mkt.get("price_change_percentage_30d", 0) or 0
+
+        market_cap = mkt.get("market_cap", {}).get("usd", 0) or 0
+        volume_24h = mkt.get("total_volume", {}).get("usd", 0) or 0
+
+        volatility = abs(change_30d) / 4 if change_30d else abs(change_24h) * 5
+
+        risk_score = calculate_risk_score(
+            change_pct=change_24h,
+            volatility=volatility,
+            market_cap=market_cap,
+            asset_type="crypto"
+        )
+
+        # Historical data via market_chart
+        hist_url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+        hist_resp = requests.get(hist_url, params={"vs_currency": "usd", "days": "30"}, timeout=10)
+        history_df = pd.DataFrame()
+        if hist_resp.status_code == 200:
+            prices = hist_resp.json().get("prices", [])
+            if prices:
+                history_df = pd.DataFrame(prices, columns=["timestamp", "Close"])
+                history_df["Date"] = pd.to_datetime(history_df["timestamp"], unit="ms")
+                history_df.set_index("Date", inplace=True)
+                history_df.drop("timestamp", axis=1, inplace=True)
+
+        return {
+            "ticker": symbol_upper,
+            "coin_id": coin_id,
+            "name": data.get("name", symbol_upper),
+            "asset_type": "Meme Coin" if symbol_upper in ["DOGE","SHIB","PEPE","FLOKI","BONK","WIF","MEME","TURBO","BRETT","NEIRO"] else "Cryptocurrency",
+            "symbol": data.get("symbol", "").upper(),
+            "current_price": current_price,
+            "currency": "USD",
+            "change_pct": round(change_24h, 2),
+            "change_7d": round(change_7d, 2),
+            "change_30d": round(change_30d, 2),
+            "market_cap": market_cap,
+            "market_cap_rank": mkt.get("market_cap_rank"),
+            "volume_24h": volume_24h,
+            "high_24h": mkt.get("high_24h", {}).get("usd"),
+            "low_24h": mkt.get("low_24h", {}).get("usd"),
+            "ath": mkt.get("ath", {}).get("usd"),
+            "ath_change_pct": mkt.get("ath_change_percentage", {}).get("usd"),
+            "atl": mkt.get("atl", {}).get("usd"),
+            "circulating_supply": mkt.get("circulating_supply"),
+            "total_supply": mkt.get("total_supply"),
+            "volatility_annualized": round(volatility, 2),
+            "risk_score": risk_score,
+            "history": history_df,
+            "description": data.get("description", {}).get("en", "")[:500],
+        }
+
+    except Exception as e:
+        return {"error": f"Error fetching crypto data: {str(e)}"}
+
+
+def calculate_risk_score(change_pct: float, volatility: float, market_cap: float, asset_type: str) -> int:
+    """Calculate a Risk Score from 1 (very low) to 10 (very high)."""
+    score = 5  # baseline
+
+    # Volatility impact
+    if volatility > 100: score += 3
+    elif volatility > 50: score += 2
+    elif volatility > 20: score += 1
+    elif volatility < 10: score -= 1
+
+    # Price change impact
+    if abs(change_pct) > 20: score += 2
+    elif abs(change_pct) > 10: score += 1
+    elif abs(change_pct) < 2: score -= 1
+
+    # Market cap impact (larger = safer)
+    if market_cap > 100_000_000_000: score -= 2  # > $100B
+    elif market_cap > 10_000_000_000: score -= 1  # > $10B
+    elif market_cap < 1_000_000_000: score += 1   # < $1B
+    elif market_cap < 100_000_000: score += 2     # < $100M
+
+    # Asset type baseline
+    if asset_type == "crypto": score += 1
+    if asset_type == "meme": score += 2
+
+    return max(1, min(10, score))
+
+
+def fetch_ticker_bar_data() -> list:
+    """Fetch live prices for the top ticker bar."""
+    results = []
+    symbols = ["BTC", "ETH", "DOGE", "SOL", "SHIB", "BNB"]
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {
+            "ids": "bitcoin,ethereum,dogecoin,solana,shiba-inu,binancecoin",
+            "vs_currencies": "usd",
+            "include_24hr_change": "true"
+        }
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            id_map = {
+                "bitcoin": "BTC", "ethereum": "ETH", "dogecoin": "DOGE",
+                "solana": "SOL", "shiba-inu": "SHIB", "binancecoin": "BNB"
+            }
+            for coin_id, sym in id_map.items():
+                d = data.get(coin_id, {})
+                price = d.get("usd", 0)
+                chg = d.get("usd_24h_change", 0) or 0
+                results.append({"symbol": sym, "price": price, "change": round(chg, 2)})
+    except:
+        pass
+    return results
