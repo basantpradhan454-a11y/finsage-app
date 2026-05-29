@@ -208,7 +208,6 @@ def render_auth_page():
         pass_s   = st.text_input("Password",  type="password", key="s_pass",    placeholder="Min 8 characters")
         pass_c   = st.text_input("Confirm",   type="password", key="s_confirm", placeholder="Repeat password")
 
-        plan_s = st.selectbox("Plan", ["🆓 Free Plan", "⭐ Pro Plan (₹299/mo)", "💎 Premium Plan (₹599/mo)"], key="s_plan")
 
         agree = st.checkbox("Maine **Privacy Policy** padhi aur agree karta/karti hoon ✅", key="s_agree")
         if st.button("📄 Privacy Policy dekho", key="pp_btn_signup", use_container_width=False):
@@ -231,11 +230,10 @@ def render_auth_page():
                     result = firebase_signup(email_s.strip(), pass_s)
                 if "idToken" in result:
                     _store_session(result, name=name_s.strip())
-                    plan_clean = plan_s.split("(")[0].strip()
                     save_user_profile(result["localId"], result["idToken"], {
                         "name": name_s.strip(),
                         "email": email_s.strip(),
-                        "plan": plan_clean,
+                        "plan": "Free",
                         "joined": datetime.now().strftime("%Y-%m-%d"),
                         "stripe_customer_id": "",
                     })
