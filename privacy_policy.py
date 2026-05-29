@@ -1,144 +1,144 @@
 """
-FinSage Privacy Policy
+FinSage — Privacy Policy Page
 """
+import streamlit as st
 
-def get_privacy_policy():
-    return """
-# 🔒 Privacy Policy
 
-**FinSage — Global Financial Intelligence Platform**  
-**Effective Date:** June 1, 2026  
-**Last Updated:** May 29, 2026
+def render_privacy_policy():
+    if st.button("← Back to FinSage", key="back_privacy_btn"):
+        st.session_state["show_privacy"] = False
+        st.rerun()
 
----
+    st.markdown("""
+## 🔒 Privacy Policy — FinSage
 
-## 1. Introduction
-
-Welcome to **FinSage** ("we", "our", or "us"). FinSage is a Global Financial Intelligence Platform that provides real-time analysis of stocks, cryptocurrencies, and meme coins for educational and informational purposes.
-
-This Privacy Policy explains how we collect, use, store, and protect your personal information when you use FinSage at [finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app](https://finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app/).
-
-By signing up and using FinSage, you agree to this Privacy Policy.
+**Last Updated:** May 2026 &nbsp;|&nbsp; Version 1.0
 
 ---
 
-## 2. Information We Collect
+### 1. Introduction
+FinSage ("we", "us", "our") is a financial intelligence platform providing real-time market data, AI-powered analysis, and educational insights. This Privacy Policy explains how we collect, use, store, and protect your information when you use FinSage.
 
-When you sign up or log in to FinSage using Google OAuth, we collect the following information from your Google account:
-
-| Data | Purpose |
-|------|---------|
-| **Full Name** | To personalize your FinSage experience |
-| **Email Address** | To identify your account and for communications |
-| **Profile Picture** | To display in your FinSage dashboard |
-| **Google Account ID** | To securely authenticate your identity |
-
-We do **not** collect:
-- Your Google password
-- Your financial account details
-- Your payment information
-- Any data beyond what you explicitly provide
+By creating an account or using FinSage, you agree to this Privacy Policy.
 
 ---
 
-## 3. How We Use Your Information
+### 2. Information We Collect
 
-We use your information to:
+**Account Information:**
+- Full name, email address (via Firebase Authentication)
+- Encrypted password (Firebase handles this — we never see plain-text passwords)
+- Account creation date, selected subscription plan
 
-- **Authenticate** your identity and provide secure access to FinSage
-- **Personalize** your dashboard experience (e.g., greeting you by name)
-- **Maintain** your session securely during your visit
-- **Improve** FinSage features and user experience
-- **Communicate** important updates about the platform (only if necessary)
+**Usage Data:**
+- Assets analyzed (ticker symbols searched)
+- Features used, pages visited
+- Time and frequency of usage
 
-We do **not**:
-- Sell your data to third parties
-- Use your data for advertising purposes
-- Share your data with financial institutions
-- Use your data for any purpose beyond operating FinSage
+**Device & Technical Info:**
+- Browser type and version
+- Operating system
+- IP address (for security and fraud prevention)
 
----
-
-## 4. Data Storage & Security
-
-- Your authentication is handled via **Google OAuth 2.0** — we never see or store your Google password
-- User session data is stored securely using **encrypted session tokens**
-- We use industry-standard **HTTPS encryption** for all data transmission
-- Access to user data is strictly limited to FinSage's core systems
-- We do not store your data on third-party advertising or analytics platforms
+**Payment Information (Stripe):**
+- Billing name, email, card last 4 digits
+- Transaction history
+- We **never** store full card numbers — Stripe handles all payment data securely
 
 ---
 
-## 5. Third-Party Services
+### 3. How We Use Your Information
 
-FinSage uses the following third-party services:
+- **Account Management:** To create, maintain, and secure your account
+- **Service Delivery:** To provide market data, analysis, and AI insights
+- **Billing:** To process subscription payments via Stripe
+- **Security:** To detect and prevent fraudulent activity
+- **Improvement:** To analyze usage patterns and improve the platform
+- **Communication:** Important account/service updates only (no spam)
+
+---
+
+### 4. Data Security
+
+- **Authentication:** Powered by **Google Firebase** — industry-standard OAuth 2.0
+- **Passwords:** SHA-256 hashed by Firebase — never stored as plain text
+- **Payments:** Processed by **Stripe** — PCI DSS Level 1 certified
+- **Data Transit:** All connections use HTTPS/TLS encryption
+- **Database:** Firebase Firestore with security rules limiting access to account owners only
+
+---
+
+### 5. Third-Party Services
 
 | Service | Purpose | Privacy Policy |
 |---------|---------|----------------|
-| **Google OAuth** | User authentication | [Google Privacy Policy](https://policies.google.com/privacy) |
-| **Yahoo Finance (yfinance)** | Stock market data | [Yahoo Privacy Policy](https://legal.yahoo.com/us/en/yahoo/privacy/index.html) |
-| **CoinGecko** | Cryptocurrency data | [CoinGecko Privacy Policy](https://www.coingecko.com/en/privacy) |
-| **Streamlit Cloud** | App hosting | [Streamlit Privacy Policy](https://streamlit.io/privacy-policy) |
+| **Google Firebase** | Authentication + Database | [firebase.google.com/support/privacy](https://firebase.google.com/support/privacy) |
+| **Stripe** | Payment processing | [stripe.com/privacy](https://stripe.com/privacy) |
+| **Yahoo Finance (yfinance)** | Stock market data | Public API, no personal data shared |
+| **CoinGecko** | Cryptocurrency data | Public API, no personal data shared |
+| **Groq API** | AI-powered insights | No personal data sent — only market data |
+| **Google News RSS** | News headlines | Public RSS feed, no personal data |
 
 ---
 
-## 6. Data Retention
+### 6. Data Retention
 
-- Your account data is retained as long as your account is active
-- If you request account deletion, we will remove your data within **30 days**
-- Session data is automatically cleared when you log out
+- Account data is retained while your account is active
+- You can request deletion at any time
+- Payment records are retained for 7 years as required by Indian financial regulations
+- Usage logs are retained for 90 days
 
 ---
 
-## 7. Your Rights
+### 7. Cookies & Sessions
+
+- FinSage uses **session-only cookies** to maintain your login state
+- No tracking, advertising, or third-party analytics cookies
+- Sessions expire when you close the browser or click Logout
+
+---
+
+### 8. Your Rights (GDPR & IT Act 2000)
 
 You have the right to:
-
-- ✅ **Access** the personal data we hold about you
-- ✅ **Correct** any inaccurate personal data
+- ✅ **Access** your personal data
+- ✅ **Correct** inaccurate information
 - ✅ **Delete** your account and all associated data
-- ✅ **Withdraw** your consent at any time by logging out and not using FinSage
-- ✅ **Data Portability** — request a copy of your data
+- ✅ **Export** your data in machine-readable format
+- ✅ **Opt out** of all marketing communications
+- ✅ **Withdraw consent** at any time
 
-To exercise any of these rights, contact us at the email below.
-
----
-
-## 8. Cookies & Sessions
-
-FinSage uses minimal session cookies to:
-- Keep you logged in during your session
-- Remember your preferences within the app
-
-We do **not** use tracking cookies or advertising cookies.
+To exercise these rights, contact: **support@finsage.app**
 
 ---
 
-## 9. Children's Privacy
+### 9. Subscription & Refunds
 
-FinSage is intended for users **18 years of age and older**. We do not knowingly collect data from minors. If you believe a minor has registered, please contact us immediately.
-
----
-
-## 10. Changes to This Policy
-
-We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated **"Last Updated"** date. Continued use of FinSage after changes constitutes acceptance of the new policy.
+- Subscriptions are billed monthly via Stripe
+- **7-day no-questions-asked refund policy** for first-time subscribers
+- Cancel anytime — access continues until end of billing period
+- No hidden charges; GST extra as applicable
 
 ---
 
-## 11. Contact Us
+### 10. Disclaimer
 
-For any privacy-related questions, data requests, or concerns:
-
-📧 **Email:** privacy@finsage.app  
-🌐 **Platform:** FinSage — Global Financial Intelligence Platform  
-📍 **Jurisdiction:** India
+> FinSage is an **educational and informational platform only**. Nothing on this platform constitutes financial advice, investment recommendation, or solicitation to buy or sell any security. Past performance is not indicative of future results. Always consult a **SEBI-registered investment advisor** before making any investment decisions. FinSage is **not** a SEBI-registered investment advisor.
 
 ---
 
-*This Privacy Policy is governed by the laws of India. Any disputes shall be subject to the jurisdiction of Indian courts.*
+### 11. Changes to This Policy
+
+We may update this policy from time to time. Significant changes will be notified via email. Continued use of FinSage after changes constitutes acceptance.
 
 ---
 
-**FinSage** — *Empowering Investors with Intelligence* 📊
-"""
+### 12. Contact Us
+
+📧 **Email:** support@finsage.app  
+🌐 **Website:** finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app  
+📍 **Jurisdiction:** India (governed by Indian IT Act 2000 & applicable laws)
+
+---
+*FinSage — Global Financial Intelligence Platform | © 2026 FinSage. All rights reserved.*
+""")
