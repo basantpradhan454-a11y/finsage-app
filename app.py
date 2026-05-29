@@ -11,6 +11,8 @@ from datetime import datetime
 
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
 from analyzer import analyze_stock, analyze_crypto, format_number
+from firebase_auth import render_auth_page, is_logged_in, get_current_user, logout
+from stripe_payments import render_pricing_page
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -101,10 +103,8 @@ defaults = {
     "meme_data": None, "meme_report": None,
     "ticker_data": [], "last_ticker_refresh": 0,
     "stock_selected": "", "crypto_selected": "", "meme_selected": "",
-    "authenticated": False, "current_user": None,
-    "auth_mode": "login",   # "login" | "signup"
     "show_privacy": False,
-    "users_db": {},         # {email: {name, password, joined}}
+    "show_pricing": False,
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -120,207 +120,23 @@ if now_ts - st.session_state.last_ticker_refresh > 60:
 
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# AUTH — Login / Signup
-# ══════════════════════════════════════════════════════════════════════════════
 
-import hashlib
-
-def _hash(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
-
-def render_auth():
-    """Full-screen login / signup modal."""
-    st.markdown("""
-    <style>
-    .auth-card {
-        max-width: 420px; margin: 3rem auto 0;
-        background: rgba(22,27,34,0.95);
-        border: 1px solid #30363d;
-        border-radius: 16px; padding: 2.5rem 2rem;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-    }
-    .auth-logo { text-align:center; font-size:2.2rem; margin-bottom:0.3rem; }
-    .auth-title { text-align:center; font-size:1.4rem; font-weight:700;
-                  color:#e6edf3; margin-bottom:0.2rem; }
-    .auth-sub   { text-align:center; color:#8b949e; font-size:0.85rem;
-                  margin-bottom:1.8rem; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-    st.markdown('<div class="auth-logo">📊</div>', unsafe_allow_html=True)
-    st.markdown('<div class="auth-title">FinSage</div>', unsafe_allow_html=True)
-    st.markdown('<div class="auth-sub">Global Financial Intelligence Platform</div>', unsafe_allow_html=True)
-
-    mode = st.session_state.auth_mode
-    tab_login, tab_signup = st.tabs(["🔑 Login", "✨ Sign Up"])
-
-    # ── LOGIN ─────────────────────────────────────────────────────────────────
-    with tab_login:
-        if st.session_state.auth_mode != "login":
-            st.session_state.auth_mode = "login"
-        email_l = st.text_input("Email", key="login_email", placeholder="you@example.com")
-        pass_l  = st.text_input("Password", type="password", key="login_pass", placeholder="••••••••")
-        
-        col_btn, col_fp = st.columns([2,1])
-        with col_btn:
-            if st.button("Login →", use_container_width=True, type="primary", key="btn_login"):
-                db = st.session_state.users_db
-                if not email_l or not pass_l:
-                    st.error("Email aur password dono bharo.")
-                elif email_l not in db:
-                    st.error("Account nahi mila. Pehle Sign Up karo.")
-                elif db[email_l]["password"] != _hash(pass_l):
-                    st.error("Password galat hai.")
-                else:
-                    st.session_state.authenticated = True
-                    st.session_state.current_user = {"email": email_l, "name": db[email_l]["name"]}
-                    st.rerun()
-
-    # ── SIGNUP ────────────────────────────────────────────────────────────────
-    with tab_signup:
-        name_s  = st.text_input("Full Name", key="signup_name", placeholder="Basant Pradhan")
-        email_s = st.text_input("Email", key="signup_email", placeholder="you@example.com")
-        pass_s  = st.text_input("Password", type="password", key="signup_pass", placeholder="Min 8 characters")
-        pass_c  = st.text_input("Confirm Password", type="password", key="signup_confirm", placeholder="Repeat password")
-
-        # Privacy policy checkbox
-        agree = st.checkbox(
-            "Maine **Privacy Policy** padhi aur main agree karta/karti hoon.",
-            key="signup_agree"
-        )
-        if st.button("📄 Privacy Policy padhne ke liye yahan click karo", key="privacy_link_signup"):
-            st.session_state.show_privacy = True
-            st.rerun()
-
-        if st.button("Create Account →", use_container_width=True, type="primary", key="btn_signup"):
-            db = st.session_state.users_db
-            if not name_s or not email_s or not pass_s:
-                st.error("Sab fields bharna zaroori hai.")
-            elif "@" not in email_s or "." not in email_s:
-                st.error("Valid email address dalo.")
-            elif len(pass_s) < 8:
-                st.error("Password kam se kam 8 characters ka hona chahiye.")
-            elif pass_s != pass_c:
-                st.error("Passwords match nahi kar rahe.")
-            elif not agree:
-                st.error("Privacy Policy agree karna zaroori hai.")
-            elif email_s in db:
-                st.error("Is email se account pehle se hai. Login karo.")
-            else:
-                st.session_state.users_db[email_s] = {
-                    "name": name_s,
-                    "password": _hash(pass_s),
-                    "joined": datetime.now().strftime("%Y-%m-%d"),
-                }
-                st.session_state.authenticated = True
-                st.session_state.current_user = {"email": email_s, "name": name_s}
-                st.success(f"Welcome, {name_s}! 🎉")
-                st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-def render_privacy_policy():
-    """Full Privacy Policy page."""
-    if st.button("← Back to FinSage", key="back_from_privacy"):
-        st.session_state.show_privacy = False
-        st.rerun()
-
-    st.markdown("""
-## 🔒 Privacy Policy — FinSage
-
-**Last Updated:** May 2026
-
----
-
-### 1. Introduction
-FinSage ("we", "us", "our") is a financial intelligence platform that provides real-time market data, analysis, and insights for educational purposes. This Privacy Policy explains how we collect, use, and protect your information.
-
----
-
-### 2. Information We Collect
-- **Account Information:** Name, email address, and encrypted password when you register.
-- **Usage Data:** Pages visited, assets analyzed, and features used — to improve the platform.
-- **Device Info:** Browser type, OS, and IP address for security and analytics.
-
----
-
-### 3. How We Use Your Information
-- To provide and maintain your FinSage account.
-- To personalize your experience and remember your preferences.
-- To send important updates about the platform (no spam, ever).
-- To improve our analysis algorithms and data quality.
-
----
-
-### 4. Data Security
-- Passwords are stored using **SHA-256 hashing** — we never store plain-text passwords.
-- All data is stored securely and not shared with third parties.
-- Market data is fetched in real-time from public APIs (yfinance, CoinGecko) — we do not store your search history on external servers.
-
----
-
-### 5. Third-Party Services
-FinSage uses the following free public APIs for market data:
-- **Yahoo Finance / yfinance** — Stock market data
-- **CoinGecko** — Cryptocurrency data
-- **Google News RSS** — Financial news headlines
-- **Groq API** — AI-powered insights (no personal data is shared with Groq)
-
----
-
-### 6. Data Retention
-Your account data is retained as long as your account is active. You may request deletion at any time by contacting us.
-
----
-
-### 7. Cookies
-FinSage uses session-based cookies only to maintain your login state. No tracking or advertising cookies are used.
-
----
-
-### 8. Your Rights
-You have the right to:
-- Access your personal data
-- Correct inaccurate data
-- Delete your account and all associated data
-- Opt out of any communications
-
----
-
-### 9. Disclaimer
-> FinSage is an **educational platform only**. Nothing on this platform constitutes financial advice. Always consult a SEBI-registered advisor before investing. We are not responsible for any financial decisions made based on our analysis.
-
----
-
-### 10. Contact
-For any privacy concerns, contact us at: **finsage.support@example.com**
-
----
-*FinSage — Global Financial Intelligence Platform*
-""")
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# ROUTE: Show Privacy Policy / Auth / Main App
-# ══════════════════════════════════════════════════════════════════════════════
-
-# Privacy Policy page
+# ── Privacy Policy page ────────────────────────────────────────────────────────
 if st.session_state.show_privacy:
+    from privacy_policy import render_privacy_policy
     render_privacy_policy()
     st.stop()
 
-# Auth wall — show login/signup if not authenticated
-if not st.session_state.authenticated:
-    render_auth()
+# ── Pricing page ───────────────────────────────────────────────────────────────
+if st.session_state.show_pricing:
+    render_pricing_page()
     st.stop()
 
+# ── Auth wall — Firebase login/signup ─────────────────────────────────────────
+if not is_logged_in():
+    render_auth_page()
+    st.stop()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MAIN APP (only reached if authenticated)
-# ══════════════════════════════════════════════════════════════════════════════
 
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 n1, n2 = st.columns([4, 1])
@@ -333,16 +149,18 @@ with n1:
     </div>
     """, unsafe_allow_html=True)
 with n2:
-    user = st.session_state.current_user or {}
-    uname = user.get("name", "").split()[0] if user.get("name") else "User"
-    c1, c2 = st.columns([2,1])
+    user = get_current_user() or {}
+    uname = user.get("name", "User").split()[0]
+    c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
         st.markdown(f"<div style='padding-top:0.6rem;text-align:right;color:#8b949e;font-size:0.78rem;'>👤 {uname}</div>", unsafe_allow_html=True)
     with c2:
-        if st.button("Logout", key="logout_btn", use_container_width=True):
-            st.session_state.authenticated = False
-            st.session_state.current_user = None
+        if st.button("⭐", key="pricing_nav_btn", help="Upgrade Plan", use_container_width=True):
+            st.session_state["show_pricing"] = True
             st.rerun()
+    with c3:
+        if st.button("Exit", key="logout_btn", use_container_width=True):
+            logout()
 
 st.markdown("<hr style='border-color:#30363d;margin:0.2rem 0 0.8rem;'>", unsafe_allow_html=True)
 
@@ -608,12 +426,16 @@ with tab3:
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("<hr style='border-color:#30363d;margin-top:1.5rem;'>", unsafe_allow_html=True)
-f1, f2, f3 = st.columns([3, 2, 3])
+f1, f2, f3, f4 = st.columns([3, 1, 1, 3])
 with f1:
     st.markdown("<span style='color:#8b949e;font-size:0.75rem;'>📊 <b>FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
 with f2:
-    if st.button("📄 Privacy Policy", key="footer_privacy", use_container_width=True):
-        st.session_state.show_privacy = True
+    if st.button("📄 Privacy", key="footer_privacy", use_container_width=True):
+        st.session_state["show_privacy"] = True
         st.rerun()
 with f3:
+    if st.button("⭐ Plans", key="footer_pricing", use_container_width=True):
+        st.session_state["show_pricing"] = True
+        st.rerun()
+with f4:
     st.markdown("<span style='color:#6e7681;font-size:0.75rem;display:block;text-align:right;'>Data: Yahoo Finance · CoinGecko &nbsp;|&nbsp; For educational purposes only</span>", unsafe_allow_html=True)
