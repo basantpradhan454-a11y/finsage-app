@@ -12,7 +12,6 @@ from datetime import datetime
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
 from analyzer import analyze_stock, analyze_crypto, format_number
 from firebase_auth import render_auth_page, is_logged_in, get_current_user, logout
-from stripe_payments import render_pricing_page
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -104,7 +103,6 @@ defaults = {
     "ticker_data": [], "last_ticker_refresh": 0,
     "stock_selected": "", "crypto_selected": "", "meme_selected": "",
     "show_privacy": False,
-    "show_pricing": False,
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -127,11 +125,6 @@ if st.session_state.show_privacy:
     render_privacy_policy()
     st.stop()
 
-# ── Pricing page ───────────────────────────────────────────────────────────────
-if st.session_state.show_pricing:
-    render_pricing_page()
-    st.stop()
-
 # ── Auth wall — Firebase login/signup ─────────────────────────────────────────
 if not is_logged_in():
     render_auth_page()
@@ -151,14 +144,10 @@ with n1:
 with n2:
     user = get_current_user() or {}
     uname = user.get("name", "User").split()[0]
-    c1, c2, c3 = st.columns([2, 1, 1])
+    c1, c2 = st.columns([3, 1])
     with c1:
         st.markdown(f"<div style='padding-top:0.6rem;text-align:right;color:#8b949e;font-size:0.78rem;'>👤 {uname}</div>", unsafe_allow_html=True)
     with c2:
-        if st.button("⭐", key="pricing_nav_btn", help="Upgrade Plan", use_container_width=True):
-            st.session_state["show_pricing"] = True
-            st.rerun()
-    with c3:
         if st.button("Exit", key="logout_btn", use_container_width=True):
             logout()
 
@@ -426,7 +415,7 @@ with tab3:
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("<hr style='border-color:#30363d;margin-top:1.5rem;'>", unsafe_allow_html=True)
-f1, f2, f3, f4 = st.columns([3, 1, 1, 3])
+f1, f2, f3 = st.columns([3, 1, 3])
 with f1:
     st.markdown("<span style='color:#8b949e;font-size:0.75rem;'>📊 <b>FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
 with f2:
@@ -434,8 +423,4 @@ with f2:
         st.session_state["show_privacy"] = True
         st.rerun()
 with f3:
-    if st.button("⭐ Plans", key="footer_pricing", use_container_width=True):
-        st.session_state["show_pricing"] = True
-        st.rerun()
-with f4:
     st.markdown("<span style='color:#6e7681;font-size:0.75rem;display:block;text-align:right;'>Data: Yahoo Finance · CoinGecko &nbsp;|&nbsp; For educational purposes only</span>", unsafe_allow_html=True)
