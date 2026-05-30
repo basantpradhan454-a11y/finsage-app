@@ -30,8 +30,13 @@ st.markdown("""
     header { visibility: hidden; }
     [data-testid="stToolbar"] { display: none !important; }
     [data-testid="manage-app-button"] { display: none !important; }
+    [data-testid="stAppViewBlockContainer"] > div:last-child { display: none !important; }
+    .st-emotion-cache-1dp5vir { display: none !important; }
+    button[kind="header"] { display: none !important; }
     .viewerBadge_container__r5tak { display: none !important; }
     .stDeployButton { display: none !important; }
+    .__web-inspector-hide-shortcut__ { display: none !important; }
+    [data-testid="manage-app-button"] { visibility: hidden !important; width: 0 !important; height: 0 !important; }
 
     .stApp { background-color: #0d1117; color: #c9d1d9; }
     [data-testid="stSidebar"] { background-color: #161b22; }
