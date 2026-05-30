@@ -13,10 +13,20 @@ from datetime import datetime
 
 # ── Firebase config ────────────────────────────────────────────────────────────
 def _cfg(key: str) -> str:
+    # 1. Try st.secrets["firebase"][key]
     try:
-        return st.secrets["firebase"][key]
+        val = st.secrets["firebase"][key]
+        if val: return val
     except Exception:
-        return os.environ.get(key, "")
+        pass
+    # 2. Try st.secrets[key] (flat)
+    try:
+        val = st.secrets[key]
+        if val: return val
+    except Exception:
+        pass
+    # 3. Try env var
+    return os.environ.get(key, "")
 
 FIREBASE_API_KEY    = lambda: _cfg("FIREBASE_API_KEY")
 FIREBASE_PROJECT_ID = lambda: _cfg("FIREBASE_PROJECT_ID")
