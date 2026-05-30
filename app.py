@@ -1,6 +1,7 @@
 """
 FinSage — Global Financial Intelligence Platform
 Free APIs: yfinance + CoinGecko
+Auth: Google OAuth + Email/Password
 """
 
 import streamlit as st
@@ -11,6 +12,7 @@ from datetime import datetime
 
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
 from analyzer import analyze_stock, analyze_crypto, format_number
+from auth_page import render_auth_page, is_logged_in, get_current_user, logout
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -34,11 +36,9 @@ st.markdown("""
     .stApp { background-color: #0d1117; color: #c9d1d9; }
     [data-testid="stSidebar"] { background-color: #161b22; }
 
-    /* ── Navbar ── */
     .fs-brand { font-size: 1.35rem; font-weight: 800; color: #58a6ff; }
     .fs-tagline { color: #8b949e; font-size: 0.8rem; margin-left: 0.7rem; }
 
-    /* ── Ticker ── */
     .ticker-bar {
         background: #161b22; border: 1px solid #30363d;
         border-radius: 10px; padding: 0.55rem 1.1rem;
@@ -49,7 +49,6 @@ st.markdown("""
     .ticker-price { color: #c9d1d9; margin-right: 3px; }
     .up { color: #3fb950; } .down { color: #f85149; }
 
-    /* ── Tabs ── */
     .stTabs [data-baseweb="tab-list"] {
         background: #161b22; border-radius: 12px 12px 0 0;
         border: 1px solid #30363d; border-bottom: none;
@@ -69,7 +68,6 @@ st.markdown("""
         border-top: none; border-radius: 0 0 12px 12px; padding: 1.4rem;
     }
 
-    /* ── Buttons ── */
     .stButton > button {
         background: #21262d; color: #58a6ff;
         border: 1px solid #30363d; border-radius: 8px;
@@ -77,25 +75,30 @@ st.markdown("""
     }
     .stButton > button:hover { background: #1f6feb; color: white; border-color: #1f6feb; }
 
-    /* ── Meme Warning ── */
     .meme-warning {
         background: #2d1b1b; border: 1px solid #f85149;
         border-radius: 8px; padding: 0.75rem 0.9rem;
         color: #f85149; font-size: 0.83rem; margin-bottom: 0.9rem;
     }
 
-    /* ── Disclaimer ── */
     .disclaimer {
         background: #161b22; border-left: 4px solid #d29922;
         border-radius: 0 8px 8px 0; padding: 0.7rem 0.9rem;
         color: #8b949e; font-size: 0.78rem; margin-top: 0.9rem;
     }
+
+    .user-badge {
+        background: #161b22; border: 1px solid #30363d;
+        border-radius: 20px; padding: 0.3rem 0.9rem;
+        color: #c9d1d9; font-size: 0.82rem; display: inline-flex;
+        align-items: center; gap: 0.4rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-
 # ── Session State ──────────────────────────────────────────────────────────────
 defaults = {
+    "user": None,
     "stock_data": None, "stock_report": None,
     "crypto_data": None, "crypto_report": None,
     "meme_data": None, "meme_report": None,
@@ -106,6 +109,14 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
+# ══════════════════════════════════════════════════════════════════════════════
+# AUTH GATE — show login if not logged in
+# ══════════════════════════════════════════════════════════════════════════════
+if not render_auth_page():
+    st.stop()
+
+# ── Past this point: user is logged in ────────────────────────────────────────
+user = get_current_user()
 
 # ── Ticker refresh ─────────────────────────────────────────────────────────────
 now_ts = time.time()
@@ -113,9 +124,8 @@ if now_ts - st.session_state.last_ticker_refresh > 60:
     st.session_state.ticker_data = fetch_ticker_bar_data()
     st.session_state.last_ticker_refresh = now_ts
 
-
 # ── Navbar ─────────────────────────────────────────────────────────────────────
-n1, n2 = st.columns([4, 1])
+n1, n2 = st.columns([5, 2])
 with n1:
     st.markdown("""
     <div style="padding:0.5rem 0 0.3rem;">
@@ -126,10 +136,21 @@ with n1:
     </div>
     """, unsafe_allow_html=True)
 with n2:
-    st.markdown("<div style='padding-top:0.4rem;text-align:right;color:#8b949e;font-size:0.78rem;'>Stocks · Crypto · Meme</div>", unsafe_allow_html=True)
+    # User info + logout
+    provider_icon = "🔵" if user.get("provider") == "google" else "📧"
+    user_name = user.get("name", "User")
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        st.markdown(f"""
+        <div style="padding-top:0.5rem;text-align:right;">
+            <span class="user-badge">{provider_icon} {user_name}</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        if st.button("Logout", key="logout_btn"):
+            logout()
 
 st.markdown("<hr style='border-color:#30363d;margin:0.2rem 0 0.8rem;'>", unsafe_allow_html=True)
-
 
 # ── Live Ticker Bar ────────────────────────────────────────────────────────────
 if st.session_state.ticker_data:
@@ -247,7 +268,6 @@ def render_results(data, report):
 # ══════════════════════════════════════════════════════════════════════════════
 tab1, tab2, tab3 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins"])
 
-
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
     st.markdown("### 🌍 Global Stock Analysis")
@@ -282,7 +302,7 @@ with tab1:
                     st.session_state.stock_report = analyze_stock(d)
                     st.session_state.stock_selected = ""
                 else:
-                    st.error(f"❌ {d['error']} — Check the ticker symbol and try again.")
+                    st.error(f"❌ {d['error']}")
         else:
             st.warning("⚠️ Please enter or select a stock ticker.")
 
@@ -308,7 +328,6 @@ with tab2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.caption("Large Cap: BTC · ETH · BNB · SOL")
         st.caption("Mid Cap: ADA · AVAX · DOT · MATIC")
-        st.caption("Others: LINK · LTC · ATOM · TON")
 
     st.markdown("**⚡ Quick Pick:**")
     cc = st.columns(8)
@@ -329,7 +348,7 @@ with tab2:
                     st.session_state.crypto_report = analyze_crypto(d)
                     st.session_state.crypto_selected = ""
                 else:
-                    st.error(f"❌ {d['error']} — Try symbols like BTC, ETH, SOL, BNB.")
+                    st.error(f"❌ {d['error']}")
         else:
             st.warning("⚠️ Please enter or select a crypto symbol.")
 
@@ -337,7 +356,7 @@ with tab2:
     if st.session_state.crypto_data:
         render_results(st.session_state.crypto_data, st.session_state.crypto_report)
     else:
-        st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">₿</div><p>Enter a crypto symbol above and click <b>Analyze Crypto</b>.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">₿</div><p>Enter a crypto symbol and click <b>Analyze Crypto</b>.</p></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Data from CoinGecko. Crypto is highly volatile & unregulated by SEBI. Educational purposes only.</div>', unsafe_allow_html=True)
 
@@ -345,7 +364,7 @@ with tab2:
 # ─── TAB 3: MEME COINS ────────────────────────────────────────────────────────
 with tab3:
     st.markdown("### 🎭 Meme Coin Analysis")
-    st.markdown('<div class="meme-warning">⚠️ <b>HIGH RISK:</b> Meme coins are purely speculative with no fundamental value. Prices can crash 80-90% overnight. Only use money you can afford to lose completely.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="meme-warning">⚠️ <b>HIGH RISK:</b> Meme coins are purely speculative. Prices can crash 80-90% overnight. Only use money you can afford to lose completely.</div>', unsafe_allow_html=True)
 
     m1, m2 = st.columns([2, 1])
     with m1:
@@ -355,7 +374,6 @@ with tab3:
         st.markdown("<br>", unsafe_allow_html=True)
         st.caption("Popular: DOGE · SHIB · PEPE · FLOKI")
         st.caption("Trending: BONK · WIF · MEME · TURBO")
-        st.caption("Others: BRETT · NEIRO · COQ")
 
     st.markdown("**⚡ Quick Pick:**")
     mc = st.columns(8)
@@ -377,7 +395,7 @@ with tab3:
                     st.session_state.meme_report = analyze_crypto(d)
                     st.session_state.meme_selected = ""
                 else:
-                    st.error(f"❌ {d['error']} — Try DOGE, SHIB, PEPE, FLOKI, BONK.")
+                    st.error(f"❌ {d['error']}")
         else:
             st.warning("⚠️ Please enter or select a meme coin symbol.")
 
@@ -385,7 +403,7 @@ with tab3:
     if st.session_state.meme_data:
         render_results(st.session_state.meme_data, st.session_state.meme_report)
     else:
-        st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🎭</div><p>Enter a meme coin symbol above and click <b>Analyze Meme Coin</b>.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🎭</div><p>Enter a meme coin symbol and click <b>Analyze Meme Coin</b>.</p></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Meme coins are unregulated & highly speculative. Not SEBI advice. Never invest borrowed money in meme coins.</div>', unsafe_allow_html=True)
 
