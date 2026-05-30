@@ -194,40 +194,7 @@ def render_auth_page():
 
     st.markdown(_CSS, unsafe_allow_html=True)
 
-    # ── Inject Firebase + Google Sign-In JS ────────────────────────────────────
-    # Uses Firebase JS SDK popup/redirect — no extra OAuth client ID needed
-    # Just needs the Firebase web app config
-    if api_key and project_id:
-        app_url = "https://finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app/"
-        st.markdown(f"""
-        <script type="module">
-          import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-          import {{ getAuth, signInWithPopup, GoogleAuthProvider, signInWithRedirect, getRedirectResult }}
-            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-
-          const app = initializeApp({{
-            apiKey: "{api_key}",
-            authDomain: "{auth_domain}",
-            projectId: "{project_id}",
-          }});
-          const auth = getAuth(app);
-          const provider = new GoogleAuthProvider();
-
-          // Check redirect result on load
-          getRedirectResult(auth).then(result => {{
-            if (result && result.user) {{
-              const idToken = result.user.getIdToken().then(token => {{
-                window.location.href = "{app_url}?credential=" + token;
-              }});
-            }}
-          }}).catch(console.error);
-
-          // Attach to button
-          window.signInWithGoogle = function() {{
-            signInWithRedirect(auth, provider);
-          }};
-        </script>
-        """, unsafe_allow_html=True)
+    # Google Sign-In handled via Firebase console redirect
 
     # ── Layout ─────────────────────────────────────────────────────────────────
     _, col, _ = st.columns([0.5, 3, 0.5])
@@ -237,17 +204,13 @@ def render_auth_page():
         st.markdown('<div class="brand-name">FinSage</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-sub">Global Financial Intelligence Platform</div>', unsafe_allow_html=True)
 
-        # Google button
-        if api_key and project_id:
-            st.markdown("""
-            <button class="g-btn" onclick="window.signInWithGoogle()">
-              <img class="g-icon"
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"/>
-              Continue with Google
-            </button>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("⚙️ Firebase not configured. Add secrets to enable Google Sign-In.")
+        # Google button — coming soon (enable in Firebase Console → Authentication → Google)
+        st.markdown("""
+        <div style='background:#1c2128;border:1px solid #30363d;border-radius:10px;
+                    padding:12px;text-align:center;color:#8b949e;font-size:0.82rem;margin-bottom:4px;'>
+            🔒 Google Sign-In — Enable Google provider in Firebase Console to activate
+        </div>
+        """, unsafe_allow_html=True)
 
         st.markdown('<div class="or-row">or sign in with email</div>', unsafe_allow_html=True)
 
