@@ -194,7 +194,6 @@ def render_auth_page():
 
     st.markdown(_CSS, unsafe_allow_html=True)
 
-    # Google Sign-In handled via Firebase console redirect
 
     # ── Layout ─────────────────────────────────────────────────────────────────
     _, col, _ = st.columns([0.5, 3, 0.5])
@@ -204,15 +203,8 @@ def render_auth_page():
         st.markdown('<div class="brand-name">FinSage</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-sub">Global Financial Intelligence Platform</div>', unsafe_allow_html=True)
 
-        # Google button — coming soon (enable in Firebase Console → Authentication → Google)
-        st.markdown("""
-        <div style='background:#1c2128;border:1px solid #30363d;border-radius:10px;
-                    padding:12px;text-align:center;color:#8b949e;font-size:0.82rem;margin-bottom:4px;'>
-            🔒 Google Sign-In — Enable Google provider in Firebase Console to activate
-        </div>
-        """, unsafe_allow_html=True)
 
-        st.markdown('<div class="or-row">or sign in with email</div>', unsafe_allow_html=True)
+
 
         # Tabs
         tab_login, tab_signup, tab_reset = st.tabs(["Login", "Create Account", "Forgot Password"])
