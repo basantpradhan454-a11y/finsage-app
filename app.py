@@ -1,6 +1,6 @@
 """
 FinSage — Global Financial Intelligence Platform
-Real-time market data: yfinance + CoinGecko
+Free APIs: yfinance + CoinGecko
 """
 
 import streamlit as st
@@ -11,7 +11,6 @@ from datetime import datetime
 
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
 from analyzer import analyze_stock, analyze_crypto, format_number
-from firebase_auth import render_auth_page, is_logged_in, get_current_user, logout
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -102,7 +101,6 @@ defaults = {
     "meme_data": None, "meme_report": None,
     "ticker_data": [], "last_ticker_refresh": 0,
     "stock_selected": "", "crypto_selected": "", "meme_selected": "",
-    "show_privacy": False,
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -116,21 +114,6 @@ if now_ts - st.session_state.last_ticker_refresh > 60:
     st.session_state.last_ticker_refresh = now_ts
 
 
-
-
-
-# ── Privacy Policy page ────────────────────────────────────────────────────────
-if st.session_state.show_privacy:
-    from privacy_policy import render_privacy_policy
-    render_privacy_policy()
-    st.stop()
-
-# ── Auth wall — Firebase login/signup ─────────────────────────────────────────
-if not is_logged_in():
-    render_auth_page()
-    st.stop()
-
-
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 n1, n2 = st.columns([4, 1])
 with n1:
@@ -138,18 +121,12 @@ with n1:
     <div style="padding:0.5rem 0 0.3rem;">
         <span class="fs-brand">📊 FinSage</span>
         <span class="fs-tagline">Global Financial Intelligence Platform</span>
-        
+        &nbsp;
+        <span style="background:#1a3a1a;color:#3fb950;padding:0.15rem 0.55rem;border-radius:20px;font-size:0.72rem;font-weight:600;">✅ 100% FREE</span>
     </div>
     """, unsafe_allow_html=True)
 with n2:
-    user = get_current_user() or {}
-    uname = user.get("name", "User").split()[0]
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        st.markdown(f"<div style='padding-top:0.6rem;text-align:right;color:#8b949e;font-size:0.78rem;'>👤 {uname}</div>", unsafe_allow_html=True)
-    with c2:
-        if st.button("Exit", key="logout_btn", use_container_width=True):
-            logout()
+    st.markdown("<div style='padding-top:0.4rem;text-align:right;color:#8b949e;font-size:0.78rem;'>Stocks · Crypto · Meme</div>", unsafe_allow_html=True)
 
 st.markdown("<hr style='border-color:#30363d;margin:0.2rem 0 0.8rem;'>", unsafe_allow_html=True)
 
@@ -415,12 +392,8 @@ with tab3:
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("<hr style='border-color:#30363d;margin-top:1.5rem;'>", unsafe_allow_html=True)
-f1, f2, f3 = st.columns([3, 1, 3])
+f1, f2 = st.columns(2)
 with f1:
     st.markdown("<span style='color:#8b949e;font-size:0.75rem;'>📊 <b>FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
 with f2:
-    if st.button("📄 Privacy", key="footer_privacy", use_container_width=True):
-        st.session_state["show_privacy"] = True
-        st.rerun()
-with f3:
     st.markdown("<span style='color:#6e7681;font-size:0.75rem;display:block;text-align:right;'>Data: Yahoo Finance · CoinGecko &nbsp;|&nbsp; For educational purposes only</span>", unsafe_allow_html=True)
