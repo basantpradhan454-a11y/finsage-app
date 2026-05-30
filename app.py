@@ -200,29 +200,177 @@ def render_results(data, report):
     with col_chart:
         history = data.get("history")
         if history is not None and isinstance(history, pd.DataFrame) and not history.empty:
-            st.markdown("#### 📈 30-Day Price Chart")
-            close_col = "Close" if "Close" in history.columns else history.columns[0]
-            y_data = history[close_col]
-            if len(y_data) > 1:
-                is_up = float(y_data.iloc[-1]) >= float(y_data.iloc[0])
-                color = "#3fb950" if is_up else "#f85149"
-                fill_color = "rgba(63,185,80,0.1)" if is_up else "rgba(248,81,73,0.1)"
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=history.index, y=y_data, mode="lines",
-                    line=dict(color=color, width=2),
-                    fill="tozeroy", fillcolor=fill_color,
-                    hovertemplate="<b>%{x}</b><br>%{y:,.6f}<extra></extra>"
-                ))
+            # ── Detect candlestick patterns ──────────────────────────────────
+            def detect_patterns(df):
+                patterns = []
+                if not all(c in df.columns for c in ["Open","High","Low","Close"]):
+                    return patterns
+                for i in range(2, len(df)):
+                    o, h, l, c = df["Open"].iloc[i], df["High"].iloc[i], df["Low"].iloc[i], df["Close"].iloc[i]
+                    po, ph, pl, pc = df["Open"].iloc[i-1], df["High"].iloc[i-1], df["Low"].iloc[i-1], df["Close"].iloc[i-1]
+                    body = abs(c - o)
+                    upper_wick = h - max(c, o)
+                    lower_wick = min(c, o) - l
+                    full_range = h - l if h != l else 0.0001
+
+                    # Doji
+                    if body / full_range < 0.1:
+                        patterns.append((df.index[i], h * 1.002, "⊙ Doji", "#e3b341"))
+                    # Hammer
+                    elif lower_wick > 2 * body and upper_wick < body * 0.5 and c > o:
+                        patterns.append((df.index[i], l * 0.998, "🔨 Hammer", "#3fb950"))
+                    # Shooting Star
+                    elif upper_wick > 2 * body and lower_wick < body * 0.5 and c < o:
+                        patterns.append((df.index[i], h * 1.002, "⭐ Shoot Star", "#f85149"))
+                    # Bullish Engulfing
+                    elif pc < po and c > o and c > po and o < pc:
+                        patterns.append((df.index[i], l * 0.998, "🟢 Bull Engulf", "#3fb950"))
+                    # Bearish Engulfing
+                    elif pc > po and c < o and c < po and o > pc:
+                        patterns.append((df.index[i], h * 1.002, "🔴 Bear Engulf", "#f85149"))
+                    # Morning Star (3-candle)
+                    elif i >= 2:
+                        ppo = df["Open"].iloc[i-2]; ppc = df["Close"].iloc[i-2]
+                        if ppc < ppo and body / full_range < 0.15 and c > o and c > (ppo + ppc) / 2:
+                            patterns.append((df.index[i], l * 0.997, "🌅 Morning ☆", "#3fb950"))
+                return patterns
+
+            has_ohlc = all(c in history.columns for c in ["Open","High","Low","Close"])
+            has_vol  = "Volume" in history.columns
+
+            st.markdown("#### 📊 Candlestick Chart with Volume & Patterns")
+
+            if has_ohlc:
+                patterns = detect_patterns(history)
+
+                # ── Build subplot: candlestick (top) + volume (bottom) ────────
+                from plotly.subplots import make_subplots
+                row_heights = [0.68, 0.32] if has_vol else [1.0]
+                rows = 2 if has_vol else 1
+                fig = make_subplots(
+                    rows=rows, cols=1,
+                    shared_xaxes=True,
+                    vertical_spacing=0.04,
+                    row_heights=row_heights,
+                    subplot_titles=["", "Volume" if has_vol else ""]
+                )
+
+                # Candlestick trace
+                fig.add_trace(go.Candlestick(
+                    x=history.index,
+                    open=history["Open"], high=history["High"],
+                    low=history["Low"],  close=history["Close"],
+                    increasing_line_color="#3fb950", decreasing_line_color="#f85149",
+                    increasing_fillcolor="#3fb950", decreasing_fillcolor="#f85149",
+                    name="Price",
+                    hovertext=[
+                        f"O: {o:.4f}  H: {h:.4f}<br>L: {l:.4f}  C: {c:.4f}"
+                        for o,h,l,c in zip(history["Open"],history["High"],history["Low"],history["Close"])
+                    ],
+                    hoverinfo="text+x",
+                ), row=1, col=1)
+
+                # MA lines on candle chart
+                if len(history) >= 10:
+                    ma10 = history["Close"].rolling(10).mean()
+                    fig.add_trace(go.Scatter(
+                        x=history.index, y=ma10, mode="lines",
+                        line=dict(color="#58a6ff", width=1.2, dash="dot"),
+                        name="MA10", hovertemplate="MA10: %{y:,.4f}<extra></extra>"
+                    ), row=1, col=1)
+                if len(history) >= 20:
+                    ma20 = history["Close"].rolling(20).mean()
+                    fig.add_trace(go.Scatter(
+                        x=history.index, y=ma20, mode="lines",
+                        line=dict(color="#a78bfa", width=1.2, dash="dash"),
+                        name="MA20", hovertemplate="MA20: %{y:,.4f}<extra></extra>"
+                    ), row=1, col=1)
+
+                # Pattern annotations
+                for dt, price, label, clr in patterns[-6:]:  # max 6 annotations
+                    fig.add_annotation(
+                        x=dt, y=price, text=label,
+                        showarrow=False,
+                        font=dict(size=9, color=clr),
+                        bgcolor="rgba(13,17,23,0.75)",
+                        bordercolor=clr, borderwidth=1,
+                        borderpad=3,
+                        row=1, col=1
+                    )
+
+                # Volume bars
+                if has_vol and rows == 2:
+                    vol_colors = [
+                        "#3fb950" if c >= o else "#f85149"
+                        for c, o in zip(history["Close"], history["Open"])
+                    ]
+                    fig.add_trace(go.Bar(
+                        x=history.index, y=history["Volume"],
+                        marker_color=vol_colors,
+                        name="Volume",
+                        hovertemplate="Vol: %{y:,.0f}<extra></extra>",
+                        opacity=0.7,
+                    ), row=2, col=1)
+
+                # Layout
+                chart_height = 420 if has_vol else 300
                 fig.update_layout(
                     plot_bgcolor="#0d1117", paper_bgcolor="#0d1117",
-                    font=dict(color="#c9d1d9"),
-                    xaxis=dict(gridcolor="#21262d"),
-                    yaxis=dict(gridcolor="#21262d"),
-                    margin=dict(l=0, r=0, t=10, b=0),
-                    height=270, showlegend=False,
+                    font=dict(color="#c9d1d9", size=11),
+                    xaxis=dict(gridcolor="#21262d", rangeslider_visible=False, showspikes=True),
+                    yaxis=dict(gridcolor="#21262d", showspikes=True),
+                    xaxis2=dict(gridcolor="#21262d") if has_vol else {},
+                    yaxis2=dict(gridcolor="#21262d", title="Vol") if has_vol else {},
+                    margin=dict(l=0, r=0, t=28, b=0),
+                    height=chart_height,
+                    showlegend=True,
+                    legend=dict(
+                        orientation="h", x=0, y=1.06,
+                        font=dict(size=10),
+                        bgcolor="rgba(0,0,0,0)"
+                    ),
+                    hovermode="x unified",
                 )
+                fig.update_xaxes(showgrid=True, gridcolor="#21262d")
+
                 st.plotly_chart(fig, use_container_width=True)
+
+                # Pattern legend below chart
+                if patterns:
+                    last_patterns = patterns[-4:]
+                    cols_p = st.columns(len(last_patterns))
+                    for idx_p, (dt, _, label, clr) in enumerate(last_patterns):
+                        cols_p[idx_p].markdown(
+                            f"<div style='text-align:center;background:rgba(13,17,23,0.8);"
+                            f"border:1px solid {clr};border-radius:8px;padding:4px 6px;"
+                            f"font-size:0.72rem;color:{clr};'>{label}<br>"
+                            f"<span style='color:#8b949e;font-size:0.65rem;'>{str(dt)[:10]}</span></div>",
+                            unsafe_allow_html=True
+                        )
+            else:
+                # Fallback: simple line chart if no OHLC data
+                close_col = "Close" if "Close" in history.columns else history.columns[0]
+                y_data = history[close_col]
+                if len(y_data) > 1:
+                    is_up = float(y_data.iloc[-1]) >= float(y_data.iloc[0])
+                    color = "#3fb950" if is_up else "#f85149"
+                    fill_color = "rgba(63,185,80,0.1)" if is_up else "rgba(248,81,73,0.1)"
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=history.index, y=y_data, mode="lines",
+                        line=dict(color=color, width=2),
+                        fill="tozeroy", fillcolor=fill_color,
+                        hovertemplate="<b>%{x}</b><br>%{y:,.4f}<extra></extra>"
+                    ))
+                    fig.update_layout(
+                        plot_bgcolor="#0d1117", paper_bgcolor="#0d1117",
+                        font=dict(color="#c9d1d9"),
+                        xaxis=dict(gridcolor="#21262d"),
+                        yaxis=dict(gridcolor="#21262d"),
+                        margin=dict(l=0, r=0, t=10, b=0),
+                        height=300, showlegend=False,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
     with col_info:
         st.markdown("#### 📋 Key Metrics")
