@@ -22,8 +22,8 @@ def load_users() -> dict:
 
 def render_admin_panel():
     """Render admin panel — only visible to admin user."""
-    current_user = st.session_state.get("user", {})
-    user_email = current_user.get("email", "").lower()
+    current_user = st.session_state.get("user") or {}
+    user_email = (current_user.get("email") or "").lower()
 
     if user_email != ADMIN_EMAIL.lower():
         return  # Not admin — silently skip
