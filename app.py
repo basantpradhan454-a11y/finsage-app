@@ -117,13 +117,7 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ══════════════════════════════════════════════════════════════════════════════
-# AUTH GATE — show login if not logged in
-# ══════════════════════════════════════════════════════════════════════════════
-if not render_auth_page():
-    st.stop()
-
-# ── Past this point: user is logged in ────────────────────────────────────────
+# ── Public App — No mandatory login ──────────────────────────────────────────
 user = get_current_user()
 
 # ── Admin Panel (only visible to admin) ───────────────────────────────────────
@@ -147,19 +141,20 @@ with n1:
     </div>
     """, unsafe_allow_html=True)
 with n2:
-    # User info + logout
-    provider_icon = "🔵" if user.get("provider") == "google" else "📧"
-    user_name = user.get("name", "User")
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        st.markdown(f"""
-        <div style="padding-top:0.5rem;text-align:right;">
-            <span class="user-badge">{provider_icon} {user_name}</span>
-        </div>
-        """, unsafe_allow_html=True)
-    with c2:
-        if st.button("Logout", key="logout_btn"):
-            logout()
+    # Show user info if logged in, else nothing
+    if user:
+        provider_icon = "🔵" if user.get("provider") == "google" else "📧"
+        user_name = user.get("name", "User")
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            st.markdown(f"""
+            <div style="padding-top:0.5rem;text-align:right;">
+                <span class="user-badge">{provider_icon} {user_name}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        with c2:
+            if st.button("Logout", key="logout_btn"):
+                logout()
 
 st.markdown("<hr style='border-color:#30363d;margin:0.2rem 0 0.8rem;'>", unsafe_allow_html=True)
 
