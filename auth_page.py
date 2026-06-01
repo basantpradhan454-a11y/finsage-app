@@ -410,3 +410,107 @@ def get_current_user() -> dict:
 def logout():
     st.session_state.user = None
     st.rerun()
+
+
+# ── Sidebar Auth (for public app) ─────────────────────────────────────────────
+def render_sidebar_auth():
+    """Show login/signup in sidebar for public app."""
+
+    # Handle Google OAuth callback
+    params = st.query_params
+    if "code" in params and not st.session_state.get("user"):
+        with st.spinner("🔄 Signing in with Google..."):
+            user = exchange_code_for_user(params["code"])
+            st.query_params.clear()
+            if "error" not in user:
+                st.session_state.user = user
+                st.rerun()
+            else:
+                st.sidebar.error(f"❌ {user['error']}")
+
+    if st.session_state.get("user"):
+        return  # Already logged in — sidebar handled in main navbar
+
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    google_available = bool(client_id and client_secret)
+
+    with st.sidebar:
+        st.markdown("""
+        <div style="text-align:center;padding:0.5rem 0 0.8rem;">
+            <div style="font-size:1.6rem;">📊</div>
+            <div style="font-size:1.1rem;font-weight:800;color:#58a6ff;">FinSage</div>
+            <div style="font-size:0.75rem;color:#8b949e;">Sign in to save preferences</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Google button
+        if google_available:
+            google_url = get_google_login_url()
+            st.markdown(f"""
+            <a href="{google_url}" style="
+                display:flex;align-items:center;justify-content:center;gap:8px;
+                background:#fff;color:#1f1f1f;text-decoration:none;
+                border-radius:8px;padding:0.6rem 1rem;font-size:0.88rem;
+                font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,0.3);
+                margin-bottom:0.8rem;">
+                <svg width="17" height="17" viewBox="0 0 48 48">
+                    <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84L38.34 6.1C34.52 2.31 29.53 0 24 0 14.62 0 6.63 5.47 2.63 13.4l7.08 5.5C11.63 13.15 17.35 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.52 24.5c0-1.6-.14-3.14-.4-4.64H24v9.27h12.67c-.55 2.93-2.2 5.41-4.68 7.09l7.27 5.65C43.52 37.96 46.52 31.7 46.52 24.5z"/>
+                    <path fill="#FBBC05" d="M9.71 28.62A14.83 14.83 0 0 1 9.5 24c0-1.6.28-3.15.71-4.62L3.13 13.9A23.93 23.93 0 0 0 0 24c0 3.87.92 7.53 2.54 10.77l7.17-6.15z"/>
+                    <path fill="#34A853" d="M24 48c5.53 0 10.17-1.82 13.56-4.95l-7.27-5.65c-1.95 1.3-4.45 2.1-6.29 2.1-6.62 0-12.23-4.47-14.25-10.5l-7.17 6.15C6.6 42.58 14.62 48 24 48z"/>
+                </svg>
+                Continue with Google
+            </a>
+            <div style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;color:#6e7681;font-size:0.78rem;">
+                <div style="flex:1;height:1px;background:#30363d;"></div>or<div style="flex:1;height:1px;background:#30363d;"></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Email tabs
+        tab_l, tab_s = st.tabs(["🔑 Login", "📝 Sign Up"])
+
+        with tab_l:
+            with st.form("sb_login", clear_on_submit=False):
+                email = st.text_input("Email", placeholder="you@example.com", key="sb_le")
+                password = st.text_input("Password", type="password", key="sb_lp")
+                if st.form_submit_button("Login →", use_container_width=True, type="primary"):
+                    if not email or not password:
+                        st.error("Fill in all fields.")
+                    else:
+                        ok, result = login_user(email, password)
+                        if ok:
+                            st.session_state.user = result
+                            st.success(f"✅ Welcome, {result['name']}!")
+                            time.sleep(0.4)
+                            st.rerun()
+                        else:
+                            st.error(result.get("error", "Login failed."))
+
+        with tab_s:
+            with st.form("sb_signup", clear_on_submit=True):
+                name = st.text_input("Full Name", placeholder="Your name", key="sb_sn")
+                email_s = st.text_input("Email", placeholder="you@example.com", key="sb_se")
+                pass_s = st.text_input("Password", type="password", placeholder="Min 6 chars", key="sb_sp")
+                pass_c = st.text_input("Confirm Password", type="password", key="sb_sc")
+                if st.form_submit_button("Create Account →", use_container_width=True, type="primary"):
+                    if not name or not email_s or not pass_s:
+                        st.error("Fill in all fields.")
+                    elif pass_s != pass_c:
+                        st.error("Passwords don't match.")
+                    else:
+                        ok, msg = register_user(email_s, pass_s, name)
+                        if ok:
+                            _, user_obj = login_user(email_s, pass_s)
+                            st.session_state.user = user_obj
+                            st.success(f"✅ Welcome, {name}!")
+                            time.sleep(0.4)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+
+        st.markdown("""
+        <div style="color:#6e7681;font-size:0.72rem;text-align:center;margin-top:0.8rem;">
+            🔒 Passwords hashed — never stored plain text
+        </div>
+        """, unsafe_allow_html=True)
