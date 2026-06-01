@@ -14,6 +14,7 @@ from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_d
 from analyzer import analyze_stock, analyze_crypto, format_number
 from auth_page import render_auth_page, render_sidebar_auth, is_logged_in, get_current_user, logout
 from admin_panel import render_admin_panel
+from history_page import render_history_page, save_search
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -273,7 +274,7 @@ def render_results(data, report):
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab1, tab2, tab3 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins"])
+tab1, tab2, tab3, tab4 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins", "🕐  History"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
@@ -307,6 +308,9 @@ with tab1:
                 if "error" not in d:
                     st.session_state.stock_data = d
                     st.session_state.stock_report = analyze_stock(d)
+                    if is_logged_in():
+                        user = get_current_user()
+                        save_search(user["email"], "Stock", ticker, d.get("name", ticker))
                     st.session_state.stock_selected = ""
                 else:
                     st.error(f"❌ {d['error']}")
@@ -353,6 +357,9 @@ with tab2:
                 if "error" not in d:
                     st.session_state.crypto_data = d
                     st.session_state.crypto_report = analyze_crypto(d)
+                    if is_logged_in():
+                        user = get_current_user()
+                        save_search(user["email"], "Crypto", ticker, d.get("name", ticker))
                     st.session_state.crypto_selected = ""
                 else:
                     st.error(f"❌ {d['error']}")
@@ -400,6 +407,9 @@ with tab3:
                     d["asset_type"] = "Meme Coin"
                     st.session_state.meme_data = d
                     st.session_state.meme_report = analyze_crypto(d)
+                    if is_logged_in():
+                        user = get_current_user()
+                        save_search(user["email"], "Meme", ticker, d.get("name", ticker))
                     st.session_state.meme_selected = ""
                 else:
                     st.error(f"❌ {d['error']}")
@@ -413,6 +423,20 @@ with tab3:
         st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🎭</div><p>Enter a meme coin symbol and click <b>Analyze Meme Coin</b>.</p></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Meme coins are unregulated & highly speculative. Not SEBI advice. Never invest borrowed money in meme coins.</div>', unsafe_allow_html=True)
+
+
+# ─── TAB 4: HISTORY ──────────────────────────────────────────────────────────
+with tab4:
+    if is_logged_in():
+        render_history_page(get_current_user())
+    else:
+        st.markdown("""
+        <div style='text-align:center;padding:3rem;color:#8b949e;'>
+            <div style='font-size:3rem;'>🔒</div>
+            <p style='font-size:1.1rem;font-weight:600;color:#c9d1d9;'>Login required</p>
+            <p>Please log in to view your search history.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
