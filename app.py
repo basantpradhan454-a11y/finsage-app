@@ -12,7 +12,7 @@ from datetime import datetime
 
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
 from analyzer import analyze_stock, analyze_crypto, format_number
-from auth_page import render_auth_page, is_logged_in, get_current_user, logout
+from auth_page import render_auth_page, render_sidebar_auth, is_logged_in, get_current_user, logout
 from admin_panel import render_admin_panel
 
 # ── Page Config ────────────────────────────────────────────────────────────────
@@ -117,7 +117,8 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Public App — No mandatory login ──────────────────────────────────────────
+# ── Public App — Optional Sidebar Login ──────────────────────────────────────
+render_sidebar_auth()
 user = get_current_user()
 
 # ── Admin Panel (only visible to admin) ───────────────────────────────────────
