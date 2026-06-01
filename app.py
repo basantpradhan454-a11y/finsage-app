@@ -20,7 +20,7 @@ st.set_page_config(
     page_title="FinSage — Global Financial Intelligence",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="auto",
 )
 
 # ── Global CSS ─────────────────────────────────────────────────────────────────
