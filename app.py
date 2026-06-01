@@ -118,9 +118,13 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Public App — Optional Sidebar Login ──────────────────────────────────────
-render_sidebar_auth()
+# ── Auth Gate — Must be logged in to access app ──────────────────────────────
+if not is_logged_in():
+    render_auth_page()
+    st.stop()
+
 user = get_current_user()
+render_sidebar_auth()
 
 # ── Admin Panel (only visible to admin) ───────────────────────────────────────
 render_admin_panel()
