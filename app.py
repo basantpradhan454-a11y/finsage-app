@@ -14,6 +14,7 @@ from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_d
 from analyzer import analyze_stock, analyze_crypto, format_number
 from auth_page import render_auth_page, is_logged_in, get_current_user
 from history_page import render_history_page, save_search
+from privacy_policy import render_privacy_policy
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -117,7 +118,12 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Auth Gate — Login required ───────────────────────────────────────────────
+# ── Privacy Policy page (accessible without login) ────────────────────────────
+if st.query_params.get("page") == "privacy":
+    render_privacy_policy()
+    st.stop()
+
+# ── Auth Gate — Login required ─────────────────────────────────────────────────
 if not is_logged_in():
     render_auth_page()
     st.stop()
