@@ -12,8 +12,7 @@ from datetime import datetime
 
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
 from analyzer import analyze_stock, analyze_crypto, format_number
-from auth_page import render_auth_page, render_sidebar_auth, is_logged_in, get_current_user, logout
-from admin_panel import render_admin_panel
+from auth_page import is_logged_in, get_current_user
 from history_page import render_history_page, save_search
 
 # ── Page Config ────────────────────────────────────────────────────────────────
@@ -118,16 +117,10 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Auth Gate — Must be logged in to access app ──────────────────────────────
-if not is_logged_in():
-    render_auth_page()
-    st.stop()
-
+# ── Public App ────────────────────────────────────────────────────────────────
 user = get_current_user()
-render_sidebar_auth()
 
 # ── Admin Panel (only visible to admin) ───────────────────────────────────────
-render_admin_panel()
 
 # ── Ticker refresh ─────────────────────────────────────────────────────────────
 now_ts = time.time()
@@ -136,7 +129,7 @@ if now_ts - st.session_state.last_ticker_refresh > 60:
     st.session_state.last_ticker_refresh = now_ts
 
 # ── Navbar ─────────────────────────────────────────────────────────────────────
-n1, n2 = st.columns([5, 2])
+n1, _ = st.columns([5, 2])
 with n1:
     st.markdown("""
     <div style="padding:0.5rem 0 0.3rem;">
@@ -146,21 +139,7 @@ with n1:
         <span style="background:#1a3a1a;color:#3fb950;padding:0.15rem 0.55rem;border-radius:20px;font-size:0.72rem;font-weight:600;">✅ 100% FREE</span>
     </div>
     """, unsafe_allow_html=True)
-with n2:
-    # Show user info if logged in, else nothing
-    if user:
-        provider_icon = "🔵" if user.get("provider") == "google" else "📧"
-        user_name = user.get("name", "User")
-        c1, c2 = st.columns([3, 1])
-        with c1:
-            st.markdown(f"""
-            <div style="padding-top:0.5rem;text-align:right;">
-                <span class="user-badge">{provider_icon} {user_name}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            if st.button("Logout", key="logout_btn"):
-                logout()
+
 
 st.markdown("<hr style='border-color:#30363d;margin:0.2rem 0 0.8rem;'>", unsafe_allow_html=True)
 
