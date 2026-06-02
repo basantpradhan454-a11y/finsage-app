@@ -12,7 +12,7 @@ from datetime import datetime
 
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
 from analyzer import analyze_stock, analyze_crypto, format_number
-from auth_page import is_logged_in, get_current_user
+from auth_page import render_auth_page, is_logged_in, get_current_user
 from history_page import render_history_page, save_search
 
 # ── Page Config ────────────────────────────────────────────────────────────────
@@ -117,7 +117,11 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Public App ────────────────────────────────────────────────────────────────
+# ── Auth Gate — Login required ───────────────────────────────────────────────
+if not is_logged_in():
+    render_auth_page()
+    st.stop()
+
 user = get_current_user()
 
 # ── Admin Panel (only visible to admin) ───────────────────────────────────────
