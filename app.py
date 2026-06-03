@@ -329,118 +329,347 @@ if st.session_state.ticker_data:
 
 
 # ── Results Renderer ───────────────────────────────────────────────────────────
+def compute_indicators(history: pd.DataFrame):
+    """Compute RSI, MACD, Bollinger Bands, MA10, MA20 from OHLCV history."""
+    close = history["Close"].astype(float)
+    high  = history["High"].astype(float)  if "High"   in history.columns else close
+    low   = history["Low"].astype(float)   if "Low"    in history.columns else close
+    vol   = history["Volume"].astype(float) if "Volume" in history.columns else pd.Series([0]*len(close), index=close.index)
+
+    # MAs
+    ma10 = close.rolling(10).mean()
+    ma20 = close.rolling(20).mean()
+
+    # RSI
+    delta = close.diff()
+    gain  = delta.clip(lower=0).rolling(14).mean()
+    loss  = (-delta.clip(upper=0)).rolling(14).mean()
+    rs    = gain / loss.replace(0, float("nan"))
+    rsi   = 100 - (100 / (1 + rs))
+
+    # MACD
+    ema12  = close.ewm(span=12, adjust=False).mean()
+    ema26  = close.ewm(span=26, adjust=False).mean()
+    macd   = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+    hist_m = macd - signal
+
+    # Bollinger Bands
+    bb_mid  = close.rolling(20).mean()
+    bb_std  = close.rolling(20).std()
+    bb_up   = bb_mid + 2 * bb_std
+    bb_dn   = bb_mid - 2 * bb_std
+
+    return {
+        "close": close, "high": high, "low": low, "volume": vol,
+        "ma10": ma10, "ma20": ma20,
+        "rsi": rsi, "macd": macd, "signal": signal, "hist_macd": hist_m,
+        "bb_mid": bb_mid, "bb_up": bb_up, "bb_dn": bb_dn,
+    }
+
+
+def indicator_badge(label, value, status="neutral"):
+    colors = {
+        "bullish":  ("rgba(63,185,80,0.15)",  "#3fb950", "rgba(63,185,80,0.4)"),
+        "bearish":  ("rgba(248,81,73,0.15)",  "#f85149", "rgba(248,81,73,0.4)"),
+        "neutral":  ("rgba(88,166,255,0.10)", "#58a6ff", "rgba(88,166,255,0.3)"),
+        "warning":  ("rgba(210,153,34,0.15)", "#d29922", "rgba(210,153,34,0.4)"),
+    }
+    bg, fg, border = colors.get(status, colors["neutral"])
+    return f"""<div style="background:{bg};border:1px solid {border};border-radius:10px;
+        padding:0.6rem 0.8rem;text-align:center;flex:1;min-width:90px;">
+        <div style="color:#6e7681;font-size:0.68rem;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.5px;margin-bottom:0.25rem;">{label}</div>
+        <div style="color:{fg};font-size:0.88rem;font-weight:800;">{value}</div>
+    </div>"""
+
+
 def render_results(data, report):
     if not data or not report:
         return
 
-    name     = data.get("name", data.get("ticker", ""))
-    ticker   = data.get("ticker", "")
-    price    = data.get("current_price", 0) or 0
-    change   = data.get("change_pct",    0) or 0
-    market_cap = data.get("market_cap",  0) or 0
-    risk     = data.get("risk_score", 5) or 5
-    vol      = data.get("volatility_annualized", 0) or 0
-    currency = data.get("currency", "USD")
-    asset_t  = data.get("asset_type", "Asset")
+    name       = data.get("name", data.get("ticker", ""))
+    ticker_sym = data.get("ticker", "")
+    price      = data.get("current_price", 0) or 0
+    change     = data.get("change_pct",    0) or 0
+    market_cap = data.get("market_cap",    0) or 0
+    risk       = data.get("risk_score",    5) or 5
+    vol        = data.get("volatility_annualized", 0) or 0
+    currency   = data.get("currency", "USD")
+    asset_t    = data.get("asset_type", "Asset")
 
-    # Asset header
-    change_color = "#3fb950" if change >= 0 else "#f85149"
-    change_arrow = "▲" if change >= 0 else "▼"
+    chg_color = "#3fb950" if change >= 0 else "#f85149"
+    chg_arrow = "▲" if change >= 0 else "▼"
+    chg_bg    = "rgba(63,185,80,0.1)" if change >= 0 else "rgba(248,81,73,0.1)"
+
     if price < 0.0001:   price_str = f"${price:.8f}"
     elif price < 0.01:   price_str = f"${price:.6f}"
     else:                price_str = f"{currency} {price:,.2f}"
 
+    # ── Asset Header Card ────────────────────────────────────────────────────
     st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;">
+    <div style="background:linear-gradient(145deg,rgba(22,27,34,0.95),rgba(13,17,23,0.98));
+        border:1px solid rgba(88,166,255,0.2);border-radius:20px;padding:1.4rem 1.6rem;
+        margin-bottom:1rem;box-shadow:0 4px 24px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.04);
+        position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;
+          background:linear-gradient(90deg,#58a6ff,#a78bfa,#3fb950);opacity:0.7;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
         <div>
-            <div style="font-size:1.4rem;font-weight:800;color:#e6edf3;">{name}
-                <span style="color:#484f58;font-weight:500;font-size:1rem;"> ({ticker})</span>
-            </div>
-            <div style="color:#6e7681;font-size:0.8rem;margin-top:0.15rem;">{asset_t}</div>
+          <div style="font-size:1.5rem;font-weight:900;color:#e6edf3;letter-spacing:-0.5px;">
+            {name} <span style="color:#484f58;font-size:1rem;font-weight:500;">({ticker_sym})</span>
+          </div>
+          <div style="color:#6e7681;font-size:0.78rem;margin-top:0.2rem;font-weight:600;
+              text-transform:uppercase;letter-spacing:0.5px;">{asset_t}</div>
         </div>
-        <div style="margin-left:auto;text-align:right;">
-            <div style="font-size:1.6rem;font-weight:800;color:#e6edf3;">{price_str}</div>
-            <div style="color:{change_color};font-weight:700;font-size:0.9rem;">{change_arrow} {abs(change):.2f}%</div>
+        <div style="text-align:right;">
+          <div style="font-size:2rem;font-weight:900;color:#e6edf3;letter-spacing:-1px;">{price_str}</div>
+          <div style="background:{chg_bg};color:{chg_color};padding:0.2rem 0.7rem;
+              border-radius:20px;font-size:0.85rem;font-weight:800;display:inline-block;margin-top:0.2rem;">
+            {chg_arrow} {abs(change):.2f}%
+          </div>
         </div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Metric cards
+    # ── Metric Cards ─────────────────────────────────────────────────────────
     k1, k2, k3, k4, k5 = st.columns(5)
-    with k1: st.metric("💰 Price",       price_str)
-    with k2: st.metric("📈 24H Change",  f"{change:+.2f}%")
-    with k3: st.metric("🏦 Market Cap",  format_number(market_cap))
-    with k4: st.metric("⚡ Volatility",  f"{vol:.1f}%")
-    with k5: st.metric("🎯 Risk Score",  f"{risk}/10")
+    with k1: st.metric("💰 Price",        price_str)
+    with k2: st.metric("📈 24H Change",   f"{change:+.2f}%")
+    with k3: st.metric("🏦 Market Cap",   format_number(market_cap))
+    with k4: st.metric("⚡ Volatility",   f"{vol:.1f}%")
+    with k5: st.metric("🎯 Risk Score",   f"{risk}/10")
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    col_chart, col_info = st.columns([3, 2])
-    with col_chart:
-        history = data.get("history")
-        if history is not None and isinstance(history, pd.DataFrame) and not history.empty:
-            st.markdown("#### 📈 30-Day Price Chart")
-            close_col = "Close" if "Close" in history.columns else history.columns[0]
-            y_data = history[close_col]
-            if len(y_data) > 1:
-                is_up      = float(y_data.iloc[-1]) >= float(y_data.iloc[0])
-                line_color = "#3fb950" if is_up else "#f85149"
-                fill_color = "rgba(63,185,80,0.08)" if is_up else "rgba(248,81,73,0.08)"
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=history.index, y=y_data, mode="lines",
-                    line=dict(color=line_color, width=2.5),
-                    fill="tozeroy", fillcolor=fill_color,
-                    hovertemplate="<b>%{x}</b><br>%{y:,.6f}<extra></extra>"
-                ))
-                fig.update_layout(
-                    plot_bgcolor="rgba(13,17,23,0.0)",
-                    paper_bgcolor="rgba(13,17,23,0.0)",
-                    font=dict(color="#6e7681", family="Inter"),
-                    xaxis=dict(gridcolor="rgba(48,54,61,0.5)", showgrid=True, zeroline=False),
-                    yaxis=dict(gridcolor="rgba(48,54,61,0.5)", showgrid=True, zeroline=False),
-                    margin=dict(l=0, r=0, t=10, b=0),
-                    height=270, showlegend=False,
-                )
-                st.plotly_chart(fig, use_container_width=True)
+    # ── Chart + Indicators ───────────────────────────────────────────────────
+    history = data.get("history")
+    has_hist = history is not None and isinstance(history, pd.DataFrame) and not history.empty
+
+    if has_hist:
+        inds = compute_indicators(history)
+        close = inds["close"]
+
+        # ─ Indicator badges ──────────────────────────────────────────────────
+        rsi_val  = float(inds["rsi"].iloc[-1])  if not inds["rsi"].isna().all()  else 50.0
+        macd_val = float(inds["macd"].iloc[-1]) if not inds["macd"].isna().all() else 0.0
+        sig_val  = float(inds["signal"].iloc[-1]) if not inds["signal"].isna().all() else 0.0
+        bb_up_v  = float(inds["bb_up"].iloc[-1])  if not inds["bb_up"].isna().all()  else price
+        bb_dn_v  = float(inds["bb_dn"].iloc[-1])  if not inds["bb_dn"].isna().all()  else price
+        ma10_v   = float(inds["ma10"].iloc[-1])    if not inds["ma10"].isna().all()   else price
+        ma20_v   = float(inds["ma20"].iloc[-1])    if not inds["ma20"].isna().all()   else price
+
+        rsi_status  = "bullish" if rsi_val < 30 else ("bearish" if rsi_val > 70 else "neutral")
+        macd_status = "bullish" if macd_val > sig_val else "bearish"
+        ma_status   = "bullish" if price > ma20_v else "bearish"
+        bb_pct      = (price - bb_dn_v) / (bb_up_v - bb_dn_v) * 100 if (bb_up_v - bb_dn_v) > 0 else 50
+        bb_status   = "bullish" if bb_pct < 25 else ("bearish" if bb_pct > 75 else "neutral")
+
+        rsi_label  = "OVERSOLD" if rsi_val < 30 else ("OVERBOUGHT" if rsi_val > 70 else f"{rsi_val:.0f}")
+        macd_label = "BULLISH" if macd_val > sig_val else "BEARISH"
+        ma_label   = "ABOVE MA20" if price > ma20_v else "BELOW MA20"
+        bb_label   = "NEAR BOTTOM" if bb_pct < 25 else ("NEAR TOP" if bb_pct > 75 else "MID BAND")
+
+        st.markdown(f"""
+        <div style="margin-bottom:1rem;">
+          <div style="color:#8b949e;font-size:0.72rem;font-weight:700;text-transform:uppercase;
+              letter-spacing:1px;margin-bottom:0.6rem;">📡 Technical Indicators</div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            {indicator_badge("RSI (14)", rsi_label, rsi_status)}
+            {indicator_badge("MACD", macd_label, macd_status)}
+            {indicator_badge("MA Trend", ma_label, ma_status)}
+            {indicator_badge("Bollinger", bb_label, bb_status)}
+            {indicator_badge("MA10", f"{currency} {ma10_v:,.2f}", "neutral")}
+            {indicator_badge("MA20", f"{currency} {ma20_v:,.2f}", "neutral")}
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ─ Candlestick Chart ──────────────────────────────────────────────────
+        from plotly.subplots import make_subplots
+        fig = make_subplots(
+            rows=3, cols=1,
+            shared_xaxes=True,
+            row_heights=[0.55, 0.22, 0.23],
+            vertical_spacing=0.04,
+        )
+
+        has_ohlc = all(c in history.columns for c in ["Open","High","Low","Close"])
+
+        if has_ohlc:
+            o = history["Open"].astype(float)
+            h = history["High"].astype(float)
+            l = history["Low"].astype(float)
+            c = history["Close"].astype(float)
+            fig.add_trace(go.Candlestick(
+                x=history.index, open=o, high=h, low=l, close=c,
+                increasing_line_color="#3fb950", decreasing_line_color="#f85149",
+                increasing_fillcolor="rgba(63,185,80,0.7)",
+                decreasing_fillcolor="rgba(248,81,73,0.7)",
+                name="OHLC", showlegend=False,
+            ), row=1, col=1)
+        else:
+            fig.add_trace(go.Scatter(
+                x=history.index, y=close, mode="lines",
+                line=dict(color="#58a6ff", width=2),
+                fill="tozeroy", fillcolor="rgba(88,166,255,0.06)",
+                name="Price", showlegend=False,
+            ), row=1, col=1)
+
+        # MA10 & MA20
+        fig.add_trace(go.Scatter(
+            x=history.index, y=inds["ma10"], mode="lines",
+            line=dict(color="#f7c948", width=1.2, dash="dot"),
+            name="MA10", showlegend=True,
+        ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=history.index, y=inds["ma20"], mode="lines",
+            line=dict(color="#a78bfa", width=1.2, dash="dot"),
+            name="MA20", showlegend=True,
+        ), row=1, col=1)
+
+        # Bollinger Bands
+        fig.add_trace(go.Scatter(
+            x=list(history.index) + list(history.index[::-1]),
+            y=list(inds["bb_up"]) + list(inds["bb_dn"][::-1]),
+            fill="toself", fillcolor="rgba(88,166,255,0.04)",
+            line=dict(color="rgba(0,0,0,0)"), showlegend=False, name="BB",
+        ), row=1, col=1)
+
+        # Volume
+        vol_colors = ["rgba(63,185,80,0.65)" if float(c.iloc[i]) >= float(c.iloc[i-1]) else "rgba(248,81,73,0.65)"
+                      for i in range(len(inds["volume"]))]
+        fig.add_trace(go.Bar(
+            x=history.index, y=inds["volume"],
+            marker_color=vol_colors, name="Volume", showlegend=False,
+        ), row=2, col=1)
+
+        # RSI
+        fig.add_trace(go.Scatter(
+            x=history.index, y=inds["rsi"],
+            line=dict(color="#58a6ff", width=1.5),
+            name="RSI", showlegend=False,
+        ), row=3, col=1)
+        fig.add_hline(y=70, line=dict(color="#f85149", width=0.8, dash="dash"), row=3, col=1)
+        fig.add_hline(y=30, line=dict(color="#3fb950", width=0.8, dash="dash"), row=3, col=1)
+
+        PLOT_BG = "rgba(13,17,23,0.0)"
+        GRID    = "rgba(48,54,61,0.4)"
+        fig.update_layout(
+            plot_bgcolor=PLOT_BG, paper_bgcolor=PLOT_BG,
+            font=dict(color="#6e7681", family="Inter", size=11),
+            height=520,
+            margin=dict(l=0, r=0, t=10, b=0),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0,
+                bgcolor="rgba(0,0,0,0)", font=dict(size=10, color="#8b949e"),
+            ),
+            xaxis=dict(gridcolor=GRID, showgrid=True, zeroline=False, rangeslider=dict(visible=False)),
+            xaxis2=dict(gridcolor=GRID, showgrid=True, zeroline=False),
+            xaxis3=dict(gridcolor=GRID, showgrid=True, zeroline=False),
+            yaxis=dict(gridcolor=GRID,  showgrid=True, zeroline=False),
+            yaxis2=dict(gridcolor=GRID, showgrid=True, zeroline=False, title=dict(text="Vol", font=dict(size=9))),
+            yaxis3=dict(gridcolor=GRID, showgrid=True, zeroline=False, title=dict(text="RSI", font=dict(size=9)), range=[0,100]),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── Key Metrics + MACD ───────────────────────────────────────────────────
+    col_info, col_macd = st.columns([1, 1])
 
     with col_info:
-        st.markdown("#### 📋 Key Metrics")
+        st.markdown("""<div style="color:#8b949e;font-size:0.72rem;font-weight:700;
+            text-transform:uppercase;letter-spacing:1px;margin-bottom:0.8rem;">📋 Key Metrics</div>""",
+            unsafe_allow_html=True)
         if data.get("asset_type") == "Stock":
             metrics = [
-                ("Sector",   data.get("sector", "N/A")),
-                ("P/E Ratio", f"{data.get('pe_ratio'):.1f}x"         if data.get("pe_ratio")       else "N/A"),
-                ("EPS",       f"{currency} {data.get('eps'):.2f}"     if data.get("eps")             else "N/A"),
-                ("Beta",      f"{data.get('beta'):.2f}"               if data.get("beta")            else "N/A"),
-                ("52W High",  f"{currency} {data.get('week_52_high'):,.2f}" if data.get("week_52_high") else "N/A"),
-                ("52W Low",   f"{currency} {data.get('week_52_low'):,.2f}"  if data.get("week_52_low")  else "N/A"),
+                ("Sector",    data.get("sector", "N/A")),
+                ("P/E Ratio", f"{data.get('pe_ratio'):.1f}x"              if data.get("pe_ratio")       else "N/A"),
+                ("EPS",       f"{currency} {data.get('eps'):.2f}"          if data.get("eps")            else "N/A"),
+                ("Beta",      f"{data.get('beta'):.2f}"                    if data.get("beta")           else "N/A"),
+                ("52W High",  f"{currency} {data.get('week_52_high'):,.2f}" if data.get("week_52_high")  else "N/A"),
+                ("52W Low",   f"{currency} {data.get('week_52_low'):,.2f}"  if data.get("week_52_low")   else "N/A"),
                 ("Analyst",   data.get("recommendation", "N/A")),
+                ("Volume",    format_number(data.get("volume", 0))),
             ]
         else:
             metrics = [
-                ("Market Rank",  f"#{data.get('market_cap_rank', 'N/A')}"),
-                ("7D Change",    f"{data.get('change_7d',  0):+.2f}%"),
-                ("30D Change",   f"{data.get('change_30d', 0):+.2f}%"),
-                ("ATH",          f"${data.get('ath'):,.6f}"            if data.get("ath")               else "N/A"),
-                ("ATH Δ",        f"{data.get('ath_change_pct', 0):+.1f}%"),
-                ("24H Volume",   format_number(data.get("volume_24h", 0))),
-                ("Supply",       f"{data.get('circulating_supply',0):,.0f}" if data.get("circulating_supply") else "N/A"),
+                ("Rank",      f"#{data.get('market_cap_rank', 'N/A')}"),
+                ("7D Chg",    f"{data.get('change_7d',  0):+.2f}%"),
+                ("30D Chg",   f"{data.get('change_30d', 0):+.2f}%"),
+                ("ATH",       f"${data.get('ath'):,.4f}"                   if data.get("ath")            else "N/A"),
+                ("ATH Δ",     f"{data.get('ath_change_pct', 0):+.1f}%"),
+                ("24H Vol",   format_number(data.get("volume_24h", 0))),
+                ("Supply",    f"{data.get('circulating_supply',0):,.0f}"   if data.get("circulating_supply") else "N/A"),
+                ("Prev Close",price_str),
             ]
         for label, val in metrics:
             ca, cb = st.columns([1, 1])
-            ca.markdown(f"<span style='color:#6e7681;font-size:0.8rem;font-weight:600;'>{label}</span>", unsafe_allow_html=True)
-            cb.markdown(f"<span style='color:#e6edf3;font-size:0.8rem;font-weight:700;'>{val}</span>",   unsafe_allow_html=True)
+            ca.markdown(f"<span style='color:#484f58;font-size:0.78rem;font-weight:600;'>{label}</span>", unsafe_allow_html=True)
+            cb.markdown(f"<span style='color:#e6edf3;font-size:0.78rem;font-weight:700;'>{val}</span>",   unsafe_allow_html=True)
+
+    with col_macd:
+        if has_hist:
+            st.markdown("""<div style="color:#8b949e;font-size:0.72rem;font-weight:700;
+                text-transform:uppercase;letter-spacing:1px;margin-bottom:0.8rem;">📊 MACD</div>""",
+                unsafe_allow_html=True)
+            fig_macd = go.Figure()
+            macd_hist = inds["hist_macd"]
+            bar_colors = ["rgba(63,185,80,0.6)" if v >= 0 else "rgba(248,81,73,0.6)" for v in macd_hist]
+            fig_macd.add_trace(go.Bar(x=history.index, y=macd_hist, marker_color=bar_colors, name="Histogram", showlegend=False))
+            fig_macd.add_trace(go.Scatter(x=history.index, y=inds["macd"],   line=dict(color="#58a6ff", width=1.5), name="MACD"))
+            fig_macd.add_trace(go.Scatter(x=history.index, y=inds["signal"], line=dict(color="#f7c948", width=1.5), name="Signal"))
+            fig_macd.update_layout(
+                plot_bgcolor="rgba(13,17,23,0)", paper_bgcolor="rgba(13,17,23,0)",
+                font=dict(color="#6e7681", family="Inter", size=10),
+                height=230, margin=dict(l=0, r=0, t=5, b=0),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
+                    bgcolor="rgba(0,0,0,0)", font=dict(size=9, color="#8b949e")),
+                xaxis=dict(gridcolor="rgba(48,54,61,0.4)", showgrid=True, zeroline=False),
+                yaxis=dict(gridcolor="rgba(48,54,61,0.4)", showgrid=True, zeroline=False),
+            )
+            st.plotly_chart(fig_macd, use_container_width=True)
 
     st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("#### 📄 Full Analysis Report")
-    st.markdown(report)
+
+    # ── AI Analysis — Chat Style ─────────────────────────────────────────────
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
+      <div style="width:34px;height:34px;border-radius:50%;
+          background:linear-gradient(135deg,#58a6ff,#a78bfa);
+          display:flex;align-items:center;justify-content:center;font-size:1rem;
+          box-shadow:0 0 12px rgba(88,166,255,0.4);">🤖</div>
+      <div>
+        <div style="color:#e6edf3;font-size:0.88rem;font-weight:700;">FinSage AI</div>
+        <div style="color:#3fb950;font-size:0.7rem;font-weight:600;">● Online · Analyzing</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Render report as chat bubbles split by sections
+    sections = report.split("\n\n")
+    for sec in sections:
+        sec = sec.strip()
+        if not sec:
+            continue
+        st.markdown(f"""
+        <div style="background:linear-gradient(145deg,rgba(22,27,34,0.9),rgba(13,17,23,0.95));
+            border:1px solid rgba(48,54,61,0.5);border-left:3px solid rgba(88,166,255,0.5);
+            border-radius:0 14px 14px 14px;padding:1rem 1.2rem;margin-bottom:0.7rem;
+            box-shadow:0 2px 12px rgba(0,0,0,0.2);font-size:0.85rem;color:#c9d1d9;line-height:1.75;">
+          {sec.replace(chr(10),"<br>")}
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Download
     st.download_button(
-        label="📥 Download Report (.md)",
+        label="📥 Download Full Report (.md)",
         data=report,
-        file_name=f"FinSage_{ticker}_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+        file_name=f"FinSage_{ticker_sym}_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
         mime="text/markdown",
         use_container_width=True,
     )
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
