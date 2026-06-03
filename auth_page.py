@@ -189,35 +189,244 @@ def exchange_code_for_user(code: str):
 # ── CSS ────────────────────────────────────────────────────────────────────────
 AUTH_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
 #MainMenu,footer,header,[data-testid="stToolbar"],
 [data-testid="manage-app-button"],[data-testid="stDecoration"],
 [data-testid="stStatusWidget"],.stDeployButton,
 .viewerBadge_container__r5tak { visibility:hidden !important; display:none !important; }
-section[data-testid="stSidebar"] { display: none !important; }
-body { background: #0d1117; }
+section[data-testid="stSidebar"] { display:none !important; }
 
-.auth-logo-area { text-align:center; margin:2rem 0 1.2rem; }
-.auth-logo-icon { font-size:3.8rem; }
-.auth-logo-name { font-size:2.4rem; font-weight:900; color:#58a6ff; margin:0.3rem 0 0; letter-spacing:-1px; }
-.auth-logo-tag  { color:#8b949e; font-size:0.88rem; margin-top:0.25rem; }
-.feature-pills  { display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; margin:0.9rem 0 0; }
-.pill { background:#1a3a1a; color:#3fb950; border-radius:20px; padding:0.22rem 0.7rem; font-size:0.76rem; font-weight:600; }
+/* ── Animated deep-space background ── */
+body, .stApp {
+    background: #020510 !important;
+    font-family: 'Inter', sans-serif !important;
+    overflow-x: hidden;
+}
+.stApp::before {
+    content:'';
+    position:fixed; inset:0; z-index:0;
+    background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(88,166,255,0.13) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(167,139,250,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(63,185,80,0.06) 0%, transparent 60%);
+    animation: bgpulse 8s ease-in-out infinite alternate;
+    pointer-events:none;
+}
+@keyframes bgpulse {
+    0%   { opacity:0.7; transform:scale(1); }
+    100% { opacity:1;   transform:scale(1.04); }
+}
 
-.auth-card { background:#161b22; border:1px solid #30363d; border-radius:16px; padding:1.8rem 1.6rem 1.4rem; box-shadow:0 8px 32px rgba(0,0,0,0.4); margin-bottom:0.5rem; }
-.auth-title { color:#c9d1d9; font-size:1.1rem; font-weight:700; text-align:center; margin-bottom:1.3rem; }
-.google-btn-wrap { display:flex; justify-content:center; margin-bottom:0.4rem; }
+/* Floating particles */
+.particles {
+    position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+}
+.particle {
+    position:absolute; border-radius:50%;
+    background:rgba(88,166,255,0.35);
+    animation: float linear infinite;
+}
+@keyframes float {
+    0%   { transform:translateY(100vh) scale(0); opacity:0; }
+    10%  { opacity:1; }
+    90%  { opacity:0.6; }
+    100% { transform:translateY(-10vh) scale(1); opacity:0; }
+}
+
+/* ── Main wrapper ── */
+.auth-wrapper {
+    position:relative; z-index:10;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 2rem 1rem;
+}
+
+/* ── Logo area ── */
+.auth-logo-area {
+    text-align:center;
+    margin: 0 0 2rem;
+    position:relative;
+}
+.auth-logo-glow {
+    display:inline-block;
+    font-size:4.5rem;
+    filter: drop-shadow(0 0 24px rgba(88,166,255,0.8)) drop-shadow(0 0 48px rgba(88,166,255,0.4));
+    animation: logoFloat 3s ease-in-out infinite;
+}
+@keyframes logoFloat {
+    0%,100% { transform:translateY(0px) rotate(-2deg); }
+    50%      { transform:translateY(-10px) rotate(2deg); }
+}
+.auth-logo-name {
+    font-size:3rem; font-weight:900; letter-spacing:-2px;
+    background: linear-gradient(135deg, #58a6ff 0%, #a78bfa 50%, #3fb950 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text;
+    text-shadow: none;
+    margin:0.4rem 0 0;
+    animation: gradShift 4s ease-in-out infinite alternate;
+    background-size:200% 200%;
+}
+@keyframes gradShift {
+    0%   { background-position:0% 50%; }
+    100% { background-position:100% 50%; }
+}
+.auth-logo-tag {
+    color:#8b949e; font-size:0.9rem; margin-top:0.3rem; letter-spacing:0.5px;
+}
+
+/* ── Feature pills ── */
+.feature-pills { display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; margin:1rem 0 0; }
+.pill {
+    background: linear-gradient(135deg, rgba(63,185,80,0.15), rgba(63,185,80,0.05));
+    color:#3fb950; border:1px solid rgba(63,185,80,0.3);
+    border-radius:20px; padding:0.25rem 0.8rem; font-size:0.75rem; font-weight:700;
+    backdrop-filter:blur(8px);
+    transition: all 0.2s;
+}
+.pill:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(63,185,80,0.3); }
+
+/* ── 3D Auth Card ── */
+.auth-card-3d {
+    background: linear-gradient(145deg,
+        rgba(22,27,34,0.95) 0%,
+        rgba(13,17,23,0.98) 100%);
+    border: 1px solid rgba(88,166,255,0.2);
+    border-radius:24px;
+    padding:2.2rem 2rem 1.8rem;
+    box-shadow:
+        0 0 0 1px rgba(88,166,255,0.05),
+        0 4px 6px rgba(0,0,0,0.4),
+        0 12px 32px rgba(0,0,0,0.5),
+        0 32px 64px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        inset 0 -1px 0 rgba(0,0,0,0.2);
+    backdrop-filter:blur(24px);
+    transform: perspective(1000px) rotateX(1deg);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position:relative; overflow:hidden;
+    margin-bottom: 0.8rem;
+}
+.auth-card-3d::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, rgba(88,166,255,0.6), rgba(167,139,250,0.6), transparent);
+    animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer {
+    0%,100% { opacity:0.4; } 50% { opacity:1; }
+}
+.auth-card-3d:hover {
+    transform: perspective(1000px) rotateX(0deg) translateY(-4px);
+    box-shadow:
+        0 0 0 1px rgba(88,166,255,0.15),
+        0 8px 16px rgba(0,0,0,0.4),
+        0 24px 48px rgba(0,0,0,0.5),
+        0 0 80px rgba(88,166,255,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.auth-title {
+    color:#e6edf3; font-size:1.15rem; font-weight:700;
+    text-align:center; margin-bottom:1.5rem; letter-spacing:-0.3px;
+}
+
+/* ── Google button ── */
+.google-btn-wrap { display:flex; justify-content:center; margin-bottom:0.5rem; }
 .google-btn {
     display:inline-flex; align-items:center; justify-content:center; gap:10px;
-    background:#ffffff; color:#1f1f1f !important; text-decoration:none !important;
-    border-radius:8px; padding:0.72rem 1.5rem; font-size:0.95rem; font-weight:600;
-    width:100%; box-shadow:0 2px 8px rgba(0,0,0,0.35); transition:background .15s; cursor:pointer;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+    color:#1f1f1f !important; text-decoration:none !important;
+    border-radius:12px; padding:0.8rem 1.5rem; font-size:0.95rem; font-weight:700;
+    width:100%; cursor:pointer; letter-spacing:0.2px;
+    box-shadow:
+        0 1px 3px rgba(0,0,0,0.4),
+        0 4px 12px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.9);
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0,0,0,0.1);
 }
-.google-btn:hover { background:#f0f0f0 !important; }
-.divider-row { display:flex; align-items:center; gap:0.8rem; margin:1.1rem 0; color:#6e7681; font-size:0.82rem; }
-.divider-line { flex:1; height:1px; background:#30363d; }
-.auth-footer { text-align:center; color:#6e7681; font-size:0.74rem; margin-top:1.1rem; line-height:1.65; }
-.privacy-link { color:#58a6ff !important; text-decoration:underline; }
+.google-btn:hover {
+    transform:translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 8px 24px rgba(88,166,255,0.15);
+    background: linear-gradient(135deg, #ffffff 0%, #eef4ff 100%) !important;
+}
+
+/* ── Divider ── */
+.divider-row { display:flex; align-items:center; gap:0.8rem; margin:1.2rem 0; color:#484f58; font-size:0.8rem; }
+.divider-line { flex:1; height:1px; background:linear-gradient(90deg, transparent, #30363d, transparent); }
+
+/* ── Input overrides ── */
+[data-testid="stTextInput"] input {
+    background: rgba(13,17,23,0.8) !important;
+    border: 1px solid rgba(48,54,61,0.8) !important;
+    border-radius:10px !important; color:#e6edf3 !important;
+    font-size:0.9rem !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+[data-testid="stTextInput"] input:focus {
+    border-color: rgba(88,166,255,0.6) !important;
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.12), 0 0 20px rgba(88,166,255,0.08) !important;
+}
+
+/* ── Primary button ── */
+[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"],
+button[kind="primary"] {
+    background: linear-gradient(135deg, #1a6bc7 0%, #2563eb 50%, #7c3aed 100%) !important;
+    border:none !important; border-radius:12px !important;
+    font-weight:700 !important; font-size:0.95rem !important; letter-spacing:0.3px !important;
+    box-shadow:
+        0 4px 14px rgba(37,99,235,0.4),
+        0 0 0 1px rgba(255,255,255,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    transition: all 0.2s ease !important;
+}
+[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"]:hover,
+button[kind="primary"]:hover {
+    transform:translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(37,99,235,0.5), 0 0 40px rgba(124,58,237,0.2) !important;
+}
+
+/* ── Tabs ── */
+[data-baseweb="tab-list"] {
+    background:rgba(13,17,23,0.6) !important;
+    border-radius:12px !important; padding:4px !important;
+    border:1px solid rgba(48,54,61,0.5) !important;
+}
+[data-baseweb="tab"] {
+    border-radius:9px !important; font-weight:600 !important; font-size:0.85rem !important;
+    color:#8b949e !important; transition:all 0.2s !important;
+}
+[aria-selected="true"][data-baseweb="tab"] {
+    background:linear-gradient(135deg, rgba(88,166,255,0.15), rgba(167,139,250,0.1)) !important;
+    color:#e6edf3 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* ── Footer ── */
+.auth-footer {
+    text-align:center; color:#484f58; font-size:0.73rem;
+    margin-top:1.2rem; line-height:1.8;
+}
+.privacy-link { color:#58a6ff !important; text-decoration:none !important; font-weight:600; }
+.privacy-link:hover { text-decoration:underline !important; }
+
+/* ── Checkbox ── */
+[data-testid="stCheckbox"] label { color:#8b949e !important; font-size:0.82rem !important; }
 </style>
+
+<!-- Animated floating particles -->
+<div class="particles">
+  <div class="particle" style="left:10%;width:3px;height:3px;animation-duration:12s;animation-delay:0s;"></div>
+  <div class="particle" style="left:25%;width:2px;height:2px;animation-duration:18s;animation-delay:3s;background:rgba(167,139,250,0.5);"></div>
+  <div class="particle" style="left:40%;width:4px;height:4px;animation-duration:15s;animation-delay:6s;background:rgba(63,185,80,0.4);"></div>
+  <div class="particle" style="left:60%;width:2px;height:2px;animation-duration:20s;animation-delay:1s;"></div>
+  <div class="particle" style="left:75%;width:3px;height:3px;animation-duration:14s;animation-delay:8s;background:rgba(167,139,250,0.4);"></div>
+  <div class="particle" style="left:88%;width:2px;height:2px;animation-duration:16s;animation-delay:4s;background:rgba(63,185,80,0.5);"></div>
+  <div class="particle" style="left:50%;width:3px;height:3px;animation-duration:22s;animation-delay:10s;"></div>
+  <div class="particle" style="left:33%;width:2px;height:2px;animation-duration:17s;animation-delay:7s;background:rgba(248,113,113,0.4);"></div>
+</div>
 """
 
 # ── Main Render ────────────────────────────────────────────────────────────────
@@ -246,13 +455,13 @@ def render_auth_page() -> bool:
     # Logo
     st.markdown("""
     <div class="auth-logo-area">
-        <div class="auth-logo-icon">📊</div>
+        <div class="auth-logo-glow">📊</div>
         <div class="auth-logo-name">FinSage</div>
         <div class="auth-logo-tag">Global Financial Intelligence Platform</div>
         <div class="feature-pills">
-            <span class="pill">✅ Stocks</span>
-            <span class="pill">✅ Crypto</span>
-            <span class="pill">✅ Meme Coins</span>
+            <span class="pill">📈 Stocks</span>
+            <span class="pill">₿ Crypto</span>
+            <span class="pill">🎭 Meme Coins</span>
             <span class="pill">🆓 100% Free</span>
         </div>
     </div>
@@ -261,7 +470,7 @@ def render_auth_page() -> bool:
     _, col, _ = st.columns([1, 2.2, 1])
     with col:
         # Google button
-        st.markdown('<div class="auth-card"><div class="auth-title">Sign in to FinSage</div>', unsafe_allow_html=True)
+        st.markdown('<div class="auth-card-3d"><div class="auth-title">✨ Sign in to FinSage</div>', unsafe_allow_html=True)
         if google_available:
             google_url = get_google_login_url()
             st.markdown(f"""
