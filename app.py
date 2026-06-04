@@ -19,6 +19,7 @@ from analyzer import (analyze_stock, analyze_crypto, format_number,
                        partial_take_profit, rug_pull_flags)
 from auth_page import render_auth_page, is_logged_in, get_current_user
 from history_page import render_history_page, save_search
+from feedback_page import render_feedback_page
 from privacy_policy import render_privacy_policy
 
 # ── Page Config ────────────────────────────────────────────────────────────────
@@ -774,7 +775,7 @@ def render_results(data, report):
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab1, tab2, tab3, tab4 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins", "🕐  History"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins", "🕐  History", "💬  Feedback"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
@@ -1037,10 +1038,22 @@ with tab4:
         </div>""", unsafe_allow_html=True)
 
 
+# ─── TAB 5: FEEDBACK ─────────────────────────────────────────────────────────
+with tab5:
+    render_feedback_page(get_current_user())
+
+
 # ── Footer ─────────────────────────────────────────────────────────────────────
-st.markdown("<hr>", unsafe_allow_html=True)
-f1, f2 = st.columns(2)
+st.markdown("<hr style='border-color:rgba(48,54,61,0.4);'>", unsafe_allow_html=True)
+f1, f2, f3 = st.columns([2, 1, 1])
 with f1:
     st.markdown("<span style='color:#484f58;font-size:0.75rem;'>📊 <b style=\"color:#58a6ff;\">FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#30363d;font-size:0.7rem;'>Data: Yahoo Finance · CoinGecko &nbsp;|&nbsp; Educational purposes only</span>", unsafe_allow_html=True)
 with f2:
-    st.markdown("<span style='color:#30363d;font-size:0.75rem;display:block;text-align:right;'>Data: Yahoo Finance · CoinGecko &nbsp;|&nbsp; Educational purposes only</span>", unsafe_allow_html=True)
+    st.markdown("""<div style='text-align:center;'>
+        <span style='color:#3fb950;font-size:0.72rem;font-weight:700;'>📞 Customer Care</span><br>
+        <span style='color:#e6edf3;font-size:0.85rem;font-weight:800;letter-spacing:0.5px;'>9692723774</span><br>
+        <span style='color:#6e7681;font-size:0.68rem;'>Mon–Sat · 10 AM – 7 PM</span>
+    </div>""", unsafe_allow_html=True)
+with f3:
+    st.markdown("<span style='color:#30363d;font-size:0.7rem;display:block;text-align:right;'>© 2025 FinSage</span>", unsafe_allow_html=True)
