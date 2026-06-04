@@ -70,8 +70,8 @@ def groq_stock_insight(data):
         f"52W Range: {wk_low} to {wk_high}\n"
         f"Analyst Rating: {rec} | Target Price: {currency} {target}\n"
         + news_block +
-        "\nCover: (1) News-driven momentum ya catalyst, (2) Key risk, (3) Ek clear verdict.\n"
-        "Last sentence must be: 'Yeh financial advice nahi hai — sirf educational analysis hai.'"
+        "\nCover: (1) News-driven momentum or catalyst, (2) Key risk, (3) One clear verdict.\n"
+        "Last sentence must be: 'This is not financial advice — for educational purposes only.'"
     )
     result = _ask_groq(prompt, max_tokens=350)
     if result:
@@ -100,7 +100,7 @@ def groq_crypto_insight(data):
         if headlines:
             news_block = "\nLatest News Headlines:\n" + "\n".join(f"- {h}" for h in headlines) + "\n"
 
-    meme_warning = "IMPORTANT: Yeh ek MEME COIN hai — bahut speculative, koi fundamental value nahi. Clearly warn karo.\n" if is_meme else ""
+    meme_warning = "IMPORTANT: This is a MEME COIN hai — highly speculative with no fundamental value. Clearly warn the user.\n" if is_meme else ""
 
     prompt = (
         "You are a sharp crypto analyst for Indian retail investors.\n"
@@ -112,8 +112,8 @@ def groq_crypto_insight(data):
         f"Market Cap: ${mktcap:,.0f} | CMC Rank: #{rank}\n"
         f"ATH: ${ath} | ATH Change: {ath_chg:+.1f}%\n"
         + news_block +
-        "\nCover: (1) News-driven momentum ya catalyst, (2) Key risk, (3) Short verdict.\n"
-        "Last sentence must be: 'Yeh financial advice nahi hai — sirf educational analysis hai.'"
+        "\nCover: (1) News-driven momentum or catalyst, (2) Key risk, (3) Short verdict.\n"
+        "Last sentence must be: 'This is not financial advice — for educational purposes only.'"
     )
     result = _ask_groq(prompt, max_tokens=350)
     if result:
@@ -153,15 +153,15 @@ def trading_signals_stock(data: dict) -> str:
     if change > 3:  # running up — wait for pullback
         entry_low  = round(price * 0.97, 2)
         entry_high = round(price * 0.99, 2)
-        entry_note = "⏳ Stock oopar ja raha hai — thoda pullback ka wait karo"
+        entry_note = "Stock is running up — wait for a small pullback before entering"
     elif change < -3:  # dipped — potential buy zone
         entry_low  = round(price * 1.00, 2)
         entry_high = round(price * 1.02, 2)
-        entry_note = "🟢 Dip mein entry ka mauka — confirm karo ki trend reverse ho raha hai"
+        entry_note = "Dipped today — good zone if the overall trend is still up"
     else:
         entry_low  = round(price * 0.99, 2)
         entry_high = round(price * 1.01, 2)
-        entry_note = "📊 Current zone theek hai — SIP ya staggered entry better hai"
+        entry_note = "Stable price — enter in small parts, not all at once"
 
     # ── Targets ───────────────────────────────────────────────────────────────
     t1_pct = sl_pct * 1.5   # minimum reward = 1.5x risk
@@ -199,18 +199,18 @@ def trading_signals_stock(data: dict) -> str:
         action_color = "yellow"
 
     # ── Position Sizing ───────────────────────────────────────────────────────
-    if risk <= 3:   pos_size = "Portfolio ka 10-15%"
-    elif risk <= 5: pos_size = "Portfolio ka 5-10%"
-    elif risk <= 7: pos_size = "Portfolio ka 2-5%"
-    else:           pos_size = "Portfolio ka max 1-2% (bahut risky)"
+    if risk <= 3:   pos_size = "10-15% of portfolio"
+    elif risk <= 5: pos_size = "5-10% of portfolio"
+    elif risk <= 7: pos_size = "2-5% of portfolio"
+    else:           pos_size = "Max 1-2% of portfolio (very risky)"
 
     # ── When to Sell ──────────────────────────────────────────────────────────
     sell_rules = []
-    sell_rules.append(f"**T1 hit ho jaye** ({fmt_price(t1, currency)}) → 30-40% position book karo")
-    sell_rules.append(f"**T2 hit ho jaye** ({fmt_price(t2, currency)}) → aur 30% nikalo, stop-loss trail karo")
-    sell_rules.append(f"**T3 / Full Target** ({fmt_price(t3, currency)}) → baaki position exit")
-    sell_rules.append(f"**Stop-Loss breach** ({fmt_price(stop_loss, currency)}) → TURANT exit, argument mat karo")
-    sell_rules.append("**Fundamentals change ho jaye** → earnings miss, fraud, management change → immediate exit")
+    sell_rules.append(f"T1 reached ({fmt_price(t1, currency)}) — Book 30-40% of your position")
+    sell_rules.append(f"T2 reached ({fmt_price(t2, currency)}) — Exit another 30%, trail stop-loss up")
+    sell_rules.append(f"T3 / Full target ({fmt_price(t3, currency)}) — Exit remaining position")
+    sell_rules.append(f"Stop-loss breached ({fmt_price(stop_loss, currency)}) — Exit immediately, no hesitation")
+    sell_rules.append("Fundamentals deteriorate (earnings miss, fraud, management change) → exit immediately")
 
     return f"""
 ---
@@ -277,11 +277,11 @@ def trading_signals_crypto(data: dict) -> str:
     if change > 5:
         entry_low  = price * 0.95
         entry_high = price * 0.98
-        entry_note = "⏳ Strong pump chal raha hai — pullback ka wait karo, FOMO mein mat kudo"
+        entry_note = "Strong pump in progress — wait for a pullback, avoid FOMO buying"
     elif change < -5 and change_7d < -10:
         entry_low  = price * 1.00
         entry_high = price * 1.03
-        entry_note = "🟢 Significant dip — small position le sakte ho, par DCA karo"
+        entry_note = "Significant dip — small entry is okay, but use dollar-cost averaging"
     else:
         entry_low  = price * 0.98
         entry_high = price * 1.02
@@ -302,7 +302,7 @@ def trading_signals_crypto(data: dict) -> str:
 
     # ── Action Signal ─────────────────────────────────────────────────────────
     if is_meme:
-        action = "🔴 HIGHLY SPECULATIVE — Sirf gamble money use karo"
+        action = "🔴 HIGHLY SPECULATIVE — Use only money you can afford to lose"
     elif risk <= 4 and change_7d > 0:
         action = "🟢 BUY / ACCUMULATE (DCA recommended)"
     elif risk <= 6:
@@ -311,20 +311,20 @@ def trading_signals_crypto(data: dict) -> str:
         action = "🔴 HIGH RISK — Expert traders only"
 
     # ── Position Size ─────────────────────────────────────────────────────────
-    if is_meme:       pos_size = "Portfolio ka max 1-2% (meme = pure speculation)"
-    elif risk <= 4:   pos_size = "Portfolio ka 5-10%"
-    elif risk <= 6:   pos_size = "Portfolio ka 2-5%"
-    else:             pos_size = "Portfolio ka max 1-3%"
+    if is_meme:       pos_size = "Max 1-2% of portfolio (meme = pure speculation)"
+    elif risk <= 4:   pos_size = "5-10% of portfolio"
+    elif risk <= 6:   pos_size = "2-5% of portfolio"
+    else:             pos_size = "Max 1-3% of portfolio"
 
     # ── Sell Rules ────────────────────────────────────────────────────────────
     sell_rules = []
-    sell_rules.append(f"**T1 hit** ({fmt_price(t1)}) → 40% nikalo, baki hold karo")
-    sell_rules.append(f"**T2 hit** ({fmt_price(t2)}) → aur 30% exit, stop-loss trail karo cost price par")
+    sell_rules.append(f"T1 reached ({fmt_price(t1)}) — Exit 40%, hold the rest")
+    sell_rules.append(f"T2 reached ({fmt_price(t2)}) — Exit another 30%, trail stop-loss to cost price")
     sell_rules.append(f"**T3** ({fmt_price(t3)}) → poori position exit")
-    sell_rules.append(f"**Stop-Loss** ({fmt_price(stop_loss)}) → TURANT exit — crypto mein fast move hota hai")
+    sell_rules.append(f"Stop-loss ({fmt_price(stop_loss)}) — Exit immediately — crypto moves fast")
     if is_meme:
-        sell_rules.append("**Meme coins:** Jaise hi 2x ya 3x ho, original investment nikalo — baaki 'free ride' hai")
-    sell_rules.append("**News-based exit:** Exchange hack, regulatory ban, whale dump → turant niklo")
+        sell_rules.append("Meme coins: Once you hit 2x-3x, take out your original investment — let the rest ride free")
+    sell_rules.append("News-based exit: Exchange hack, regulatory ban, whale dump → exit immediately")
 
     return f"""
 ---
@@ -332,7 +332,7 @@ def trading_signals_crypto(data: dict) -> str:
 ## 🎯 Trading Signals & Action Plan
 
 > ⚡ **Signal:** {action}
-{">" + chr(10) + "> ⚠️ **MEME COIN WARNING:** Yeh asset pure speculation hai. Sirf itna lagao jo doob jaye toh chale." if is_meme else ""}
+{">" + chr(10) + "> ⚠️ **MEME COIN WARNING:** This asset is pure speculation. Only invest what you can afford to lose completely." if is_meme else ""}
 
 | Parameter | Value |
 |-----------|-------|
@@ -348,10 +348,10 @@ def trading_signals_crypto(data: dict) -> str:
 ### 📍 Entry Strategy
 {entry_note}
 
-### 📤 Kab Sell Karna Hai
+### 📤 When to Sell / Exit
 {"".join(chr(10) + "- " + r for r in sell_rules)}
 
-### ⚠️ Risk in Rupees (Example — ₹10,000 investment par)
+### ⚠️ Risk Example (₹10,000 investment)
 | Investment | Max Loss (Stop-Loss) | T1 Profit |
 |-----------|---------------------|-----------|
 | ₹10,000 | ₹{int(10000 * sl_pct/100):,} | ₹{int(10000 * t1_pct/100):,} |
