@@ -309,3 +309,83 @@ def fetch_ticker_bar_data() -> list:
         pass
 
     return results
+
+
+# ── Timeframe config ──────────────────────────────────────────────────────────
+TIMEFRAME_CONFIG = {
+    "1m":  {"period": "1d",   "interval": "1m",  "label": "1 Minute",   "bars": 390,  "mode": "Intraday"},
+    "5m":  {"period": "5d",   "interval": "5m",  "label": "5 Minutes",  "bars": 288,  "mode": "Intraday"},
+    "15m": {"period": "5d",   "interval": "15m", "label": "15 Minutes", "bars": 200,  "mode": "Intraday"},
+    "30m": {"period": "10d",  "interval": "30m", "label": "30 Minutes", "bars": 200,  "mode": "Intraday"},
+    "1h":  {"period": "1mo",  "interval": "1h",  "label": "1 Hour",     "bars": 168,  "mode": "Swing"},
+    "4h":  {"period": "3mo",  "interval": "4h",  "label": "4 Hours",    "bars": 180,  "mode": "Swing"},
+    "1D":  {"period": "6mo",  "interval": "1d",  "label": "Daily",      "bars": 180,  "mode": "Swing"},
+    "1W":  {"period": "2y",   "interval": "1wk", "label": "Weekly",     "bars": 104,  "mode": "Position"},
+    "1M":  {"period": "5y",   "interval": "1mo", "label": "Monthly",    "bars": 60,   "mode": "Position"},
+}
+
+
+def fetch_history_by_timeframe(ticker: str, timeframe: str = "1D") -> dict:
+    """
+    Fetch OHLCV history for a given timeframe.
+    Returns: {"history": DataFrame, "timeframe": str, "trading_mode": str, "error": str}
+    """
+    cfg = TIMEFRAME_CONFIG.get(timeframe, TIMEFRAME_CONFIG["1D"])
+    try:
+        stock = yf.Ticker(ticker.strip().upper())
+        hist  = stock.history(period=cfg["period"], interval=cfg["interval"])
+        if hist is None or hist.empty:
+            # Fallback to daily
+            hist = stock.history(period="3mo", interval="1d")
+            if hist is None or hist.empty:
+                return {"error": f"No data for {ticker} on {timeframe} timeframe"}
+            return {
+                "history":      hist.tail(cfg["bars"]),
+                "timeframe":    "1D",
+                "trading_mode": "Swing",
+                "fallback":     True,
+            }
+        return {
+            "history":      hist.tail(cfg["bars"]),
+            "timeframe":    timeframe,
+            "trading_mode": cfg["mode"],
+            "fallback":     False,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def fetch_crypto_history_by_timeframe(coin_id: str, timeframe: str = "1D") -> dict:
+    """
+    Fetch OHLCV history for crypto from CoinGecko for a given timeframe.
+    Returns DataFrame-compatible dict.
+    """
+    import pandas as pd_inner
+
+    # CoinGecko supports: 1 day -> minutely (up to 1d), up to 90 days -> hourly, >90 days -> daily
+    tf_to_days = {
+        "1m": 1, "5m": 1, "15m": 2, "30m": 3,
+        "1h": 7, "4h": 30, "1D": 90, "1W": 365, "1M": 730,
+    }
+    cfg   = TIMEFRAME_CONFIG.get(timeframe, TIMEFRAME_CONFIG["1D"])
+    days  = tf_to_days.get(timeframe, 90)
+    url   = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc?vs_currency=usd&days={days}"
+    try:
+        r = requests.get(url, timeout=15)
+        r.raise_for_status()
+        raw = r.json()
+        if not raw or isinstance(raw, dict):
+            return {"error": "No OHLC data from CoinGecko"}
+        df = pd_inner.DataFrame(raw, columns=["timestamp","Open","High","Low","Close"])
+        df["timestamp"] = pd_inner.to_datetime(df["timestamp"], unit="ms")
+        df.set_index("timestamp", inplace=True)
+        df["Volume"] = 0  # CoinGecko OHLC doesn't include volume
+        return {
+            "history":      df.tail(cfg["bars"]),
+            "timeframe":    timeframe,
+            "trading_mode": cfg["mode"],
+            "fallback":     False,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
