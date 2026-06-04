@@ -12,7 +12,9 @@ import time
 from datetime import datetime
 
 from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
-from analyzer import analyze_stock, analyze_crypto, format_number
+from analyzer import (analyze_stock, analyze_crypto, format_number,
+                       compute_confidence_score, dynamic_stop_loss,
+                       partial_take_profit, rug_pull_flags)
 from auth_page import render_auth_page, is_logged_in, get_current_user
 from history_page import render_history_page, save_search
 from privacy_policy import render_privacy_policy
@@ -330,114 +332,54 @@ if st.session_state.ticker_data:
 
 
 # ── Results Renderer ───────────────────────────────────────────────────────────
-def compute_indicators(history: pd.DataFrame):
+
+import math as _math
+
+def compute_indicators(history):
     close = history["Close"].astype(float)
-    high  = history["High"].astype(float)  if "High"   in history.columns else close
-    low   = history["Low"].astype(float)   if "Low"    in history.columns else close
-    vol_s = history["Volume"].astype(float) if "Volume" in history.columns else pd.Series([0]*len(close), index=close.index)
-    ma10 = close.rolling(10).mean()
-    ma20 = close.rolling(20).mean()
+    high  = history["High"].astype(float)   if "High"   in history.columns else close
+    low   = history["Low"].astype(float)    if "Low"    in history.columns else close
+    vol_s = history["Volume"].astype(float) if "Volume" in history.columns else pd.Series([0]*len(close),index=close.index)
+    ma10  = close.rolling(10).mean()
+    ma20  = close.rolling(20).mean()
     delta = close.diff()
     gain  = delta.clip(lower=0).rolling(14).mean()
     loss  = (-delta.clip(upper=0)).rolling(14).mean()
     rs    = gain / loss.replace(0, float("nan"))
-    rsi   = 100 - (100 / (1 + rs))
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
+    rsi   = 100 - (100/(1+rs))
+    ema12 = close.ewm(span=12,adjust=False).mean()
+    ema26 = close.ewm(span=26,adjust=False).mean()
     macd  = ema12 - ema26
-    signal= macd.ewm(span=9, adjust=False).mean()
+    signal= macd.ewm(span=9,adjust=False).mean()
     hist_m= macd - signal
     bb_mid= close.rolling(20).mean()
     bb_std= close.rolling(20).std()
     bb_up = bb_mid + 2*bb_std
     bb_dn = bb_mid - 2*bb_std
-    return dict(close=close, high=high, low=low, volume=vol_s,
-                ma10=ma10, ma20=ma20, rsi=rsi,
-                macd=macd, signal=signal, hist_macd=hist_m,
-                bb_mid=bb_mid, bb_up=bb_up, bb_dn=bb_dn)
+    return dict(close=close,high=high,low=low,volume=vol_s,
+                ma10=ma10,ma20=ma20,rsi=rsi,
+                macd=macd,signal=signal,hist_macd=hist_m,
+                bb_mid=bb_mid,bb_up=bb_up,bb_dn=bb_dn)
 
 
-def _safe(series):
+def _last(series):
     try:
         v = series.dropna()
         return float(v.iloc[-1]) if len(v) else None
-    except:
-        return None
+    except: return None
 
 
-def _trade_setup(data, inds):
-    """Extract Entry / SL / Targets from data + indicators."""
-    price    = float(data.get("current_price") or 0)
-    currency = data.get("currency", "USD")
-    vol_ann  = float(data.get("volatility_annualized") or 20)
-    risk     = int(data.get("risk_score") or 5)
-    change   = float(data.get("change_pct") or 0)
-    day_high = float(data.get("day_high") or price)
-    day_low  = float(data.get("day_low")  or price)
-    rec      = str(data.get("recommendation") or "").upper()
-    analyst_t= data.get("analyst_target")
-
-    if not price or price <= 0:
-        return None
-
-    # Stop-loss % based on volatility + risk
-    if vol_ann > 60 or risk >= 8:   sl_pct = 10.0
-    elif vol_ann > 35 or risk >= 6: sl_pct = 7.0
-    elif vol_ann <= 15 or risk <= 3: sl_pct = 3.0
-    else:                            sl_pct = 5.0
-
-    stop_loss = round(price * (1 - sl_pct/100), 4)
-
-    # Entry zone
-    if change > 3:
-        entry_low, entry_high = round(price*0.97,4), round(price*0.99,4)
-        entry_note = "Stock is running up — wait for a small pullback before entering"
-    elif change < -3:
-        entry_low, entry_high = round(price*1.00,4), round(price*1.02,4)
-        entry_note = "Stock dipped today — good zone if overall trend is up"
-    else:
-        entry_low, entry_high = round(price*0.99,4), round(price*1.01,4)
-        entry_note = "Price is stable — enter in small parts, not all at once"
-
-    # Targets (1.5x / 2.5x / 4x the risk)
-    t1 = round(price*(1 + sl_pct*1.5/100), 4)
-    t2 = round(price*(1 + sl_pct*2.5/100), 4)
-    t3 = round(price*(1 + sl_pct*4.0/100), 4)
-    if analyst_t and float(analyst_t) > t3:
-        t3 = round(float(analyst_t), 4)
-
-    rr = round((t1-price)/(price-stop_loss), 1) if price > stop_loss else 0
-
-    # Action
-    if rec in ("STRONG_BUY","BUY") and risk <= 5:   action, acolor = "BUY",         "#3fb950"
-    elif rec in ("STRONG_BUY","BUY") and risk <= 7: action, acolor = "CAUTIOUS BUY","#f7c948"
-    elif rec in ("SELL","STRONG_SELL") or risk >= 8:action, acolor = "AVOID",        "#f85149"
-    elif risk >= 6:                                  action, acolor = "HOLD",         "#d29922"
-    else:                                            action, acolor = "WATCH",        "#58a6ff"
-
-    # Position size
-    if risk <= 3:   pos = "10-15% of portfolio"
-    elif risk <= 5: pos = "5-10% of portfolio"
-    elif risk <= 7: pos = "2-5% of portfolio"
-    else:           pos = "Max 1-2% of portfolio (very risky)"
-
-    def fp(v):
-        if v < 0.0001: return f"${v:.8f}"
-        if v < 0.01:   return f"${v:.6f}"
-        return f"{currency} {v:,.2f}"
-
-    return dict(
-        price=price, entry_low=entry_low, entry_high=entry_high,
-        stop_loss=stop_loss, sl_pct=sl_pct,
-        t1=t1, t2=t2, t3=t3, rr=rr,
-        action=action, acolor=acolor,
-        entry_note=entry_note, pos=pos, fp=fp,
-    )
+def _fp(price, currency="USD"):
+    if price < 0.0001: return f"${price:.8f}"
+    if price < 0.01:   return f"${price:.6f}"
+    return f"{currency} {price:,.4f}"
 
 
 def render_results(data, report):
     if not data or not report:
         return
+
+    import re as _re
 
     name       = data.get("name", data.get("ticker",""))
     ticker_sym = data.get("ticker","")
@@ -448,236 +390,227 @@ def render_results(data, report):
     vol_a      = float(data.get("volatility_annualized") or 0)
     currency   = data.get("currency","USD")
     asset_t    = data.get("asset_type","Asset")
+    is_meme    = asset_t == "Meme Coin"
 
-    chg_color = "#3fb950" if change >= 0 else "#f85149"
-    chg_bg    = "rgba(63,185,80,0.12)" if change >= 0 else "rgba(248,81,73,0.12)"
+    chg_color = "#3fb950" if change >= 0 else "#ef5350"
+    chg_bg    = "rgba(63,185,80,0.12)" if change >= 0 else "rgba(239,83,80,0.12)"
     chg_arrow = "▲" if change >= 0 else "▼"
+    price_str = _fp(price, currency)
 
-    if price < 0.0001:   price_str = f"${price:.8f}"
-    elif price < 0.01:   price_str = f"${price:.6f}"
-    else:                price_str = f"{currency} {price:,.2f}"
+    # Compute indicators
+    history  = data.get("history")
+    has_hist = (history is not None and isinstance(history, pd.DataFrame) and not history.empty)
+    inds     = compute_indicators(history) if has_hist else None
+
+    # Advanced analytics
+    conf      = compute_confidence_score(data, inds)
+    sl_data   = dynamic_stop_loss(data, inds)
+    tp_tiers  = partial_take_profit(data, sl_data["sl_pct"])
+    rug_flags = rug_pull_flags(data)
 
     # ── HEADER ───────────────────────────────────────────────────────────────
-    st.markdown(f"""
-    <div style="background:linear-gradient(145deg,rgba(18,24,32,0.98),rgba(10,14,20,0.99));
-        border:1px solid rgba(88,166,255,0.18);border-radius:18px;padding:1.2rem 1.6rem;
-        margin-bottom:1.2rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);position:relative;overflow:hidden;">
-      <div style="position:absolute;top:0;left:0;right:0;height:2px;
-          background:linear-gradient(90deg,#58a6ff,#a78bfa,#3fb950);"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">
-        <div>
-          <span style="font-size:1.4rem;font-weight:900;color:#e6edf3;">{name}</span>
-          <span style="color:#484f58;font-size:0.95rem;font-weight:500;margin-left:0.4rem;">• {ticker_sym}</span>
-          <div style="color:#6e7681;font-size:0.72rem;font-weight:700;letter-spacing:1px;
-              text-transform:uppercase;margin-top:0.2rem;">{asset_t}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:1.9rem;font-weight:900;color:#e6edf3;letter-spacing:-1px;">{price_str}</div>
-          <div style="background:{chg_bg};color:{chg_color};border-radius:20px;
-              padding:0.18rem 0.65rem;font-size:0.82rem;font-weight:800;display:inline-block;">
-            {chg_arrow} {abs(change):.2f}% today</div>
-        </div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="background:linear-gradient(145deg,rgba(18,24,32,0.98),rgba(10,14,20,0.99));'
+        f'border:1px solid rgba(88,166,255,0.18);border-radius:18px;padding:1.2rem 1.6rem;'
+        f'margin-bottom:1rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);position:relative;overflow:hidden;">'
+        f'<div style="position:absolute;top:0;left:0;right:0;height:2px;'
+        f'background:linear-gradient(90deg,#58a6ff,#a78bfa,#3fb950);"></div>'
+        f'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">'
+        f'<div>'
+        f'<span style="font-size:1.4rem;font-weight:900;color:#e6edf3;">{name}</span>'
+        f'<span style="color:#484f58;font-size:0.95rem;margin-left:0.4rem;">• {ticker_sym}</span>'
+        f'<div style="color:#6e7681;font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:0.2rem;">{asset_t}</div>'
+        f'</div>'
+        f'<div style="text-align:right;">'
+        f'<div style="font-size:1.9rem;font-weight:900;color:#e6edf3;letter-spacing:-1px;">{price_str}</div>'
+        f'<div style="background:{chg_bg};color:{chg_color};border-radius:20px;padding:0.18rem 0.7rem;font-size:0.82rem;font-weight:800;display:inline-block;">{chg_arrow} {abs(change):.2f}% today</div>'
+        f'</div></div></div>',
+        unsafe_allow_html=True
+    )
+
+    # ── CONFIDENCE SCORE GAUGE ────────────────────────────────────────────────
+    score     = conf["score"]
+    ring_col  = conf["color"]
+    r_g, cx_g, cy_g = 54, 70, 70
+    circ      = 2 * _math.pi * r_g
+    filled    = circ * score / 100
+
+    bd_html = ""
+    for lbl, pts, det in conf["breakdown"][:6]:
+        pc = "#3fb950" if (pts.startswith("+") and pts != "+0") else ("#ef5350" if pts.startswith("-") else "#484f58")
+        bd_html += (
+            f'<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(48,54,61,0.6);'
+            f'border-radius:8px;padding:0.45rem 0.6rem;font-size:0.72rem;">'
+            f'<span style="color:#6e7681;">{lbl}</span>'
+            f'<span style="color:{pc};font-weight:800;margin-left:0.3rem;">{pts}</span>'
+            f'<div style="color:#484f58;font-size:0.65rem;margin-top:0.1rem;">{det}</div></div>'
+        )
+
+    st.markdown(
+        f'<div style="background:linear-gradient(145deg,rgba(18,24,32,0.98),rgba(10,14,20,0.99));'
+        f'border:1px solid rgba(88,166,255,0.12);border-radius:16px;padding:1.2rem 1.4rem;'
+        f'margin-bottom:1rem;box-shadow:0 4px 24px rgba(0,0,0,0.3);">'
+        f'<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">'
+        f'<div style="flex-shrink:0;text-align:center;">'
+        f'<svg width="140" height="110" viewBox="0 0 140 110">'
+        f'<circle cx="{cx_g}" cy="{cy_g}" r="{r_g}" fill="none" stroke="rgba(48,54,61,0.6)" stroke-width="10"/>'
+        f'<circle cx="{cx_g}" cy="{cy_g}" r="{r_g}" fill="none" stroke="{ring_col}" stroke-width="10"'
+        f' stroke-linecap="round" stroke-dasharray="{filled:.1f} {circ:.1f}"'
+        f' transform="rotate(-90 {cx_g} {cy_g})"'
+        f' style="filter:drop-shadow(0 0 6px {ring_col}88)"/>'
+        f'<text x="{cx_g}" y="{cy_g+8}" text-anchor="middle" font-size="24" font-weight="900"'
+        f' fill="{ring_col}" font-family="Inter">{score}</text>'
+        f'<text x="{cx_g}" y="{cy_g+22}" text-anchor="middle" font-size="9" fill="#6e7681" font-family="Inter">/ 100</text>'
+        f'</svg>'
+        f'<div style="color:{ring_col};font-size:0.78rem;font-weight:800;margin-top:-0.3rem;">{conf["emoji"]} {conf["label"]}</div>'
+        f'</div>'
+        f'<div style="flex:1;">'
+        f'<div style="color:#8b949e;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.6rem;">Confidence Score Breakdown</div>'
+        f'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.4rem;">{bd_html}</div>'
+        f'</div></div></div>',
+        unsafe_allow_html=True
+    )
+
+    # ── RUG PULL FLAGS ────────────────────────────────────────────────────────
+    if rug_flags:
+        flags_html = ""
+        for fl in rug_flags:
+            fc   = "#ef5350" if fl["severity"]=="high" else "#d29922"
+            rgb  = "239,83,80" if fl["severity"]=="high" else "210,153,34"
+            icon = "🚨" if fl["severity"]=="high" else "⚠️"
+            flags_html += (
+                f'<div style="background:rgba({rgb},0.08);border:1px solid rgba({rgb},0.25);'
+                f'border-radius:10px;padding:0.55rem 0.8rem;display:flex;gap:0.5rem;align-items:flex-start;">'
+                f'<span>{icon}</span>'
+                f'<div><div style="color:{fc};font-size:0.78rem;font-weight:800;">{fl["label"]}</div>'
+                f'<div style="color:#6e7681;font-size:0.7rem;margin-top:0.1rem;">{fl["detail"]}</div></div></div>'
+            )
+        st.markdown(
+            f'<div style="background:rgba(239,83,80,0.05);border:1px solid rgba(239,83,80,0.2);'
+            f'border-radius:14px;padding:1rem 1.2rem;margin-bottom:1rem;">'
+            f'<div style="color:#ef5350;font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.7rem;">🚨 Risk Flags Detected</div>'
+            f'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem;">{flags_html}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
     # ── METRIC STRIP ─────────────────────────────────────────────────────────
     m1,m2,m3,m4,m5 = st.columns(5)
-    with m1: st.metric("Price",       price_str)
-    with m2: st.metric("24h Change",  f"{change:+.2f}%")
-    with m3: st.metric("Market Cap",  format_number(market_cap))
-    with m4: st.metric("Volatility",  f"{vol_a:.1f}%")
-    with m5: st.metric("Risk",        f"{risk}/10")
+    with m1: st.metric("Price",      price_str)
+    with m2: st.metric("24h Change", f"{change:+.2f}%")
+    with m3: st.metric("Market Cap", format_number(market_cap))
+    with m4: st.metric("Volatility", f"{vol_a:.1f}%")
+    with m5: st.metric("Risk",       f"{risk}/10")
 
-    st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:0.8rem'></div>", unsafe_allow_html=True)
 
-    # ── TRADINGVIEW-STYLE CHART ───────────────────────────────────────────────
-    history = data.get("history")
-    has_hist = (history is not None and isinstance(history, pd.DataFrame) and not history.empty)
-
-    inds = compute_indicators(history) if has_hist else None
-
+    # ── CHART ─────────────────────────────────────────────────────────────────
     if has_hist and inds:
-        close = inds["close"]
+        sl_price = sl_data["stop_loss"]
+        if change > 3:    entry_price = round(price*0.97, 8)
+        elif change < -3: entry_price = round(price*1.00, 8)
+        else:             entry_price = round(price*0.99, 8)
 
-        # ── Compute live values ───────────────────────────────────────────────
-        rsi_v  = _safe(inds["rsi"])   or 50.0
-        macd_v = _safe(inds["macd"])  or 0.0
-        sig_v  = _safe(inds["signal"])or 0.0
-        ma10_v = _safe(inds["ma10"])  or price
-        ma20_v = _safe(inds["ma20"])  or price
-        bb_up_v= _safe(inds["bb_up"]) or price
-        bb_dn_v= _safe(inds["bb_dn"]) or price
-        bb_pct = ((price-bb_dn_v)/(bb_up_v-bb_dn_v)*100) if (bb_up_v-bb_dn_v)>0 else 50
-
-        # Signals
-        rsi_sig  = ("OVERSOLD — Potential bounce" if rsi_v<30
-                    else "OVERBOUGHT — May correct soon" if rsi_v>70
-                    else f"Neutral ({rsi_v:.0f})")
-        macd_sig = "Bullish crossover" if macd_v > sig_v else "Bearish crossover"
-        ma_sig   = "Price above MA20 — uptrend" if price > ma20_v else "Price below MA20 — downtrend"
-        bb_sig   = ("Near lower band — possible reversal" if bb_pct<25
-                    else "Near upper band — may pull back" if bb_pct>75
-                    else "Inside bands — consolidating")
-
-        def sig_color(label):
-            l = label.lower()
-            if any(x in l for x in ["oversold","bullish","above","reversal"]): return "#3fb950"
-            if any(x in l for x in ["overbought","bearish","below","pull back","correct"]): return "#f85149"
-            return "#f7c948"
-
-        # 4 signal pills
-        pills = [
-            ("RSI", f"{rsi_v:.0f}", rsi_sig),
-            ("MACD", f"{'▲' if macd_v>sig_v else '▼'}", macd_sig),
-            ("MA20", f"{currency} {ma20_v:,.2f}", ma_sig),
-            ("Bollinger", f"{bb_pct:.0f}%", bb_sig),
-        ]
-        pills_html = ""
-        for label, val, sig in pills:
-            c2 = sig_color(sig)
-            pills_html += f"""<div style="flex:1;min-width:160px;background:rgba(13,17,23,0.8);
-                border:1px solid rgba(48,54,61,0.7);border-radius:12px;padding:0.7rem 0.9rem;">
-                <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                    letter-spacing:0.8px;">{label}</div>
-                <div style="color:#e6edf3;font-size:1.05rem;font-weight:800;margin:0.15rem 0;">{val}</div>
-                <div style="color:{c2};font-size:0.72rem;font-weight:600;">{sig}</div>
-            </div>"""
-
-        st.markdown(f"""<div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1.2rem;">
-            {pills_html}</div>""", unsafe_allow_html=True)
-
-        # ── TradingView-style 3-pane chart ────────────────────────────────────
         fig = make_subplots(
-            rows=3, cols=1,
-            shared_xaxes=True,
+            rows=3, cols=1, shared_xaxes=True,
             row_heights=[0.60, 0.20, 0.20],
             vertical_spacing=0.0,
-            subplot_titles=("", "", ""),
         )
 
-        has_ohlc = all(col in history.columns for col in ["Open","High","Low","Close"])
-        o_s = history["Open"].astype(float)
-        h_s = history["High"].astype(float)   if has_ohlc else close
-        l_s = history["Low"].astype(float)    if has_ohlc else close
+        has_ohlc = all(c in history.columns for c in ["Open","High","Low","Close"])
         c_s = history["Close"].astype(float)
+        o_s = history["Open"].astype(float) if "Open" in history.columns else c_s
 
         if has_ohlc:
             fig.add_trace(go.Candlestick(
-                x=history.index, open=o_s, high=h_s, low=l_s, close=c_s,
+                x=history.index,
+                open=history["Open"].astype(float),
+                high=history["High"].astype(float),
+                low=history["Low"].astype(float),
+                close=c_s,
                 increasing_line_color="#26a69a", decreasing_line_color="#ef5350",
                 increasing_fillcolor="#26a69a",  decreasing_fillcolor="#ef5350",
-                name="Price", showlegend=False,
-                line=dict(width=1),
+                name="Price", showlegend=False, line=dict(width=1),
             ), row=1, col=1)
         else:
             fig.add_trace(go.Scatter(
                 x=history.index, y=c_s, mode="lines",
-                line=dict(color="#58a6ff", width=2),
+                line=dict(color="#58a6ff",width=2),
                 fill="tozeroy", fillcolor="rgba(88,166,255,0.05)",
                 name="Price", showlegend=False,
             ), row=1, col=1)
 
-        # MA10 / MA20
         fig.add_trace(go.Scatter(x=history.index, y=inds["ma10"],
-            line=dict(color="#f7c948",width=1.3), name="MA10", showlegend=True), row=1,col=1)
+            line=dict(color="#f7c948",width=1.2,dash="dot"), name="MA10"), row=1,col=1)
         fig.add_trace(go.Scatter(x=history.index, y=inds["ma20"],
-            line=dict(color="#a78bfa",width=1.3), name="MA20", showlegend=True), row=1,col=1)
-
-        # Bollinger fill
+            line=dict(color="#a78bfa",width=1.2,dash="dot"), name="MA20"), row=1,col=1)
         fig.add_trace(go.Scatter(
             x=list(history.index)+list(history.index[::-1]),
             y=list(inds["bb_up"])+list(inds["bb_dn"][::-1]),
             fill="toself", fillcolor="rgba(88,166,255,0.03)",
-            line=dict(color="rgba(88,166,255,0.2)",width=0.8),
-            name="BB Bands", showlegend=True,
+            line=dict(color="rgba(88,166,255,0.18)",width=0.7),
+            name="BB", showlegend=True,
         ), row=1,col=1)
 
-        # Get trade setup for Entry/SL/Target lines
-        ts = _trade_setup(data, inds)
-        if ts:
-            fp = ts["fp"]
-            # Entry line (blue)
-            fig.add_hline(y=ts["entry_low"],
-                line=dict(color="rgba(88,166,255,0.6)",width=1,dash="dash"), row=1,col=1)
-            # Stop-loss line (red)
-            fig.add_hline(y=ts["stop_loss"],
-                line=dict(color="rgba(239,83,80,0.7)",width=1.2,dash="dot"), row=1,col=1)
-            # Target 1 (light green)
-            fig.add_hline(y=ts["t1"],
-                line=dict(color="rgba(38,166,154,0.6)",width=1,dash="dash"), row=1,col=1)
-            # Target 2 (green)
-            fig.add_hline(y=ts["t2"],
-                line=dict(color="rgba(38,166,154,0.85)",width=1.2,dash="dash"), row=1,col=1)
-            # Annotations on chart
-            xmax = history.index[-1]
-            for y_val, label, color in [
-                (ts["entry_low"], f"ENTRY {fp(ts['entry_low'])}", "#58a6ff"),
-                (ts["stop_loss"], f"STOP {fp(ts['stop_loss'])}", "#ef5350"),
-                (ts["t1"],        f"T1 {fp(ts['t1'])}", "#26a69a"),
-                (ts["t2"],        f"T2 {fp(ts['t2'])}", "#3fb950"),
-            ]:
-                fig.add_annotation(
-                    x=xmax, y=y_val, text=f"  {label}",
-                    xanchor="left", showarrow=False,
-                    font=dict(size=9, color=color, family="Inter"),
-                    row=1, col=1,
-                )
+        # Level lines + labels
+        xmax = history.index[-1]
+        t_prices = [t["price"] for t in tp_tiers]
+        t_labels = [t["label"].replace("Sell ","").replace("Hold ","") for t in tp_tiers]
+        t_colors = [t["color"] for t in tp_tiers]
+        levels = [
+            ("ENTRY", entry_price, "#58a6ff", "dash"),
+            ("SL",    sl_price,    "#ef5350", "dot"),
+        ]
+        for i, (tp, tlbl, tc) in enumerate(zip(t_prices, t_labels, t_colors)):
+            levels.append((f"T{i+1}", tp, tc, "dash"))
 
-        # Volume bars
-        up_days = c_s >= o_s
-        vol_colors = ["rgba(38,166,154,0.55)" if u else "rgba(239,83,80,0.55)" for u in up_days]
-        fig.add_trace(go.Bar(
-            x=history.index, y=inds["volume"],
-            marker_color=vol_colors, name="Volume", showlegend=False,
-        ), row=2,col=1)
+        for lname, y_val, lcolor, ldash in levels:
+            fig.add_hline(y=y_val, line=dict(color=lcolor,width=1.2,dash=ldash), row=1,col=1)
+            fig.add_annotation(
+                x=xmax, y=y_val, xanchor="left", showarrow=False,
+                text=f"  {lname} {_fp(y_val, currency)}",
+                font=dict(size=9,color=lcolor,family="Inter"),
+                row=1, col=1,
+            )
 
-        # RSI
-        fig.add_trace(go.Scatter(
-            x=history.index, y=inds["rsi"],
-            line=dict(color="#58a6ff",width=1.5), name="RSI", showlegend=False,
+        up_days = c_s.values >= o_s.values
+        vcols = ["rgba(38,166,154,0.5)" if u else "rgba(239,83,80,0.5)" for u in up_days]
+        fig.add_trace(go.Bar(x=history.index, y=inds["volume"],
+            marker_color=vcols, name="Volume", showlegend=False), row=2,col=1)
+
+        fig.add_trace(go.Scatter(x=history.index, y=inds["rsi"],
+            line=dict(color="#58a6ff",width=1.5),
             fill="tozeroy", fillcolor="rgba(88,166,255,0.04)",
-        ), row=3,col=1)
+            name="RSI", showlegend=False), row=3,col=1)
         fig.add_hline(y=70, line=dict(color="#ef5350",width=0.7,dash="dash"), row=3,col=1)
         fig.add_hline(y=30, line=dict(color="#26a69a",width=0.7,dash="dash"), row=3,col=1)
-        fig.add_hrect(y0=30,y1=70, fillcolor="rgba(88,166,255,0.02)",
-                      line_width=0, row=3,col=1)
 
-        BG   = "rgba(10,14,20,0)"
-        GRID = "rgba(42,48,58,0.6)"
+        BG = "rgba(10,14,20,0)"; GRID = "rgba(42,48,58,0.6)"
         fig.update_layout(
             plot_bgcolor=BG, paper_bgcolor=BG,
-            font=dict(color="#5d6673", family="Inter", size=10),
-            height=600,
-            margin=dict(l=10, r=80, t=12, b=10),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
-                bgcolor="rgba(0,0,0,0)", font=dict(size=9, color="#8b949e"),
-            ),
-            xaxis=dict(
-                gridcolor=GRID, showgrid=True, zeroline=False,
+            font=dict(color="#5d6673",family="Inter",size=10),
+            height=580, margin=dict(l=10,r=95,t=12,b=10),
+            legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="left",x=0,
+                bgcolor="rgba(0,0,0,0)",font=dict(size=9,color="#8b949e")),
+            xaxis=dict(gridcolor=GRID,showgrid=True,zeroline=False,
                 rangeslider=dict(visible=False),
-                showspikes=True, spikecolor="#484f58",
-                spikethickness=1, spikedash="dot", spikemode="across",
-            ),
-            xaxis2=dict(gridcolor=GRID, showgrid=True, zeroline=False),
-            xaxis3=dict(gridcolor=GRID, showgrid=True, zeroline=False),
-            yaxis=dict(gridcolor=GRID, showgrid=True, zeroline=False,
-                       showspikes=True, spikecolor="#484f58", spikethickness=1),
-            yaxis2=dict(gridcolor=GRID, showgrid=True, zeroline=False,
-                        title=dict(text="Vol", font=dict(size=8))),
-            yaxis3=dict(gridcolor=GRID, showgrid=True, zeroline=False,
-                        range=[0,100], title=dict(text="RSI", font=dict(size=8))),
+                showspikes=True,spikecolor="#484f58",spikethickness=1,
+                spikedash="dot",spikemode="across"),
+            xaxis2=dict(gridcolor=GRID,showgrid=True,zeroline=False),
+            xaxis3=dict(gridcolor=GRID,showgrid=True,zeroline=False),
+            yaxis=dict(gridcolor=GRID,showgrid=True,zeroline=False,
+                showspikes=True,spikecolor="#484f58",spikethickness=1),
+            yaxis2=dict(gridcolor=GRID,showgrid=True,zeroline=False,
+                title=dict(text="Vol",font=dict(size=8))),
+            yaxis3=dict(gridcolor=GRID,showgrid=True,zeroline=False,
+                range=[0,100],title=dict(text="RSI",font=dict(size=8))),
             hovermode="x unified",
-            hoverlabel=dict(
-                bgcolor="rgba(18,24,32,0.95)", font_size=11,
-                font_family="Inter", bordercolor="rgba(88,166,255,0.3)",
-            ),
+            hoverlabel=dict(bgcolor="rgba(18,24,32,0.95)",font_size=11,
+                font_family="Inter",bordercolor="rgba(88,166,255,0.3)"),
+            dragmode="pan",
         )
-        # Dark x-axis background bands (TradingView feel)
-        fig.update_xaxes(showline=True, linecolor="rgba(42,48,58,0.8)")
-        fig.update_yaxes(showline=True, linecolor="rgba(42,48,58,0.8)")
-
+        fig.update_xaxes(showline=True,linecolor="rgba(42,48,58,0.8)")
+        fig.update_yaxes(showline=True,linecolor="rgba(42,48,58,0.8)")
         st.plotly_chart(fig, use_container_width=True, config={
             "displayModeBar": True,
             "modeBarButtonsToRemove": ["select2d","lasso2d","toggleSpikelines"],
@@ -685,174 +618,148 @@ def render_results(data, report):
             "scrollZoom": True,
         })
 
-        # ── TRADE SETUP CARDS ─────────────────────────────────────────────────
-        if ts:
-            fp = ts["fp"]
-            rr_color = "#3fb950" if ts["rr"] >= 1.5 else "#f7c948"
-            st.markdown(f"""
-            <div style="background:linear-gradient(145deg,rgba(18,24,32,0.98),rgba(10,14,20,0.99));
-                border:1px solid rgba(88,166,255,0.15);border-radius:16px;
-                padding:1.2rem 1.4rem;margin:1rem 0;
-                box-shadow:0 4px 24px rgba(0,0,0,0.35);">
-              <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
-                <div style="background:linear-gradient(135deg,#1a6bc7,#7c3aed);width:28px;height:28px;
-                    border-radius:8px;display:flex;align-items:center;justify-content:center;
-                    font-size:0.9rem;">🎯</div>
-                <span style="color:#e6edf3;font-weight:800;font-size:1rem;">Trade Setup</span>
-                <div style="margin-left:auto;background:rgba({
-                    '63,185,80' if ts['acolor']=='#3fb950' else
-                    '247,201,72' if ts['acolor']=='#f7c948' else
-                    '248,81,73' if ts['acolor']=='#f85149' else
-                    '210,153,34'
-                },0.15);color:{ts['acolor']};border:1px solid {ts['acolor']}44;
-                    border-radius:20px;padding:0.2rem 0.9rem;font-size:0.8rem;font-weight:800;">
-                  {ts['action']}</div>
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.6rem;">
-                <div style="background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.2);
-                    border-radius:10px;padding:0.7rem 0.8rem;">
-                  <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                      letter-spacing:0.5px;margin-bottom:0.3rem;">Entry Zone</div>
-                  <div style="color:#58a6ff;font-size:0.9rem;font-weight:800;">{fp(ts['entry_low'])} – {fp(ts['entry_high'])}</div>
-                  <div style="color:#484f58;font-size:0.68rem;margin-top:0.2rem;">{ts['entry_note']}</div>
-                </div>
-                <div style="background:rgba(239,83,80,0.08);border:1px solid rgba(239,83,80,0.2);
-                    border-radius:10px;padding:0.7rem 0.8rem;">
-                  <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                      letter-spacing:0.5px;margin-bottom:0.3rem;">Stop Loss</div>
-                  <div style="color:#ef5350;font-size:0.9rem;font-weight:800;">{fp(ts['stop_loss'])}</div>
-                  <div style="color:#484f58;font-size:0.68rem;margin-top:0.2rem;">Exit immediately if price breaks below this</div>
-                </div>
-                <div style="background:rgba(38,166,154,0.07);border:1px solid rgba(38,166,154,0.2);
-                    border-radius:10px;padding:0.7rem 0.8rem;">
-                  <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                      letter-spacing:0.5px;margin-bottom:0.3rem;">Target 1</div>
-                  <div style="color:#26a69a;font-size:0.9rem;font-weight:800;">{fp(ts['t1'])}</div>
-                  <div style="color:#484f58;font-size:0.68rem;margin-top:0.2rem;">Book 30-40% here</div>
-                </div>
-                <div style="background:rgba(63,185,80,0.07);border:1px solid rgba(63,185,80,0.2);
-                    border-radius:10px;padding:0.7rem 0.8rem;">
-                  <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                      letter-spacing:0.5px;margin-bottom:0.3rem;">Target 2</div>
-                  <div style="color:#3fb950;font-size:0.9rem;font-weight:800;">{fp(ts['t2'])}</div>
-                  <div style="color:#484f58;font-size:0.68rem;margin-top:0.2rem;">Book another 30% here</div>
-                </div>
-                <div style="background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);
-                    border-radius:10px;padding:0.7rem 0.8rem;">
-                  <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                      letter-spacing:0.5px;margin-bottom:0.3rem;">Target 3 (Full)</div>
-                  <div style="color:#3fb950;font-size:1rem;font-weight:900;">{fp(ts['t3'])}</div>
-                  <div style="color:#484f58;font-size:0.68rem;margin-top:0.2rem;">Exit remaining position</div>
-                </div>
-                <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.2);
-                    border-radius:10px;padding:0.7rem 0.8rem;">
-                  <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                      letter-spacing:0.5px;margin-bottom:0.3rem;">Risk / Reward</div>
-                  <div style="color:{rr_color};font-size:0.9rem;font-weight:800;">{ts['rr']}:1</div>
-                  <div style="color:#484f58;font-size:0.68rem;margin-top:0.2rem;">{ts['pos']}</div>
-                </div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+    # ── TRADE SETUP CARDS ─────────────────────────────────────────────────────
+    sl_pct   = sl_data["sl_pct"]
+    sl_price = sl_data["stop_loss"]
+    dyn_note = sl_data["note"]
+    is_dyn   = sl_data["is_dynamic"]
 
-    # ── KEY METRICS ROW ───────────────────────────────────────────────────────
+    if change > 3:    e_lo, e_hi, e_note = round(price*0.97,8), round(price*0.99,8), "Running up — wait for pullback before buying"
+    elif change < -3: e_lo, e_hi, e_note = round(price*1.00,8), round(price*1.02,8), "Dipped today — good zone if overall trend is up"
+    else:             e_lo, e_hi, e_note = round(price*0.99,8), round(price*1.01,8), "Stable price — enter in small parts, not all at once"
+
+    rr = round((tp_tiers[0]["price"]-price)/(price-sl_price),1) if (price > sl_price and tp_tiers) else 0
+
+    if   conf["score"] >= 70: action_k, ac = "BUY",         "#3fb950"
+    elif conf["score"] >= 55: action_k, ac = "CAUTIOUS BUY","#26a69a"
+    elif conf["score"] >= 40: action_k, ac = "HOLD",         "#d29922"
+    elif conf["score"] >= 25: action_k, ac = "WATCH",        "#58a6ff"
+    else:                     action_k, ac = "AVOID",        "#ef5350"
+
+    # Build TP cards HTML
+    tp_cards_html = ""
+    for t in tp_tiers:
+        tp_cards_html += (
+            f'<div style="background:rgba(38,166,154,0.06);border:1px solid rgba(38,166,154,0.2);'
+            f'border-radius:12px;padding:0.8rem;">'
+            f'<div style="color:#484f58;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.35rem;">{t["label"]}</div>'
+            f'<div style="color:{t["color"]};font-size:0.88rem;font-weight:800;">{_fp(t["price"],currency)}</div>'
+            f'<div style="color:#484f58;font-size:0.67rem;margin-top:0.25rem;">{t["note"]}</div></div>'
+        )
+
+    rr_color = "#3fb950" if rr >= 1.5 else "#f7c948"
+    st.markdown(
+        f'<div style="background:linear-gradient(145deg,rgba(18,24,32,0.98),rgba(10,14,20,0.99));'
+        f'border:1px solid rgba(88,166,255,0.12);border-radius:16px;padding:1.2rem 1.4rem;'
+        f'margin:0.8rem 0;box-shadow:0 4px 24px rgba(0,0,0,0.3);">'
+        f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">'
+        f'<span style="color:#e6edf3;font-weight:800;font-size:1rem;">🎯 Trade Setup</span>'
+        f'<div style="background:rgba(0,0,0,0.2);color:{ac};border:1px solid {ac}55;border-radius:20px;padding:0.22rem 1rem;font-size:0.82rem;font-weight:800;">{action_k}</div>'
+        f'</div>'
+        f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.6rem;">'
+        f'<div style="background:rgba(88,166,255,0.07);border:1px solid rgba(88,166,255,0.18);border-radius:12px;padding:0.8rem;">'
+        f'<div style="color:#484f58;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.35rem;">Entry Zone</div>'
+        f'<div style="color:#58a6ff;font-size:0.88rem;font-weight:800;">{_fp(e_lo,currency)} – {_fp(e_hi,currency)}</div>'
+        f'<div style="color:#484f58;font-size:0.67rem;margin-top:0.25rem;">{e_note}</div></div>'
+        f'<div style="background:rgba(239,83,80,0.07);border:1px solid rgba(239,83,80,0.18);border-radius:12px;padding:0.8rem;">'
+        f'<div style="color:#484f58;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.35rem;">Stop Loss {"⚡ Dynamic" if is_dyn else ""}</div>'
+        f'<div style="color:#ef5350;font-size:0.88rem;font-weight:800;">{_fp(sl_price,currency)} ({sl_pct:.0f}%)</div>'
+        f'<div style="color:#484f58;font-size:0.67rem;margin-top:0.25rem;">{dyn_note}</div></div>'
+        f'{tp_cards_html}'
+        f'<div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.18);border-radius:12px;padding:0.8rem;">'
+        f'<div style="color:#484f58;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.35rem;">Risk / Reward</div>'
+        f'<div style="color:{rr_color};font-size:0.88rem;font-weight:800;">{rr}:1</div>'
+        f'<div style="color:#484f58;font-size:0.67rem;margin-top:0.25rem;">{"Good setup — worth the risk" if rr >= 1.5 else "Below ideal — be cautious"}</div></div>'
+        f'</div></div>',
+        unsafe_allow_html=True
+    )
+
+    # ── AI CHAT BUBBLES ───────────────────────────────────────────────────────
+    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:0.9rem;">'
+        '<div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;'
+        'background:linear-gradient(135deg,#1a6bc7,#7c3aed);'
+        'display:flex;align-items:center;justify-content:center;font-size:1rem;'
+        'box-shadow:0 0 14px rgba(88,166,255,0.3);">🤖</div>'
+        '<div>'
+        '<div style="color:#e6edf3;font-size:0.9rem;font-weight:700;">FinSage AI Analysis</div>'
+        '<div style="color:#3fb950;font-size:0.68rem;font-weight:600;letter-spacing:0.3px;">● Groq LLaMA 3.3</div>'
+        '</div></div>',
+        unsafe_allow_html=True
+    )
+
+    raw_sections = _re.split(r'\n#{1,3} |\n---\n|\n\n', report)
+    for sec in raw_sections:
+        sec = sec.strip()
+        if not sec or sec == "---" or len(sec) < 15:
+            continue
+        sec = _re.sub(r'\*\*(.+?)\*\*', r'\1', sec)
+        sec = _re.sub(r'\*(.+?)\*',       r'\1', sec)
+        sec = _re.sub(r'^#{1,4}\s*',       '',    sec, flags=_re.MULTILINE)
+        sec = _re.sub(r'^\|.+\|',          '',    sec, flags=_re.MULTILINE)
+        sec = _re.sub(r'\|',               '',    sec)
+        sec = _re.sub(r'-{3,}',            '',    sec)
+        sec = sec.strip()
+        if len(sec) < 15:
+            continue
+        kw = sec.lower()
+        if any(x in kw for x in ["entry","buy","bullish","uptrend","oversold","bounce","accumulate"]):
+            border = "#26a69a"
+        elif any(x in kw for x in ["stop","loss","risk","bearish","sell","avoid","caution","crash","rug"]):
+            border = "#ef5350"
+        elif any(x in kw for x in ["target","profit","exit","moon","potential"]):
+            border = "#3fb950"
+        else:
+            border = "#58a6ff"
+        st.markdown(
+            f'<div style="background:rgba(16,21,28,0.85);border:1px solid rgba(48,54,61,0.4);'
+            f'border-left:2px solid {border};border-radius:0 12px 12px 12px;'
+            f'padding:0.85rem 1.05rem;margin-bottom:0.55rem;'
+            f'font-size:0.84rem;color:#c9d1d9;line-height:1.8;">{sec.replace(chr(10),"<br>")}</div>',
+            unsafe_allow_html=True
+        )
+
+    # Key metrics grid
     st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
     if data.get("asset_type") == "Stock":
         metrics = [
-            ("Sector",    data.get("sector","N/A")),
-            ("P/E Ratio", f"{data.get('pe_ratio'):.1f}x"                    if data.get("pe_ratio")      else "N/A"),
-            ("EPS",       f"{currency} {data.get('eps'):.2f}"                if data.get("eps")           else "N/A"),
-            ("Beta",      f"{data.get('beta'):.2f}"                          if data.get("beta")          else "N/A"),
-            ("52W High",  f"{currency} {data.get('week_52_high'):,.2f}"      if data.get("week_52_high")  else "N/A"),
-            ("52W Low",   f"{currency} {data.get('week_52_low'):,.2f}"       if data.get("week_52_low")   else "N/A"),
-            ("Analyst",   data.get("recommendation","N/A")),
-            ("Volume",    format_number(data.get("volume",0))),
+            ("Sector",   data.get("sector","N/A")),
+            ("P/E",      f"{data.get('pe_ratio'):.1f}x"                  if data.get("pe_ratio")     else "N/A"),
+            ("EPS",      f"{currency} {data.get('eps'):.2f}"              if data.get("eps")          else "N/A"),
+            ("Beta",     f"{data.get('beta'):.2f}"                        if data.get("beta")         else "N/A"),
+            ("52W High", f"{currency} {data.get('week_52_high'):,.2f}"    if data.get("week_52_high") else "N/A"),
+            ("52W Low",  f"{currency} {data.get('week_52_low'):,.2f}"     if data.get("week_52_low")  else "N/A"),
+            ("Analyst",  data.get("recommendation","N/A")),
+            ("Volume",   format_number(data.get("volume",0))),
         ]
     else:
         metrics = [
-            ("Rank",      f"#{data.get('market_cap_rank','N/A')}"),
-            ("7D Change", f"{data.get('change_7d',0):+.2f}%"),
-            ("30D Change",f"{data.get('change_30d',0):+.2f}%"),
-            ("ATH",       f"${data.get('ath'):,.4f}"                         if data.get("ath")           else "N/A"),
-            ("ATH Drop",  f"{data.get('ath_change_pct',0):+.1f}%"),
-            ("24H Volume",format_number(data.get("volume_24h",0))),
-            ("Supply",    f"{data.get('circulating_supply',0):,.0f}"         if data.get("circulating_supply") else "N/A"),
-            ("Prev Close",price_str),
+            ("Rank",     f"#{data.get('market_cap_rank','N/A')}"),
+            ("7D",       f"{data.get('change_7d',0):+.2f}%"),
+            ("30D",      f"{data.get('change_30d',0):+.2f}%"),
+            ("ATH",      f"${data.get('ath'):,.4f}"           if data.get("ath")                else "N/A"),
+            ("ATH Drop", f"{data.get('ath_change_pct',0):+.1f}%"),
+            ("24H Vol",  format_number(data.get("volume_24h",0))),
+            ("Supply",   f"{data.get('circulating_supply',0):,.0f}" if data.get("circulating_supply") else "N/A"),
+            ("High 24H", f"${data.get('high_24h',0):,.4f}"   if data.get("high_24h")           else "N/A"),
         ]
-    cols = st.columns(4)
+    cols4 = st.columns(4)
     for idx_m,(label,val) in enumerate(metrics):
-        with cols[idx_m % 4]:
-            st.markdown(f"""<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(48,54,61,0.5);
-                border-radius:10px;padding:0.6rem 0.8rem;margin-bottom:0.5rem;">
-                <div style="color:#484f58;font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                    letter-spacing:0.5px;">{label}</div>
-                <div style="color:#e6edf3;font-size:0.88rem;font-weight:700;margin-top:0.15rem;">{val}</div>
-            </div>""", unsafe_allow_html=True)
+        with cols4[idx_m%4]:
+            st.markdown(
+                f'<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(48,54,61,0.4);'
+                f'border-radius:10px;padding:0.55rem 0.75rem;margin-bottom:0.45rem;">'
+                f'<div style="color:#484f58;font-size:0.63rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">{label}</div>'
+                f'<div style="color:#e6edf3;font-size:0.86rem;font-weight:700;margin-top:0.12rem;">{val}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
-    # ── AI ANALYSIS CHAT ──────────────────────────────────────────────────────
-    st.markdown("<div style='height:0.8rem'></div>", unsafe_allow_html=True)
-    st.markdown("""
-    <div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:1rem;">
-      <div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;
-          background:linear-gradient(135deg,#1a6bc7,#7c3aed);
-          display:flex;align-items:center;justify-content:center;font-size:1rem;
-          box-shadow:0 0 16px rgba(88,166,255,0.3);">🤖</div>
-      <div>
-        <div style="color:#e6edf3;font-size:0.9rem;font-weight:700;">FinSage AI Analysis</div>
-        <div style="color:#3fb950;font-size:0.68rem;font-weight:600;letter-spacing:0.3px;">
-          ● Powered by Groq LLaMA 3.3</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Clean report — remove markdown symbols, render as plain bubbles
-    import re as re_mod
-    # Split into paragraphs / sections
-    raw_sections = re_mod.split(r'\n#{1,3} |\n---\n|\n\n', report)
-    for sec in raw_sections:
-        sec = sec.strip()
-        if not sec or sec == "---":
-            continue
-        # Remove markdown bold/italic/headers
-        sec_clean = re_mod.sub(r'\*\*(.+?)\*\*', r'\1', sec)
-        sec_clean = re_mod.sub(r'\*(.+?)\*',     r'\1', sec_clean)
-        sec_clean = re_mod.sub(r'^#{1,4}\s*',    '',    sec_clean, flags=re_mod.MULTILINE)
-        sec_clean = re_mod.sub(r'^\|\s*.+\s*\|.+', '', sec_clean, flags=re_mod.MULTILINE)  # remove tables
-        sec_clean = sec_clean.replace("|", "").strip()
-        if len(sec_clean) < 10:
-            continue
-        # Color bubble based on keywords
-        kw = sec_clean.lower()
-        if any(x in kw for x in ["entry","buy","accumulate","bullish","strong"]):
-            border = "#26a69a"; dot_color = "#26a69a"
-        elif any(x in kw for x in ["stop","risk","bearish","caution","avoid","sell"]):
-            border = "#ef5350"; dot_color = "#ef5350"
-        elif any(x in kw for x in ["target","profit","exit","t1","t2"]):
-            border = "#3fb950"; dot_color = "#3fb950"
-        else:
-            border = "#58a6ff"; dot_color = "#58a6ff"
-
-        lines_clean = sec_clean.replace("\n", "<br>")
-        st.markdown(f"""
-        <div style="display:flex;gap:0.6rem;margin-bottom:0.65rem;align-items:flex-start;">
-          <div style="width:8px;height:8px;border-radius:50%;background:{dot_color};
-              margin-top:0.5rem;flex-shrink:0;box-shadow:0 0 6px {dot_color}88;"></div>
-          <div style="background:rgba(16,21,28,0.9);border:1px solid rgba(48,54,61,0.5);
-              border-left:2px solid {border};border-radius:0 12px 12px 12px;
-              padding:0.8rem 1rem;font-size:0.84rem;color:#c9d1d9;line-height:1.75;flex:1;">
-            {lines_clean}
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Download
-    st.download_button(
-        label="Download Full Report",
+    st.download_button("📥 Download Report",
         data=report,
         file_name=f"FinSage_{ticker_sym}_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
-        mime="text/markdown",
-        use_container_width=True,
-    )
+        mime="text/markdown", use_container_width=True)
 
 
 
