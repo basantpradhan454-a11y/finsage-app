@@ -405,6 +405,289 @@ def format_number(n) -> str:
     else: return f"${n:.2f}"
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIDENCE SCORE + DYNAMIC SIGNALS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def compute_confidence_score(data: dict, inds: dict = None) -> dict:
+    """
+    0-100 Confidence Score based on:
+      Technical (40pts) + Momentum (25pts) + Volume (20pts) + Risk Penalty (15pts)
+    Returns dict with score, label, color, breakdown.
+    """
+    score = 0
+    breakdown = []
+
+    price     = float(data.get("current_price") or 0)
+    change_24h= float(data.get("change_pct") or 0)
+    change_7d = float(data.get("change_7d") or 0)
+    change_30d= float(data.get("change_30d") or 0)
+    vol_ann   = float(data.get("volatility_annualized") or 30)
+    risk      = int(data.get("risk_score") or 5)
+    mktcap    = float(data.get("market_cap") or 0)
+    vol_24h   = float(data.get("volume_24h") or data.get("volume") or 0)
+    rec       = str(data.get("recommendation") or "").upper()
+    asset     = data.get("asset_type", "")
+
+    # ── 1. Technical (40 pts) ─────────────────────────────────────────────────
+    tech = 0
+    if inds:
+        close = inds.get("close")
+        ma10  = inds.get("ma10")
+        ma20  = inds.get("ma20")
+        rsi   = inds.get("rsi")
+        macd  = inds.get("macd")
+        sig   = inds.get("signal")
+        bb_up = inds.get("bb_up")
+        bb_dn = inds.get("bb_dn")
+
+        def last(s):
+            try:
+                v = s.dropna()
+                return float(v.iloc[-1]) if len(v) else None
+            except: return None
+
+        rsi_v   = last(rsi)   or 50
+        macd_v  = last(macd)  or 0
+        sig_v   = last(sig)   or 0
+        ma10_v  = last(ma10)  or price
+        ma20_v  = last(ma20)  or price
+        bb_up_v = last(bb_up) or price
+        bb_dn_v = last(bb_dn) or price
+
+        # MA trend (10 pts)
+        if price > ma10_v > ma20_v:
+            tech += 10; breakdown.append(("MA Trend", "+10", "Price > MA10 > MA20 — strong uptrend"))
+        elif price > ma20_v:
+            tech += 6;  breakdown.append(("MA Trend", "+6",  "Price above MA20 — mild uptrend"))
+        elif price < ma20_v:
+            tech += 0;  breakdown.append(("MA Trend", "+0",  "Price below MA20 — downtrend"))
+
+        # RSI (10 pts)
+        if 40 <= rsi_v <= 60:
+            tech += 8; breakdown.append(("RSI", "+8", f"RSI {rsi_v:.0f} — healthy neutral zone"))
+        elif rsi_v < 30:
+            tech += 10; breakdown.append(("RSI", "+10", f"RSI {rsi_v:.0f} — oversold, bounce likely"))
+        elif rsi_v < 40:
+            tech += 6; breakdown.append(("RSI", "+6",  f"RSI {rsi_v:.0f} — slightly oversold"))
+        elif rsi_v > 80:
+            tech += 1; breakdown.append(("RSI", "+1",  f"RSI {rsi_v:.0f} — very overbought, caution"))
+        elif rsi_v > 70:
+            tech += 3; breakdown.append(("RSI", "+3",  f"RSI {rsi_v:.0f} — overbought, may correct"))
+
+        # MACD (10 pts)
+        if macd_v > sig_v and macd_v > 0:
+            tech += 10; breakdown.append(("MACD", "+10", "Bullish crossover above zero"))
+        elif macd_v > sig_v:
+            tech += 7;  breakdown.append(("MACD", "+7",  "Bullish crossover below zero"))
+        elif macd_v < sig_v:
+            tech += 2;  breakdown.append(("MACD", "+2",  "Bearish crossover — selling pressure"))
+
+        # Bollinger (10 pts)
+        bb_range = bb_up_v - bb_dn_v
+        bb_pos   = ((price - bb_dn_v) / bb_range * 100) if bb_range > 0 else 50
+        if bb_pos < 20:
+            tech += 10; breakdown.append(("Bollinger", "+10", "Near lower band — oversold zone"))
+        elif bb_pos < 40:
+            tech += 7;  breakdown.append(("Bollinger", "+7",  "Lower half of bands — buy zone"))
+        elif bb_pos < 70:
+            tech += 5;  breakdown.append(("Bollinger", "+5",  "Mid bands — neutral"))
+        else:
+            tech += 2;  breakdown.append(("Bollinger", "+2",  "Near upper band — overbought zone"))
+    else:
+        # No indicators — use price change as proxy
+        if change_24h > 2:   tech += 25
+        elif change_24h > 0: tech += 18
+        else:                tech += 8
+
+    score += tech
+
+    # ── 2. Momentum (25 pts) ──────────────────────────────────────────────────
+    mom = 0
+    if change_24h > 5:    mom += 10; breakdown.append(("24H Move", "+10", f"+{change_24h:.1f}% strong momentum"))
+    elif change_24h > 2:  mom += 7;  breakdown.append(("24H Move", "+7",  f"+{change_24h:.1f}% positive"))
+    elif change_24h > 0:  mom += 4;  breakdown.append(("24H Move", "+4",  f"+{change_24h:.1f}% slightly up"))
+    elif change_24h > -3: mom += 2;  breakdown.append(("24H Move", "+2",  f"{change_24h:.1f}% minor dip"))
+    else:                            breakdown.append(("24H Move", "+0",  f"{change_24h:.1f}% strong sell-off"))
+
+    if change_7d > 10:    mom += 8;  breakdown.append(("7D Trend", "+8",  f"+{change_7d:.1f}% weekly uptrend"))
+    elif change_7d > 0:   mom += 5;  breakdown.append(("7D Trend", "+5",  f"+{change_7d:.1f}% weekly positive"))
+    elif change_7d > -10: mom += 2;  breakdown.append(("7D Trend", "+2",  f"{change_7d:.1f}% mild weekly dip"))
+    else:                            breakdown.append(("7D Trend", "+0",  f"{change_7d:.1f}% weekly downtrend"))
+
+    if change_30d > 20:   mom += 7;  breakdown.append(("30D Trend", "+7", f"+{change_30d:.1f}% strong monthly"))
+    elif change_30d > 0:  mom += 4;  breakdown.append(("30D Trend", "+4", f"+{change_30d:.1f}% monthly positive"))
+    else:                            breakdown.append(("30D Trend", "+0",  f"{change_30d:.1f}% monthly decline"))
+
+    score += mom
+
+    # ── 3. Volume Health (20 pts) ─────────────────────────────────────────────
+    vol_pts = 0
+    if mktcap and vol_24h and mktcap > 0:
+        vr = vol_24h / mktcap
+        if vr > 0.3:    vol_pts = 20; breakdown.append(("Volume", "+20", f"Very high activity ({vr:.1%} of mktcap)"))
+        elif vr > 0.1:  vol_pts = 14; breakdown.append(("Volume", "+14", f"Strong activity ({vr:.1%} of mktcap)"))
+        elif vr > 0.03: vol_pts = 8;  breakdown.append(("Volume", "+8",  f"Normal volume ({vr:.1%} of mktcap)"))
+        else:           vol_pts = 3;  breakdown.append(("Volume", "+3",  f"Low volume ({vr:.1%}) — thin market"))
+    elif rec in ("STRONG_BUY","BUY"):
+        vol_pts = 12; breakdown.append(("Analyst", "+12", "Strong buy recommendation"))
+    score += vol_pts
+
+    # ── 4. Risk Penalty (up to -15) ───────────────────────────────────────────
+    penalty = 0
+    if risk >= 9:    penalty = 15; breakdown.append(("Risk", "-15", f"Extreme risk ({risk}/10)"))
+    elif risk >= 7:  penalty = 10; breakdown.append(("Risk", "-10", f"High risk ({risk}/10)"))
+    elif risk >= 5:  penalty = 5;  breakdown.append(("Risk", "-5",  f"Moderate risk ({risk}/10)"))
+    else:            breakdown.append(("Risk",  "+0", f"Low risk ({risk}/10) — no penalty"))
+    score -= penalty
+
+    score = max(0, min(100, score))
+
+    # Label + color
+    if score >= 80:   label, color, emoji = "Very High Confidence", "#3fb950", "🟢"
+    elif score >= 65: label, color, emoji = "High Confidence",      "#26a69a", "🟢"
+    elif score >= 50: label, color, emoji = "Moderate Confidence",  "#f7c948", "🟡"
+    elif score >= 35: label, color, emoji = "Low Confidence",       "#d29922", "🟠"
+    else:             label, color, emoji = "Avoid — High Risk",    "#ef5350", "🔴"
+
+    return dict(score=score, label=label, color=color, emoji=emoji, breakdown=breakdown)
+
+
+def dynamic_stop_loss(data: dict, inds: dict = None) -> dict:
+    """
+    Volatility-adjusted stop-loss.
+    If volatility is rising (last 7d std > 14d std), tighten the stop.
+    Returns: stop_loss, sl_pct, is_dynamic, note
+    """
+    price   = float(data.get("current_price") or 0)
+    vol_ann = float(data.get("volatility_annualized") or 30)
+    risk    = int(data.get("risk_score") or 5)
+    if not price: return dict(stop_loss=0, sl_pct=5, is_dynamic=False, note="")
+
+    # Base SL from volatility
+    if vol_ann > 120:   base_sl = 15.0
+    elif vol_ann > 80:  base_sl = 12.0
+    elif vol_ann > 50:  base_sl = 8.0
+    elif vol_ann > 30:  base_sl = 6.0
+    elif vol_ann > 15:  base_sl = 4.5
+    else:               base_sl = 3.0
+
+    # Tighten if volatility recently spiked (dynamic adjustment)
+    is_dynamic = False
+    note       = f"Based on {vol_ann:.0f}% annual volatility"
+    if inds is not None:
+        try:
+            close = inds["close"].dropna()
+            if len(close) >= 14:
+                vol_7d  = float(close.pct_change().dropna().tail(7).std()  * 100)
+                vol_14d = float(close.pct_change().dropna().tail(14).std() * 100)
+                if vol_7d > vol_14d * 1.3:
+                    # Volatility spiking — tighten by 20%
+                    base_sl = round(base_sl * 0.80, 1)
+                    is_dynamic = True
+                    note = f"Volatility spiking ({vol_7d:.1f}% > {vol_14d:.1f}%) — stop tightened automatically"
+                elif vol_7d < vol_14d * 0.7:
+                    # Volatility contracting — slightly wider
+                    base_sl = round(base_sl * 1.10, 1)
+                    note = f"Volatility contracting — slightly wider stop"
+        except: pass
+
+    sl_pct    = round(base_sl, 1)
+    stop_loss = round(price * (1 - sl_pct/100), 6)
+    return dict(stop_loss=stop_loss, sl_pct=sl_pct, is_dynamic=is_dynamic, note=note)
+
+
+def partial_take_profit(data: dict, sl_pct: float) -> list:
+    """
+    Returns tiered exit plan:
+    - For meme: 25%@2x, 50%@5x, 25%@moon
+    - For stocks/crypto: based on R:R multiples
+    """
+    price    = float(data.get("current_price") or 0)
+    is_meme  = data.get("asset_type") == "Meme Coin"
+    currency = data.get("currency","USD")
+    if not price: return []
+
+    def fp(v):
+        if v < 0.0001: return f"${v:.8f}"
+        if v < 0.01:   return f"${v:.6f}"
+        return f"{currency} {v:,.4f}"
+
+    if is_meme:
+        return [
+            dict(pct_sell=25, label="Sell 25%",  price=round(price*2,   8), note="2x — Get your investment back",    color="#f7c948"),
+            dict(pct_sell=50, label="Sell 50%",  price=round(price*5,   8), note="5x — Lock major profits",          color="#26a69a"),
+            dict(pct_sell=25, label="Hold 25%",  price=round(price*20,  8), note="Let it moon — only house money",   color="#3fb950"),
+        ]
+    else:
+        t1_pct = sl_pct * 1.5
+        t2_pct = sl_pct * 3.0
+        t3_pct = sl_pct * 5.0
+        return [
+            dict(pct_sell=35, label="Sell 35%",  price=round(price*(1+t1_pct/100),4), note=f"+{t1_pct:.0f}% — Conservative target",  color="#f7c948"),
+            dict(pct_sell=40, label="Sell 40%",  price=round(price*(1+t2_pct/100),4), note=f"+{t2_pct:.0f}% — Main target",           color="#26a69a"),
+            dict(pct_sell=25, label="Hold 25%",  price=round(price*(1+t3_pct/100),4), note=f"+{t3_pct:.0f}% — Full potential",        color="#3fb950"),
+        ]
+
+
+def rug_pull_flags(data: dict) -> list:
+    """
+    Heuristic rug pull / red flag detection for meme/micro-cap coins.
+    Returns list of flag dicts: {severity, label, detail}
+    """
+    flags = []
+    price      = float(data.get("current_price") or 0)
+    mktcap     = float(data.get("market_cap") or 0)
+    vol_24h    = float(data.get("volume_24h") or 0)
+    change_24h = float(data.get("change_pct") or 0)
+    change_7d  = float(data.get("change_7d") or 0)
+    rank       = data.get("market_cap_rank")
+    supply     = data.get("circulating_supply") or 0
+    is_meme    = data.get("asset_type") == "Meme Coin"
+
+    if not is_meme and mktcap > 1e9:
+        return []  # established coins — skip
+
+    # Low market cap = high manipulation risk
+    if mktcap < 1e6:
+        flags.append(dict(severity="high",   label="Micro Cap",        detail="Market cap under $1M — extremely easy to manipulate"))
+    elif mktcap < 10e6:
+        flags.append(dict(severity="medium", label="Very Small Cap",   detail=f"Market cap ${mktcap/1e6:.1f}M — pump/dump risk"))
+
+    # Extreme pump in 24h = possible rug setup
+    if change_24h > 100:
+        flags.append(dict(severity="high",   label="Pump Detected",    detail=f"+{change_24h:.0f}% in 24h — potential pump before dump"))
+    elif change_24h > 50:
+        flags.append(dict(severity="medium", label="Rapid Pump",       detail=f"+{change_24h:.0f}% today — enter with extreme caution"))
+
+    # Extreme crash = possible rug already happening
+    if change_24h < -50:
+        flags.append(dict(severity="high",   label="Possible Rug",     detail=f"{change_24h:.0f}% crash today — may already be rugging"))
+    elif change_7d < -70:
+        flags.append(dict(severity="high",   label="Severe Weekly Drop",detail=f"{change_7d:.0f}% in 7 days — collapsing"))
+
+    # Volume/Mcap suspiciously high (wash trading)
+    if mktcap and vol_24h and mktcap > 0:
+        vr = vol_24h / mktcap
+        if vr > 5:
+            flags.append(dict(severity="high",   label="Wash Trading Risk", detail=f"Volume is {vr:.0f}x market cap — abnormal, possible fake volume"))
+        elif vr > 2:
+            flags.append(dict(severity="medium", label="High Vol Ratio",    detail=f"Volume {vr:.1f}x market cap — monitor closely"))
+
+    # Very low volume = illiquid = hard to exit
+    if mktcap and vol_24h and mktcap > 0:
+        vr2 = vol_24h / mktcap
+        if vr2 < 0.005 and is_meme:
+            flags.append(dict(severity="high",   label="Illiquid Market",   detail="Very low 24h volume — hard to sell when needed"))
+
+    # No rank = not on major exchanges
+    if not rank and is_meme:
+        flags.append(dict(severity="medium", label="Unranked Coin",    detail="Not ranked on CoinGecko top list — very early/risky"))
+
+    return flags
+
+
 def analyze_stock(data: dict) -> str:
     name = data.get("name", data.get("ticker", "N/A"))
     ticker = data.get("ticker", "N/A")
