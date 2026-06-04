@@ -423,8 +423,10 @@ def render_results(data, report):
         f'<span style="color:#484f58;font-size:0.95rem;margin-left:0.4rem;">• {ticker_sym}</span>'
         f'<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.25rem;">'
         f'<div style="color:#6e7681;font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;">{asset_t}</div>'
-        + (lambda tf,tm: f'<div style="background:rgba(88,166,255,0.1);color:#58a6ff;border:1px solid rgba(88,166,255,0.25);border-radius:6px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{tf}</div><div style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.2);border-radius:6px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{tm}</div>' if tf else ''
-        )(data.get("timeframe",""), data.get("trading_mode",""))
+        + (f'<div style="display:inline-flex;gap:0.4rem;margin-left:0.5rem;">'
+            + (f'<span style="background:rgba(88,166,255,0.12);color:#58a6ff;border:1px solid rgba(88,166,255,0.25);border-radius:5px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{data.get("timeframe","")}</span>' if data.get("timeframe") else '')
+            + (f'<span style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.2);border-radius:5px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{data.get("trading_mode","")}</span>' if data.get("trading_mode") else '')
+            + '</div>')
         + f'</div>'
         f'</div>'
         f'<div style="text-align:right;">'
@@ -885,10 +887,40 @@ with tab2:
                 st.rerun()
 
     csym = (st.session_state.crypto_selected or crypto_ticker).strip().upper()
+
+    ctf_c1, ctf_c2 = st.columns([3, 1])
+    with ctf_c1:
+        tf_opts_c = ["1m","5m","15m","30m","1h","4h","1D","1W","1M"]
+        tf_lbls_c = ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","Daily","Weekly","Monthly"]
+        crypto_tf = st.select_slider("Chart Timeframe",
+                      options=tf_opts_c,
+                      format_func=lambda x: tf_lbls_c[tf_opts_c.index(x)],
+                      value=st.session_state.get("crypto_tf", "1D"),
+                      key="crypto_tf_slider")
+        st.session_state["crypto_tf"] = crypto_tf
+    with ctf_c2:
+        _cmode = {"1m":"Intraday","5m":"Intraday","15m":"Intraday","30m":"Intraday",
+                  "1h":"Swing","4h":"Swing","1D":"Swing","1W":"Position","1M":"Position"}.get(crypto_tf,"Swing")
+        _ccolor = {"Intraday":"#58a6ff","Swing":"#3fb950","Position":"#a78bfa"}[_cmode]
+        st.markdown(f'''<div style="background:rgba(0,0,0,0.2);border:1px solid {_ccolor}44;
+            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
+            <div style="color:{_ccolor};font-size:0.7rem;font-weight:700;text-transform:uppercase;
+                letter-spacing:1px;">Mode</div>
+            <div style="color:{_ccolor};font-size:0.88rem;font-weight:800;">{_cmode}</div>
+        </div>''', unsafe_allow_html=True)
+
     if st.button("🔍 Analyze Crypto", key="btn_crypto", type="primary", use_container_width=True):
         if csym:
             with st.spinner(f"Fetching data for **{csym}**..."):
                 d = fetch_crypto_data(csym)
+                if "error" not in d:
+                    coin_id_c = d.get("coin_id", "")
+                    if coin_id_c:
+                        tf_res_c = fetch_crypto_history_by_timeframe(coin_id_c, st.session_state.get("crypto_tf","1D"))
+                        if "history" in tf_res_c:
+                            d["history"]      = tf_res_c["history"]
+                            d["timeframe"]    = tf_res_c["timeframe"]
+                            d["trading_mode"] = tf_res_c["trading_mode"]
                 if "error" not in d:
                     st.session_state.crypto_data   = d
                     st.session_state.crypto_report = analyze_crypto(d)
