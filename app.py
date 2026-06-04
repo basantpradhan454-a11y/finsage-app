@@ -11,7 +11,9 @@ import pandas as pd
 import time
 from datetime import datetime
 
-from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data
+from data_fetcher import (fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_data,
+                          fetch_history_by_timeframe, fetch_crypto_history_by_timeframe,
+                          TIMEFRAME_CONFIG)
 from analyzer import (analyze_stock, analyze_crypto, format_number,
                        compute_confidence_score, dynamic_stop_loss,
                        partial_take_profit, rug_pull_flags)
@@ -419,7 +421,11 @@ def render_results(data, report):
         f'<div>'
         f'<span style="font-size:1.4rem;font-weight:900;color:#e6edf3;">{name}</span>'
         f'<span style="color:#484f58;font-size:0.95rem;margin-left:0.4rem;">• {ticker_sym}</span>'
-        f'<div style="color:#6e7681;font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:0.2rem;">{asset_t}</div>'
+        f'<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.25rem;">'
+        f'<div style="color:#6e7681;font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;">{asset_t}</div>'
+        + (lambda tf,tm: f'<div style="background:rgba(88,166,255,0.1);color:#58a6ff;border:1px solid rgba(88,166,255,0.25);border-radius:6px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{tf}</div><div style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.2);border-radius:6px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{tm}</div>' if tf else ''
+        )(data.get("timeframe",""), data.get("trading_mode",""))
+        + f'</div>'
         f'</div>'
         f'<div style="text-align:right;">'
         f'<div style="font-size:1.9rem;font-weight:900;color:#e6edf3;letter-spacing:-1px;">{price_str}</div>'
@@ -708,7 +714,7 @@ def render_results(data, report):
             border = "#26a69a"
         elif any(x in kw for x in ["stop","loss","risk","bearish","sell","avoid","caution","crash","rug"]):
             border = "#ef5350"
-        elif any(x in kw for x in ["target","profit","exit","moon","potential"]):
+        elif any(x in kw for x in ["target","profit","exit","moon","potential","rocket"]):
             border = "#3fb950"
         else:
             border = "#58a6ff"
@@ -792,10 +798,46 @@ with tab1:
                 st.rerun()
 
     sym = (st.session_state.stock_selected or stock_ticker).strip().upper()
+
+    # Timeframe + Trading Mode
+    tf_col1, tf_col2, tf_col3 = st.columns([2, 1, 1])
+    with tf_col1:
+        tf_options = ["1m","5m","15m","30m","1h","4h","1D","1W","1M"]
+        tf_labels  = ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","Daily","Weekly","Monthly"]
+        stock_tf   = st.select_slider("Timeframe", options=tf_options,
+                        format_func=lambda x: tf_labels[tf_options.index(x)],
+                        value=st.session_state.get("stock_tf","1D"), key="stock_tf_slider")
+        st.session_state["stock_tf"] = stock_tf
+    with tf_col2:
+        trading_mode_map = {"1m":"Intraday","5m":"Intraday","15m":"Intraday","30m":"Intraday",
+                            "1h":"Swing","4h":"Swing","1D":"Swing","1W":"Position","1M":"Position"}
+        mode = trading_mode_map.get(stock_tf,"Swing")
+        mode_color = {"Intraday":"#58a6ff","Swing":"#3fb950","Position":"#a78bfa"}[mode]
+        st.markdown(f"""<div style="background:rgba(0,0,0,0.2);border:1px solid {mode_color}44;
+            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
+            <div style="color:{mode_color};font-size:0.7rem;font-weight:700;text-transform:uppercase;
+                letter-spacing:1px;">Trading Mode</div>
+            <div style="color:{mode_color};font-size:0.88rem;font-weight:800;">{mode}</div>
+        </div>""", unsafe_allow_html=True)
+    with tf_col3:
+        tf_cfg = TIMEFRAME_CONFIG.get(stock_tf,{})
+        st.markdown(f"""<div style="background:rgba(0,0,0,0.2);border:1px solid rgba(88,166,255,0.2);
+            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
+            <div style="color:#6e7681;font-size:0.7rem;font-weight:700;text-transform:uppercase;
+                letter-spacing:1px;">Period</div>
+            <div style="color:#e6edf3;font-size:0.88rem;font-weight:800;">{tf_cfg.get("period","6mo")}</div>
+        </div>""", unsafe_allow_html=True)
+
     if st.button("🔍 Analyze Stock", key="btn_stock", type="primary", use_container_width=True):
         if sym:
             with st.spinner(f"Fetching data for **{sym}**..."):
                 d = fetch_stock_data(sym)
+                # Fetch multi-timeframe history
+                tf_result = fetch_history_by_timeframe(sym, st.session_state.get("stock_tf","1D"))
+                if "history" in tf_result:
+                    d["history"]      = tf_result["history"]
+                    d["timeframe"]    = tf_result["timeframe"]
+                    d["trading_mode"] = tf_result["trading_mode"]
                 if "error" not in d:
                     st.session_state.stock_data   = d
                     st.session_state.stock_report = analyze_stock(d)
@@ -894,10 +936,37 @@ with tab3:
                 st.rerun()
 
     msym = (st.session_state.meme_selected or meme_ticker).strip().upper()
+
+    mtf_col1, mtf_col2 = st.columns([3,1])
+    with mtf_col1:
+        tf_opts_m  = ["1m","5m","15m","30m","1h","4h","1D","1W"]
+        tf_lbls_m  = ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","Daily","Weekly"]
+        meme_tf    = st.select_slider("Timeframe", options=tf_opts_m,
+                       format_func=lambda x: tf_lbls_m[tf_opts_m.index(x)],
+                       value=st.session_state.get("meme_tf","1D"), key="meme_tf_slider")
+        st.session_state["meme_tf"] = meme_tf
+    with mtf_col2:
+        mode_m  = {"1m":"Intraday","5m":"Intraday","15m":"Intraday","30m":"Intraday",
+                   "1h":"Swing","4h":"Swing","1D":"Swing","1W":"Position"}.get(meme_tf,"Swing")
+        mm_color = {"Intraday":"#58a6ff","Swing":"#3fb950","Position":"#a78bfa"}[mode_m]
+        st.markdown(f"""<div style="background:rgba(0,0,0,0.2);border:1px solid {mm_color}44;
+            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
+            <div style="color:{mm_color};font-size:0.7rem;font-weight:700;text-transform:uppercase;
+                letter-spacing:1px;">Mode</div>
+            <div style="color:{mm_color};font-size:0.88rem;font-weight:800;">{mode_m}</div>
+        </div>""", unsafe_allow_html=True)
+
     if st.button("🔍 Analyze Meme Coin", key="btn_meme", type="primary", use_container_width=True):
         if msym:
             with st.spinner(f"Fetching data for **{msym}**..."):
                 d = fetch_crypto_data(msym)
+                coin_id_m = d.get("coin_id","")
+                if coin_id_m and "error" not in d:
+                    tf_res_m = fetch_crypto_history_by_timeframe(coin_id_m, st.session_state.get("meme_tf","1D"))
+                    if "history" in tf_res_m:
+                        d["history"] = tf_res_m["history"]
+                        d["timeframe"] = tf_res_m["timeframe"]
+                        d["trading_mode"] = tf_res_m["trading_mode"]
                 if "error" not in d:
                     d["asset_type"] = "Meme Coin"
                     st.session_state.meme_data   = d
