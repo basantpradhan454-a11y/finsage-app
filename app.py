@@ -792,13 +792,41 @@ with tab1:
         st.caption("🇺🇸 US: AAPL · TSLA · NVDA · MSFT")
         st.caption("🌐 Others: .L (London) · .DE (Germany)")
 
-    st.markdown('<div class="quickpick-label">⚡ Quick Pick</div>', unsafe_allow_html=True)
-    sc = st.columns(8)
-    for i, s in enumerate(["AAPL","TSLA","NVDA","MSFT","GOOGL","RELIANCE.NS","TCS.NS","INFY.NS"]):
-        with sc[i]:
-            if st.button(s, key=f"sq_{s}"):
-                st.session_state.stock_selected = s
-                st.rerun()
+    # ── Index filter tabs ─────────────────────────────────────────────────────
+    st.markdown('<div class="quickpick-label">⚡ Quick Pick — Nifty 50 & Sensex</div>', unsafe_allow_html=True)
+
+    NIFTY50_LIST  = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 'INFOSYS.NS', 'SBIN.NS', 'LICI.NS', 'HINDUNILVR.NS', 'ITC.NS', 'BAJFINANCE.NS', 'KOTAKBANK.NS', 'LT.NS', 'HCLTECH.NS', 'MARUTI.NS', 'AXISBANK.NS', 'SUNPHARMA.NS', 'TITAN.NS', 'ASIANPAINT.NS', 'ULTRACEMCO.NS', 'NTPC.NS', 'POWERGRID.NS', 'WIPRO.NS', 'ADANIENT.NS', 'ADANIPORTS.NS', 'ONGC.NS', 'COALINDIA.NS', 'JSWSTEEL.NS', 'TATASTEEL.NS', 'TATACONSUM.NS', 'TATAMOTORS.NS', 'M&M.NS', 'BAJAJFINSV.NS', 'BAJAJ-AUTO.NS', 'HEROMOTOCO.NS', 'CIPLA.NS', 'DRREDDY.NS', 'DIVISLAB.NS', 'EICHERMOT.NS', 'GRASIM.NS', 'HINDALCO.NS', 'INDUSINDBK.NS', 'NESTLEIND.NS', 'SBILIFE.NS', 'HDFCLIFE.NS', 'APOLLOHOSP.NS', 'BPCL.NS', 'BRITANNIA.NS', 'TECHM.NS', 'SHRIRAMFIN.NS']
+    SENSEX30_LIST = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'INFOSYS.NS', 'BHARTIARTL.NS', 'SBIN.NS', 'BAJFINANCE.NS', 'HINDUNILVR.NS', 'KOTAKBANK.NS', 'LT.NS', 'ITC.NS', 'AXISBANK.NS', 'MARUTI.NS', 'TITAN.NS', 'HCLTECH.NS', 'SUNPHARMA.NS', 'ASIANPAINT.NS', 'ULTRACEMCO.NS', 'WIPRO.NS', 'NTPC.NS', 'POWERGRID.NS', 'JSWSTEEL.NS', 'TATAMOTORS.NS', 'TATASTEEL.NS', 'BAJAJ-AUTO.NS', 'M&M.NS', 'NESTLEIND.NS', 'ADANIENT.NS', 'INDUSINDBK.NS']
+    US_LIST       = ["AAPL","TSLA","NVDA","MSFT","GOOGL","AMZN","META","NFLX","BABA","UBER"]
+    TICKER_NAMES  = {'RELIANCE.NS': 'Reliance', 'TCS.NS': 'TCS', 'HDFCBANK.NS': 'HDFC Bank', 'BHARTIARTL.NS': 'Airtel', 'ICICIBANK.NS': 'ICICI Bank', 'INFOSYS.NS': 'Infosys', 'SBIN.NS': 'SBI', 'LICI.NS': 'LIC', 'HINDUNILVR.NS': 'HUL', 'ITC.NS': 'ITC', 'BAJFINANCE.NS': 'Bajaj Fin', 'KOTAKBANK.NS': 'Kotak', 'LT.NS': 'L&T', 'HCLTECH.NS': 'HCL Tech', 'MARUTI.NS': 'Maruti', 'AXISBANK.NS': 'Axis Bank', 'SUNPHARMA.NS': 'Sun Pharma', 'TITAN.NS': 'Titan', 'ASIANPAINT.NS': 'Asian Paint', 'ULTRACEMCO.NS': 'UltraCem', 'NTPC.NS': 'NTPC', 'POWERGRID.NS': 'PowerGrid', 'WIPRO.NS': 'Wipro', 'ADANIENT.NS': 'Adani Ent', 'ADANIPORTS.NS': 'Adani Ports', 'ONGC.NS': 'ONGC', 'COALINDIA.NS': 'Coal India', 'JSWSTEEL.NS': 'JSW Steel', 'TATASTEEL.NS': 'Tata Steel', 'TATACONSUM.NS': 'Tata Cons', 'TATAMOTORS.NS': 'Tata Motors', 'M&M.NS': 'M&M', 'BAJAJFINSV.NS': 'Bajaj FSv', 'BAJAJ-AUTO.NS': 'Bajaj Auto', 'HEROMOTOCO.NS': 'Hero Moto', 'CIPLA.NS': 'Cipla', 'DRREDDY.NS': 'Dr Reddy', 'DIVISLAB.NS': 'Divis Lab', 'EICHERMOT.NS': 'Eicher', 'GRASIM.NS': 'Grasim', 'HINDALCO.NS': 'Hindalco', 'INDUSINDBK.NS': 'IndusInd', 'NESTLEIND.NS': 'Nestle', 'SBILIFE.NS': 'SBI Life', 'HDFCLIFE.NS': 'HDFC Life', 'APOLLOHOSP.NS': 'Apollo Hosp', 'BPCL.NS': 'BPCL', 'BRITANNIA.NS': 'Britannia', 'TECHM.NS': 'Tech M', 'SHRIRAMFIN.NS': 'Shriram Fin', 'AAPL': 'Apple', 'TSLA': 'Tesla', 'NVDA': 'Nvidia', 'MSFT': 'Microsoft', 'GOOGL': 'Google', 'AMZN': 'Amazon', 'META': 'Meta', 'NFLX': 'Netflix'}
+
+    idx_tab = st.radio("Filter by Index", ["🇮🇳 Nifty 50", "📊 Sensex 30", "🇺🇸 US Stocks"],
+                        horizontal=True, key="stock_idx_filter", label_visibility="collapsed")
+
+    if idx_tab == "🇮🇳 Nifty 50":
+        pick_list = NIFTY50_LIST
+    elif idx_tab == "📊 Sensex 30":
+        pick_list = SENSEX30_LIST
+    else:
+        pick_list = US_LIST
+
+    # Search within list
+    search_q = st.text_input("🔍 Search within list", placeholder="Type company name or ticker...",
+                              key="stock_search_filter", label_visibility="collapsed")
+    if search_q:
+        sq = search_q.upper()
+        pick_list = [s for s in pick_list if sq in s.upper() or sq in TICKER_NAMES.get(s,"").upper()]
+
+    # Render as scrollable button grid — 8 per row
+    for row_start in range(0, len(pick_list), 8):
+        row_tickers = pick_list[row_start:row_start+8]
+        cols = st.columns(len(row_tickers))
+        for ci, s in enumerate(row_tickers):
+            label = TICKER_NAMES.get(s, s.replace(".NS",""))
+            with cols[ci]:
+                if st.button(label, key=f"sq_{s}", use_container_width=True, help=s):
+                    st.session_state.stock_selected = s
+                    st.rerun()
 
     sym = (st.session_state.stock_selected or stock_ticker).strip().upper()
 
