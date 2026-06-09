@@ -106,7 +106,7 @@ def _render_trade_setup_card(trade: dict):
     bias     = trade.get("bias", "BUY")
     bias_color = "#10b981" if bias == "BUY" else "#ef4444"
     conf     = trade.get("confidence", 70)
-    conf_color = "#10b981" if conf >= 70 else "#f59e0b" if conf >= 50 else "#ef4444"
+    conf_color = "#10b981" if conf >= 70 else "#F59E0B" if conf >= 50 else "#ef4444"
     ticker   = trade.get("ticker", "")
     entry    = trade.get("entry", 0)
     sl       = trade.get("stop_loss", 0)
@@ -123,14 +123,14 @@ def _render_trade_setup_card(trade: dict):
     rr_ratio = round(reward / risk, 1) if risk > 0 else 0
 
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg,rgba(14,22,40,0.98),rgba(11,18,35,0.98));
-        border:1px solid rgba(59,130,246,0.3);border-radius:18px;padding:1.3rem;
+    <div style="background:linear-gradient(135deg,rgba(15,23,42,0.98),rgba(11,18,35,0.98));
+        border:1px solid rgba(0,242,254,0.3);border-radius:18px;padding:1.3rem;
         margin:0.8rem 0;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
 
         <!-- Header -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
             <div style="display:flex;align-items:center;gap:0.8rem;">
-                <div style="background:linear-gradient(135deg,#3b82f6,#06b6d4);
+                <div style="background:linear-gradient(135deg,#00F2FE,#00C6FF);
                     border-radius:10px;padding:0.5rem 0.8rem;
                     color:#fff;font-size:1rem;font-weight:900;">{ticker}</div>
                 <div style="background:rgba({('16,185,129' if bias=='BUY' else '239,68,68')},0.15);
@@ -148,10 +148,10 @@ def _render_trade_setup_card(trade: dict):
 
         <!-- Price levels grid -->
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.5rem;margin-bottom:1rem;">
-            <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);
+            <div style="background:rgba(0,242,254,0.08);border:1px solid rgba(0,242,254,0.25);
                 border-radius:10px;padding:0.6rem;text-align:center;">
                 <div style="color:#64748b;font-size:0.6rem;font-weight:700;text-transform:uppercase;">Entry</div>
-                <div style="color:#3b82f6;font-size:0.92rem;font-weight:800;">{entry:,}</div>
+                <div style="color:#00F2FE;font-size:0.92rem;font-weight:800;">{entry:,}</div>
             </div>
             <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);
                 border-radius:10px;padding:0.6rem;text-align:center;">
@@ -180,21 +180,21 @@ def _render_trade_setup_card(trade: dict):
             <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);
                 border-radius:8px;padding:0.4rem 0.8rem;font-size:0.78rem;">
                 <span style="color:#64748b;">Risk/Reward: </span>
-                <span style="color:#f59e0b;font-weight:700;">1:{rr_ratio}</span>
+                <span style="color:#F59E0B;font-weight:700;">1:{rr_ratio}</span>
             </div>
-            {''.join(f'<div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:0.4rem 0.8rem;font-size:0.78rem;color:#8b5cf6;font-weight:600;">{ind}</div>' for ind in indicators)}
+            {''.join(f'<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:0.4rem 0.8rem;font-size:0.78rem;color:#F59E0B;font-weight:600;">{ind}</div>' for ind in indicators)}
         </div>
 
         <!-- TradingView actions -->
-        <div style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);
+        <div style="background:rgba(0,242,254,0.05);border:1px solid rgba(0,242,254,0.15);
             border-radius:12px;padding:0.8rem;margin-bottom:0.8rem;">
-            <div style="color:#3b82f6;font-size:0.78rem;font-weight:700;margin-bottom:0.5rem;">
+            <div style="color:#00F2FE;font-size:0.78rem;font-weight:700;margin-bottom:0.5rem;">
                 📺 Auto-Setup on TradingView
             </div>
             <div style="color:#94a3b8;font-size:0.76rem;line-height:1.8;">
-                1️⃣ Click <b style="color:#06b6d4;">Open TradingView</b> → Chart opens with <b>{trade.get("tv_symbol","")}</b><br>
-                2️⃣ Add: <b style="color:#8b5cf6;">{" + ".join(indicators)}</b> indicators from top toolbar<br>
-                3️⃣ Set timeframe to <b style="color:#f59e0b;">{trade.get("timeframe","1D")}</b><br>
+                1️⃣ Click <b style="color:#00C6FF;">Open TradingView</b> → Chart opens with <b>{trade.get("tv_symbol","")}</b><br>
+                2️⃣ Add: <b style="color:#F59E0B;">{" + ".join(indicators)}</b> indicators from top toolbar<br>
+                3️⃣ Set timeframe to <b style="color:#F59E0B;">{trade.get("timeframe","1D")}</b><br>
                 4️⃣ Draw horizontal lines: 🔵 Entry <b>{entry}</b> · 🔴 SL <b>{sl}</b> · 🟢 T1 <b>{t1}</b> · T2 <b>{t2}</b> · T3 <b>{t3}</b><br>
                 5️⃣ Right-click → <b>"Add Alert"</b> at entry price <b>{entry}</b> to get notified<br>
                 {'6️⃣ Click <b style="color:#10b981;">Paper Trading</b> (top right) → Enter demo trade' if demo else ''}
@@ -204,9 +204,9 @@ def _render_trade_setup_card(trade: dict):
         <!-- Buttons -->
         <div style="display:flex;gap:0.7rem;flex-wrap:wrap;">
             <a href="{tv_url}" target="_blank" style="text-decoration:none;">
-                <div style="background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;
+                <div style="background:linear-gradient(135deg,#00F2FE,#00C6FF);color:#fff;
                     border-radius:10px;padding:0.5rem 1.1rem;font-size:0.82rem;font-weight:700;
-                    box-shadow:0 4px 15px rgba(59,130,246,0.3);display:inline-flex;
+                    box-shadow:0 4px 15px rgba(0,242,254,0.3);display:inline-flex;
                     align-items:center;gap:0.4rem;">
                     📺 Open TradingView
                 </div>
@@ -232,14 +232,14 @@ def render_ai_chat(analysis_context: dict = None):
 
     # ── Header ────────────────────────────────────────────────────────────────
     st.markdown("""
-    <div style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.1));
-        border:1px solid rgba(59,130,246,0.25);border-radius:18px;padding:1.2rem 1.5rem;
+    <div style="background:linear-gradient(135deg,rgba(0,242,254,0.1),rgba(245,158,11,0.1));
+        border:1px solid rgba(0,242,254,0.25);border-radius:18px;padding:1.2rem 1.5rem;
         margin-bottom:1rem;">
         <div style="display:flex;align-items:center;gap:1rem;">
             <div style="font-size:2rem;">🤖</div>
             <div style="flex:1;">
                 <div style="font-size:1.1rem;font-weight:800;
-                    background:linear-gradient(90deg,#3b82f6,#06b6d4,#8b5cf6);
+                    background:linear-gradient(90deg,#00F2FE,#00C6FF,#F59E0B);
                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
                     FinSage AI — Smart Trading Agent
                 </div>
@@ -294,13 +294,13 @@ def render_ai_chat(analysis_context: dict = None):
         if msg["role"] == "user":
             st.markdown(f"""
             <div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">
-                <div style="background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;
+                <div style="background:linear-gradient(135deg,#00F2FE,#00C6FF);color:#fff;
                     border-radius:16px 16px 4px 16px;padding:0.7rem 1rem;
                     max-width:72%;font-size:0.85rem;line-height:1.5;
-                    box-shadow:0 4px 15px rgba(59,130,246,0.2);">
+                    box-shadow:0 4px 15px rgba(0,242,254,0.2);">
                     {msg['content']}
                 </div>
-                <div style="width:30px;height:30px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+                <div style="width:30px;height:30px;background:linear-gradient(135deg,#00F2FE,#F59E0B);
                     border-radius:50%;display:flex;align-items:center;justify-content:center;
                     margin-left:0.5rem;flex-shrink:0;font-size:0.9rem;margin-top:2px;">👤</div>
             </div>
@@ -312,13 +312,13 @@ def render_ai_chat(analysis_context: dict = None):
 
             st.markdown(f"""
             <div style="display:flex;margin-bottom:0.6rem;align-items:flex-start;">
-                <div style="width:30px;height:30px;background:linear-gradient(135deg,#0e1628,#1e3a5f);
-                    border:2px solid rgba(59,130,246,0.4);border-radius:50%;
+                <div style="width:30px;height:30px;background:linear-gradient(135deg,#1E293B,#1e3a5f);
+                    border:2px solid rgba(0,242,254,0.4);border-radius:50%;
                     display:flex;align-items:center;justify-content:center;
                     margin-right:0.5rem;flex-shrink:0;font-size:0.9rem;">🤖</div>
-                <div style="background:rgba(14,22,40,0.9);border:1px solid rgba(30,58,95,0.6);
+                <div style="background:rgba(15,23,42,0.9);border:1px solid rgba(30,41,59,0.6);
                     border-radius:4px 16px 16px 16px;padding:0.8rem 1rem;
-                    max-width:80%;font-size:0.84rem;color:#c9d1d9;line-height:1.6;">
+                    max-width:80%;font-size:0.84rem;color:#CBD5E1;line-height:1.6;">
                     {display_html}
                 </div>
             </div>
