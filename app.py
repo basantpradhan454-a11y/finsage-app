@@ -32,167 +32,197 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Global CSS — Ocean Blue Theme ─────────────────────────────────────────────
+# ── Global CSS — Dark Charcoal × Neon Cyan Theme ─────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ── Root Variables ── */
+/* ════════════════════════════════════════════════════
+   ROOT PALETTE
+   Dominant  60%  #0F172A  Dark Charcoal / #0B0F19 Midnight Black
+   Secondary 30%  #1E293B  Muted Blue cards  /  #64748B Cool Gray text
+   Accent    10%  #00F2FE  Neon Cyan  /  #F59E0B  Bright Gold
+   ════════════════════════════════════════════════════ */
 :root {
-    --bg-primary:   #0a0f1e;
-    --bg-card:      #0e1628;
-    --bg-card2:     #111827;
-    --border:       rgba(30,58,95,0.7);
-    --accent1:      #3b82f6;
-    --accent2:      #06b6d4;
-    --accent3:      #8b5cf6;
-    --green:        #10b981;
-    --red:          #ef4444;
-    --gold:         #f59e0b;
-    --text-primary: #e2e8f0;
-    --text-muted:   #64748b;
-    --text-sub:     #94a3b8;
+    --bg-primary:    #0B0F19;
+    --bg-dominant:   #0F172A;
+    --bg-card:       #1E293B;
+    --bg-card-deep:  #162032;
+    --border:        rgba(30,41,59,0.85);
+    --border-glow:   rgba(0,242,254,0.2);
+    --cyan:          #00F2FE;
+    --cyan-dim:      rgba(0,242,254,0.12);
+    --cyan-glow:     rgba(0,242,254,0.25);
+    --gold:          #F59E0B;
+    --gold-dim:      rgba(245,158,11,0.12);
+    --gold-glow:     rgba(245,158,11,0.25);
+    --gray:          #64748B;
+    --gray-light:    #94A3B8;
+    --text-primary:  #E2E8F0;
+    --text-sub:      #CBD5E1;
+    --text-muted:    #64748B;
+    --green:         #22C55E;
+    --red:           #EF4444;
+    --green-dim:     rgba(34,197,94,0.12);
+    --red-dim:       rgba(239,68,68,0.12);
 }
 
-/* ── Base ── */
+/* ── Base & Background ── */
 html, body, [data-testid="stApp"] {
     background: var(--bg-primary) !important;
     color: var(--text-primary) !important;
     font-family: 'Inter', sans-serif !important;
 }
 [data-testid="stAppViewContainer"] {
-    background: linear-gradient(135deg, #0a0f1e 0%, #0d1424 50%, #0a1628 100%) !important;
+    background:
+        radial-gradient(ellipse 60% 40% at 10% 0%,  rgba(0,242,254,0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 90% 100%, rgba(245,158,11,0.04) 0%, transparent 70%),
+        linear-gradient(180deg, #0B0F19 0%, #0F172A 100%) !important;
 }
+[data-testid="stMain"] { background: transparent !important; }
 
 /* ── Hide Streamlit chrome ── */
 #MainMenu, footer, header, [data-testid="stToolbar"],
-[data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
-[data-testid="collapsedControl"] { display:none !important; }
-.stDeployButton { display:none !important; }
+[data-testid="stDecoration"], [data-testid="stStatusWidget"],
+[data-testid="collapsedControl"], .stDeployButton { display:none !important; }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:rgba(59,130,246,0.3); border-radius:4px; }
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg-dominant); }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--cyan), var(--gold));
+    border-radius: 4px;
+}
 
-/* ── Main content padding ── */
-.block-container { padding: 0.8rem 1.5rem 2rem !important; max-width:1280px !important; }
+/* ── Layout ── */
+.block-container {
+    padding: 0.7rem 1.4rem 2rem !important;
+    max-width: 1300px !important;
+}
 
-/* ── TABS ── */
+/* ══════════════════ TABS ══════════════════ */
 [data-testid="stTabs"] [role="tablist"] {
     background: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
     border-radius: 12px !important;
-    padding: 0.3rem !important;
-    gap: 0.2rem !important;
+    padding: 0.25rem !important;
+    gap: 0.15rem !important;
 }
 [data-testid="stTabs"] [role="tab"] {
     color: var(--text-muted) !important;
     font-weight: 600 !important;
     font-size: 0.82rem !important;
     border-radius: 8px !important;
-    padding: 0.45rem 1rem !important;
-    transition: all 0.2s !important;
+    padding: 0.42rem 1rem !important;
+    transition: all 0.2s ease !important;
     border: none !important;
+    background: transparent !important;
 }
 [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    background: linear-gradient(135deg, var(--accent1), var(--accent2)) !important;
-    color: #fff !important;
-    box-shadow: 0 4px 15px rgba(59,130,246,0.3) !important;
+    background: linear-gradient(135deg, #00C6FF, #00F2FE) !important;
+    color: #0B0F19 !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 16px rgba(0,242,254,0.35) !important;
 }
-[data-testid="stTabs"] [role="tabpanel"] {
-    padding-top: 1rem !important;
+[data-testid="stTabs"] [role="tab"]:hover:not([aria-selected="true"]) {
+    color: var(--cyan) !important;
+    background: var(--cyan-dim) !important;
 }
+[data-testid="stTabs"] [role="tabpanel"] { padding-top: 0.8rem !important; }
 
-/* ── Inputs ── */
+/* ══════════════════ INPUTS ══════════════════ */
 [data-testid="stTextInput"] input,
-[data-testid="stTextArea"] textarea {
-    background: var(--bg-card) !important;
-    border: 1px solid rgba(59,130,246,0.3) !important;
+[data-testid="stTextArea"] textarea,
+[data-testid="stSelectbox"] > div > div {
+    background: var(--bg-card-deep) !important;
+    border: 1px solid var(--border) !important;
     border-radius: 10px !important;
     color: var(--text-primary) !important;
     font-size: 0.88rem !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
 }
 [data-testid="stTextInput"] input:focus,
 [data-testid="stTextArea"] textarea:focus {
-    border-color: var(--accent1) !important;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
+    border-color: var(--cyan) !important;
+    box-shadow: 0 0 0 3px var(--cyan-glow) !important;
+    outline: none !important;
 }
 
-/* ── Buttons ── */
-[data-testid="baseButton-primary"] {
-    background: linear-gradient(135deg, var(--accent1), var(--accent2)) !important;
-    color: #fff !important;
+/* ══════════════════ BUTTONS ══════════════════ */
+[data-testid="baseButton-primary"],
+[data-testid="stButton"] > button[kind="primary"] {
+    background: linear-gradient(135deg, #00C6FF, #00F2FE) !important;
+    color: #0B0F19 !important;
     border: none !important;
     border-radius: 10px !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     font-size: 0.85rem !important;
-    box-shadow: 0 4px 15px rgba(59,130,246,0.3) !important;
+    letter-spacing: 0.2px !important;
+    box-shadow: 0 4px 20px rgba(0,242,254,0.3) !important;
     transition: all 0.2s !important;
 }
 [data-testid="baseButton-primary"]:hover {
     transform: translateY(-1px) !important;
-    box-shadow: 0 6px 20px rgba(59,130,246,0.4) !important;
+    box-shadow: 0 6px 28px rgba(0,242,254,0.45) !important;
 }
-[data-testid="baseButton-secondary"],
-[data-testid="stButton"] > button {
+[data-testid="stButton"] > button:not([kind="primary"]) {
     background: var(--bg-card) !important;
-    border: 1px solid rgba(59,130,246,0.25) !important;
+    border: 1px solid var(--border) !important;
     border-radius: 8px !important;
-    color: var(--text-sub) !important;
+    color: var(--gray-light) !important;
     font-size: 0.8rem !important;
     font-weight: 600 !important;
     transition: all 0.18s !important;
 }
-[data-testid="stButton"] > button:hover {
-    border-color: var(--accent1) !important;
-    color: var(--accent1) !important;
-    background: rgba(59,130,246,0.06) !important;
+[data-testid="stButton"] > button:not([kind="primary"]):hover {
+    border-color: var(--cyan) !important;
+    color: var(--cyan) !important;
+    background: var(--cyan-dim) !important;
+    box-shadow: 0 0 10px var(--cyan-glow) !important;
 }
 
-/* ── Select / Radio ── */
-[data-testid="stSelectbox"] > div,
-[data-testid="stRadio"] label {
+/* ══════════════════ RADIO ══════════════════ */
+[data-testid="stRadio"] > div {
     background: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
-    color: var(--text-sub) !important;
+    border-radius: 10px !important;
+    padding: 0.3rem !important;
+    gap: 0.3rem !important;
+    display: flex !important;
+}
+[data-testid="stRadio"] label {
+    border-radius: 7px !important;
+    padding: 0.3rem 0.8rem !important;
+    color: var(--text-muted) !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    transition: all 0.18s !important;
+    cursor: pointer !important;
+    background: transparent !important;
+    border: none !important;
+}
+[data-testid="stRadio"] label:has(input:checked) {
+    background: var(--cyan-dim) !important;
+    color: var(--cyan) !important;
+    border: 1px solid var(--cyan) !important;
+    box-shadow: 0 0 8px var(--cyan-glow) !important;
 }
 
-/* ── Metrics ── */
+/* ══════════════════ METRICS ══════════════════ */
 [data-testid="stMetric"] {
     background: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
     border-radius: 12px !important;
     padding: 0.8rem !important;
+    transition: border-color 0.2s !important;
 }
+[data-testid="stMetric"]:hover { border-color: rgba(0,242,254,0.25) !important; }
 [data-testid="stMetric"] label { color: var(--text-muted) !important; font-size:0.72rem !important; }
-[data-testid="stMetric"] [data-testid="stMetricValue"] { color: var(--text-primary) !important; font-weight:800 !important; }
-
-/* ── Spinner ── */
-[data-testid="stSpinner"] { color: var(--accent1) !important; }
-
-/* ── Divider ── */
-hr { border-color: rgba(30,58,95,0.5) !important; }
-
-/* ── Section headings ── */
-.section-heading {
-    font-size: 1.2rem; font-weight: 800; margin-bottom: 0.2rem;
-    background: linear-gradient(90deg, var(--accent1), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-}
-.section-sub { color: var(--text-muted); font-size:0.82rem; margin-bottom:1rem; }
-.quickpick-label {
-    color: var(--text-muted); font-size:0.72rem; font-weight:700;
-    text-transform:uppercase; letter-spacing:1px; margin-bottom:0.4rem; margin-top:0.8rem;
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: var(--text-primary) !important; font-weight: 800 !important;
 }
 
-/* ── Animations ── */
-@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
-@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-.stMarkdown { animation: fadeIn 0.3s ease; }
-
-/* ── Form ── */
+/* ══════════════════ FORM ══════════════════ */
 [data-testid="stForm"] {
     background: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
@@ -200,34 +230,64 @@ hr { border-color: rgba(30,58,95,0.5) !important; }
     padding: 1rem !important;
 }
 
-/* ── 3-dots menu button ── */
-button[data-testid="baseButton-secondary"][kind="secondary"]:has(div:contains("⋮")),
-button[key="open_dots_menu"] {
-    background: rgba(59,130,246,0.08) !important;
-    border: 1px solid rgba(59,130,246,0.3) !important;
-    color: #3b82f6 !important;
-    font-size: 1.4rem !important;
+/* ══════════════════ MISC ══════════════════ */
+hr { border-color: rgba(30,41,59,0.6) !important; margin: 0.6rem 0 !important; }
+[data-testid="stSpinner"] > div { border-top-color: var(--cyan) !important; }
+.stMarkdown { animation: fadeIn 0.3s ease; }
+
+/* ══════════════════ UTILITY CLASSES ══════════════════ */
+.quickpick-label {
+    color: var(--text-muted);
+    font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 0.4rem;
+}
+.section-heading {
+    font-size: 1.15rem; font-weight: 800;
+    background: linear-gradient(90deg, var(--cyan), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 0.15rem;
+}
+.section-sub { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.8rem; }
+
+/* ══════════════════ ANIMATIONS ══════════════════ */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 6px var(--cyan); }
+    50%       { box-shadow: 0 0 16px var(--cyan), 0 0 32px var(--cyan-glow); }
+}
+@keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+}
+
+/* ══════════════════ 3-DOTS MENU BUTTON ══════════════════ */
+button[key="open_dots_menu"],
+[data-testid="stButton"] > button[key="open_dots_menu"] {
+    background: var(--cyan-dim) !important;
+    border: 1px solid var(--border-glow) !important;
+    color: var(--cyan) !important;
+    font-size: 1.3rem !important;
     font-weight: 900 !important;
     border-radius: 10px !important;
-    width: 44px !important;
-    height: 44px !important;
-    padding: 0 !important;
 }
 button[key="open_dots_menu"]:hover {
-    background: rgba(59,130,246,0.15) !important;
-    transform: none !important;
+    background: rgba(0,242,254,0.2) !important;
+    box-shadow: 0 0 14px var(--cyan-glow) !important;
 }
-/* Menu panel close button */
 button[key="close_dots_menu"] {
     background: rgba(239,68,68,0.08) !important;
-    border: 1px solid rgba(239,68,68,0.2) !important;
-    color: #ef4444 !important;
+    border: 1px solid rgba(239,68,68,0.25) !important;
+    color: #EF4444 !important;
     border-radius: 8px !important;
-    font-size: 0.82rem !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ── Session State ──────────────────────────────────────────────────────────────
@@ -353,7 +413,7 @@ def render_results(data, report):
     asset_t    = data.get("asset_type","Asset")
     is_meme    = asset_t == "Meme Coin"
 
-    chg_color = "#3fb950" if change >= 0 else "#ef5350"
+    chg_color = "#22C55E" if change >= 0 else "#ef5350"
     chg_bg    = "rgba(63,185,80,0.12)" if change >= 0 else "rgba(239,83,80,0.12)"
     chg_arrow = "▲" if change >= 0 else "▼"
     price_str = _fp(price, currency)
@@ -375,21 +435,21 @@ def render_results(data, report):
         f'border:1px solid rgba(88,166,255,0.18);border-radius:18px;padding:1.2rem 1.6rem;'
         f'margin-bottom:1rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);position:relative;overflow:hidden;">'
         f'<div style="position:absolute;top:0;left:0;right:0;height:2px;'
-        f'background:linear-gradient(90deg,#58a6ff,#a78bfa,#3fb950);"></div>'
+        f'background:linear-gradient(90deg,#00F2FE,#F59E0B,#22C55E);"></div>'
         f'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">'
         f'<div>'
-        f'<span style="font-size:1.4rem;font-weight:900;color:#e6edf3;">{name}</span>'
+        f'<span style="font-size:1.4rem;font-weight:900;color:#E2E8F0;">{name}</span>'
         f'<span style="color:#484f58;font-size:0.95rem;margin-left:0.4rem;">• {ticker_sym}</span>'
         f'<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.25rem;">'
-        f'<div style="color:#6e7681;font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;">{asset_t}</div>'
+        f'<div style="color:#64748B;font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;">{asset_t}</div>'
         + (f'<div style="display:inline-flex;gap:0.4rem;margin-left:0.5rem;">'
-            + (f'<span style="background:rgba(88,166,255,0.12);color:#58a6ff;border:1px solid rgba(88,166,255,0.25);border-radius:5px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{data.get("timeframe","")}</span>' if data.get("timeframe") else '')
-            + (f'<span style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.2);border-radius:5px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{data.get("trading_mode","")}</span>' if data.get("trading_mode") else '')
+            + (f'<span style="background:rgba(88,166,255,0.12);color:#00F2FE;border:1px solid rgba(88,166,255,0.25);border-radius:5px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{data.get("timeframe","")}</span>' if data.get("timeframe") else '')
+            + (f'<span style="background:rgba(63,185,80,0.1);color:#22C55E;border:1px solid rgba(63,185,80,0.2);border-radius:5px;padding:0.05rem 0.4rem;font-size:0.65rem;font-weight:700;">{data.get("trading_mode","")}</span>' if data.get("trading_mode") else '')
             + '</div>')
         + f'</div>'
         f'</div>'
         f'<div style="text-align:right;">'
-        f'<div style="font-size:1.9rem;font-weight:900;color:#e6edf3;letter-spacing:-1px;">{price_str}</div>'
+        f'<div style="font-size:1.9rem;font-weight:900;color:#E2E8F0;letter-spacing:-1px;">{price_str}</div>'
         f'<div style="background:{chg_bg};color:{chg_color};border-radius:20px;padding:0.18rem 0.7rem;font-size:0.82rem;font-weight:800;display:inline-block;">{chg_arrow} {abs(change):.2f}% today</div>'
         f'</div></div></div>',
         unsafe_allow_html=True
@@ -404,11 +464,11 @@ def render_results(data, report):
 
     bd_html = ""
     for lbl, pts, det in conf["breakdown"][:6]:
-        pc = "#3fb950" if (pts.startswith("+") and pts != "+0") else ("#ef5350" if pts.startswith("-") else "#484f58")
+        pc = "#22C55E" if (pts.startswith("+") and pts != "+0") else ("#ef5350" if pts.startswith("-") else "#484f58")
         bd_html += (
-            f'<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(48,54,61,0.6);'
+            f'<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(30,41,59,0.6);'
             f'border-radius:8px;padding:0.45rem 0.6rem;font-size:0.72rem;">'
-            f'<span style="color:#6e7681;">{lbl}</span>'
+            f'<span style="color:#64748B;">{lbl}</span>'
             f'<span style="color:{pc};font-weight:800;margin-left:0.3rem;">{pts}</span>'
             f'<div style="color:#484f58;font-size:0.65rem;margin-top:0.1rem;">{det}</div></div>'
         )
@@ -420,19 +480,19 @@ def render_results(data, report):
         f'<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">'
         f'<div style="flex-shrink:0;text-align:center;">'
         f'<svg width="140" height="110" viewBox="0 0 140 110">'
-        f'<circle cx="{cx_g}" cy="{cy_g}" r="{r_g}" fill="none" stroke="rgba(48,54,61,0.6)" stroke-width="10"/>'
+        f'<circle cx="{cx_g}" cy="{cy_g}" r="{r_g}" fill="none" stroke="rgba(30,41,59,0.6)" stroke-width="10"/>'
         f'<circle cx="{cx_g}" cy="{cy_g}" r="{r_g}" fill="none" stroke="{ring_col}" stroke-width="10"'
         f' stroke-linecap="round" stroke-dasharray="{filled:.1f} {circ:.1f}"'
         f' transform="rotate(-90 {cx_g} {cy_g})"'
         f' style="filter:drop-shadow(0 0 6px {ring_col}88)"/>'
         f'<text x="{cx_g}" y="{cy_g+8}" text-anchor="middle" font-size="24" font-weight="900"'
         f' fill="{ring_col}" font-family="Inter">{score}</text>'
-        f'<text x="{cx_g}" y="{cy_g+22}" text-anchor="middle" font-size="9" fill="#6e7681" font-family="Inter">/ 100</text>'
+        f'<text x="{cx_g}" y="{cy_g+22}" text-anchor="middle" font-size="9" fill="#64748B" font-family="Inter">/ 100</text>'
         f'</svg>'
         f'<div style="color:{ring_col};font-size:0.78rem;font-weight:800;margin-top:-0.3rem;">{conf["emoji"]} {conf["label"]}</div>'
         f'</div>'
         f'<div style="flex:1;">'
-        f'<div style="color:#8b949e;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.6rem;">Confidence Score Breakdown</div>'
+        f'<div style="color:#64748B;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.6rem;">Confidence Score Breakdown</div>'
         f'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.4rem;">{bd_html}</div>'
         f'</div></div></div>',
         unsafe_allow_html=True
@@ -450,7 +510,7 @@ def render_results(data, report):
                 f'border-radius:10px;padding:0.55rem 0.8rem;display:flex;gap:0.5rem;align-items:flex-start;">'
                 f'<span>{icon}</span>'
                 f'<div><div style="color:{fc};font-size:0.78rem;font-weight:800;">{fl["label"]}</div>'
-                f'<div style="color:#6e7681;font-size:0.7rem;margin-top:0.1rem;">{fl["detail"]}</div></div></div>'
+                f'<div style="color:#64748B;font-size:0.7rem;margin-top:0.1rem;">{fl["detail"]}</div></div></div>'
             )
         st.markdown(
             f'<div style="background:rgba(239,83,80,0.05);border:1px solid rgba(239,83,80,0.2);'
@@ -502,7 +562,7 @@ def render_results(data, report):
         else:
             fig.add_trace(go.Scatter(
                 x=history.index, y=c_s, mode="lines",
-                line=dict(color="#58a6ff",width=2),
+                line=dict(color="#00F2FE",width=2),
                 fill="tozeroy", fillcolor="rgba(88,166,255,0.05)",
                 name="Price", showlegend=False,
             ), row=1, col=1)
@@ -510,7 +570,7 @@ def render_results(data, report):
         fig.add_trace(go.Scatter(x=history.index, y=inds["ma10"],
             line=dict(color="#f7c948",width=1.2,dash="dot"), name="MA10"), row=1,col=1)
         fig.add_trace(go.Scatter(x=history.index, y=inds["ma20"],
-            line=dict(color="#a78bfa",width=1.2,dash="dot"), name="MA20"), row=1,col=1)
+            line=dict(color="#F59E0B",width=1.2,dash="dot"), name="MA20"), row=1,col=1)
         fig.add_trace(go.Scatter(
             x=list(history.index)+list(history.index[::-1]),
             y=list(inds["bb_up"])+list(inds["bb_dn"][::-1]),
@@ -525,7 +585,7 @@ def render_results(data, report):
         t_labels = [t["label"].replace("Sell ","").replace("Hold ","") for t in tp_tiers]
         t_colors = [t["color"] for t in tp_tiers]
         levels = [
-            ("ENTRY", entry_price, "#58a6ff", "dash"),
+            ("ENTRY", entry_price, "#00F2FE", "dash"),
             ("SL",    sl_price,    "#ef5350", "dot"),
         ]
         for i, (tp, tlbl, tc) in enumerate(zip(t_prices, t_labels, t_colors)):
@@ -546,7 +606,7 @@ def render_results(data, report):
             marker_color=vcols, name="Volume", showlegend=False), row=2,col=1)
 
         fig.add_trace(go.Scatter(x=history.index, y=inds["rsi"],
-            line=dict(color="#58a6ff",width=1.5),
+            line=dict(color="#00F2FE",width=1.5),
             fill="tozeroy", fillcolor="rgba(88,166,255,0.04)",
             name="RSI", showlegend=False), row=3,col=1)
         fig.add_hline(y=70, line=dict(color="#ef5350",width=0.7,dash="dash"), row=3,col=1)
@@ -558,7 +618,7 @@ def render_results(data, report):
             font=dict(color="#5d6673",family="Inter",size=10),
             height=580, margin=dict(l=10,r=95,t=12,b=10),
             legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="left",x=0,
-                bgcolor="rgba(0,0,0,0)",font=dict(size=9,color="#8b949e")),
+                bgcolor="rgba(0,0,0,0)",font=dict(size=9,color="#64748B")),
             xaxis=dict(gridcolor=GRID,showgrid=True,zeroline=False,
                 rangeslider=dict(visible=False),
                 showspikes=True,spikecolor="#484f58",spikethickness=1,
@@ -597,10 +657,10 @@ def render_results(data, report):
 
     rr = round((tp_tiers[0]["price"]-price)/(price-sl_price),1) if (price > sl_price and tp_tiers) else 0
 
-    if   conf["score"] >= 70: action_k, ac = "BUY",         "#3fb950"
+    if   conf["score"] >= 70: action_k, ac = "BUY",         "#22C55E"
     elif conf["score"] >= 55: action_k, ac = "CAUTIOUS BUY","#26a69a"
     elif conf["score"] >= 40: action_k, ac = "HOLD",         "#d29922"
-    elif conf["score"] >= 25: action_k, ac = "WATCH",        "#58a6ff"
+    elif conf["score"] >= 25: action_k, ac = "WATCH",        "#00F2FE"
     else:                     action_k, ac = "AVOID",        "#ef5350"
 
     # Build TP cards HTML
@@ -614,19 +674,19 @@ def render_results(data, report):
             f'<div style="color:#484f58;font-size:0.67rem;margin-top:0.25rem;">{t["note"]}</div></div>'
         )
 
-    rr_color = "#3fb950" if rr >= 1.5 else "#f7c948"
+    rr_color = "#22C55E" if rr >= 1.5 else "#f7c948"
     st.markdown(
         f'<div style="background:linear-gradient(145deg,rgba(18,24,32,0.98),rgba(10,14,20,0.99));'
         f'border:1px solid rgba(88,166,255,0.12);border-radius:16px;padding:1.2rem 1.4rem;'
         f'margin:0.8rem 0;box-shadow:0 4px 24px rgba(0,0,0,0.3);">'
         f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">'
-        f'<span style="color:#e6edf3;font-weight:800;font-size:1rem;">🎯 Trade Setup</span>'
+        f'<span style="color:#E2E8F0;font-weight:800;font-size:1rem;">🎯 Trade Setup</span>'
         f'<div style="background:rgba(0,0,0,0.2);color:{ac};border:1px solid {ac}55;border-radius:20px;padding:0.22rem 1rem;font-size:0.82rem;font-weight:800;">{action_k}</div>'
         f'</div>'
         f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.6rem;">'
         f'<div style="background:rgba(88,166,255,0.07);border:1px solid rgba(88,166,255,0.18);border-radius:12px;padding:0.8rem;">'
         f'<div style="color:#484f58;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.35rem;">Entry Zone</div>'
-        f'<div style="color:#58a6ff;font-size:0.88rem;font-weight:800;">{_fp(e_lo,currency)} – {_fp(e_hi,currency)}</div>'
+        f'<div style="color:#00F2FE;font-size:0.88rem;font-weight:800;">{_fp(e_lo,currency)} – {_fp(e_hi,currency)}</div>'
         f'<div style="color:#484f58;font-size:0.67rem;margin-top:0.25rem;">{e_note}</div></div>'
         f'<div style="background:rgba(239,83,80,0.07);border:1px solid rgba(239,83,80,0.18);border-radius:12px;padding:0.8rem;">'
         f'<div style="color:#484f58;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.35rem;">Stop Loss {"⚡ Dynamic" if is_dyn else ""}</div>'
@@ -650,8 +710,8 @@ def render_results(data, report):
         'display:flex;align-items:center;justify-content:center;font-size:1rem;'
         'box-shadow:0 0 14px rgba(88,166,255,0.3);">🤖</div>'
         '<div>'
-        '<div style="color:#e6edf3;font-size:0.9rem;font-weight:700;">FinSage AI Analysis</div>'
-        '<div style="color:#3fb950;font-size:0.68rem;font-weight:600;letter-spacing:0.3px;">● Groq LLaMA 3.3</div>'
+        '<div style="color:#E2E8F0;font-size:0.9rem;font-weight:700;">FinSage AI Analysis</div>'
+        '<div style="color:#22C55E;font-size:0.68rem;font-weight:600;letter-spacing:0.3px;">● Groq LLaMA 3.3</div>'
         '</div></div>',
         unsafe_allow_html=True
     )
@@ -676,14 +736,14 @@ def render_results(data, report):
         elif any(x in kw for x in ["stop","loss","risk","bearish","sell","avoid","caution","crash","rug"]):
             border = "#ef5350"
         elif any(x in kw for x in ["target","profit","exit","moon","potential","rocket"]):
-            border = "#3fb950"
+            border = "#22C55E"
         else:
-            border = "#58a6ff"
+            border = "#00F2FE"
         st.markdown(
-            f'<div style="background:rgba(16,21,28,0.85);border:1px solid rgba(48,54,61,0.4);'
+            f'<div style="background:rgba(16,21,28,0.85);border:1px solid rgba(30,41,59,0.4);'
             f'border-left:2px solid {border};border-radius:0 12px 12px 12px;'
             f'padding:0.85rem 1.05rem;margin-bottom:0.55rem;'
-            f'font-size:0.84rem;color:#c9d1d9;line-height:1.8;">{sec.replace(chr(10),"<br>")}</div>',
+            f'font-size:0.84rem;color:#CBD5E1;line-height:1.8;">{sec.replace(chr(10),"<br>")}</div>',
             unsafe_allow_html=True
         )
 
@@ -715,10 +775,10 @@ def render_results(data, report):
     for idx_m,(label,val) in enumerate(metrics):
         with cols4[idx_m%4]:
             st.markdown(
-                f'<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(48,54,61,0.4);'
+                f'<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(30,41,59,0.4);'
                 f'border-radius:10px;padding:0.55rem 0.75rem;margin-bottom:0.45rem;">'
                 f'<div style="color:#484f58;font-size:0.63rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">{label}</div>'
-                f'<div style="color:#e6edf3;font-size:0.86rem;font-weight:700;margin-top:0.12rem;">{val}</div>'
+                f'<div style="color:#E2E8F0;font-size:0.86rem;font-weight:700;margin-top:0.12rem;">{val}</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -739,7 +799,7 @@ hcol1, hcol2, hcol3 = st.columns([1, 5, 1])
 with hcol1:
     st.markdown("""
     <div style="display:flex;align-items:center;height:60px;">
-        <div style="background:linear-gradient(135deg,#3b82f6,#06b6d4);
+        <div style="background:linear-gradient(135deg,#00F2FE,#00C6FF);
             border-radius:12px;padding:0.5rem 0.7rem;font-size:1.4rem;">📊</div>
     </div>
     """, unsafe_allow_html=True)
@@ -748,7 +808,7 @@ with hcol2:
     st.markdown("""
     <div style="padding:0.5rem 0;">
         <div style="font-size:1.5rem;font-weight:900;
-            background:linear-gradient(90deg,#3b82f6,#06b6d4,#8b5cf6);
+            background:linear-gradient(90deg,#00F2FE,#00C6FF,#F59E0B);
             -webkit-background-clip:text;-webkit-text-fill-color:transparent;
             line-height:1.1;">FinSage</div>
         <div style="color:#64748b;font-size:0.75rem;margin-top:0.1rem;font-weight:500;">
@@ -768,7 +828,7 @@ if st.session_state.get("show_dots_menu", False):
     menu_tab = st.session_state.get("menu_active_tab", "ai_chat")
 
     st.markdown("""
-    <div style="background:rgba(10,15,30,0.98);border:1px solid rgba(59,130,246,0.3);
+    <div style="background:rgba(11,15,25,0.98);border:1px solid rgba(0,242,254,0.3);
         border-radius:18px;padding:1.2rem;margin-bottom:1rem;
         box-shadow:0 20px 60px rgba(0,0,0,0.6);">
     """, unsafe_allow_html=True)
@@ -787,7 +847,7 @@ if st.session_state.get("show_dots_menu", False):
                 st.session_state["menu_active_tab"] = key
                 st.rerun()
 
-    st.markdown("<hr style='border-color:rgba(30,58,95,0.4);margin:0.8rem 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color:rgba(30,41,59,0.4);margin:0.8rem 0;'>", unsafe_allow_html=True)
 
     # ── AI CHAT panel ─────────────────────────────────────────────────────────
     if menu_tab == "ai_chat":
@@ -806,7 +866,7 @@ if st.session_state.get("show_dots_menu", False):
             render_history_page(get_current_user())
         else:
             st.markdown("""
-            <div style="background:rgba(14,22,40,0.9);border:1px solid rgba(30,58,95,0.5);
+            <div style="background:rgba(15,23,42,0.9);border:1px solid rgba(30,41,59,0.5);
                 border-radius:14px;padding:2rem;text-align:center;">
                 <div style="font-size:2.5rem;margin-bottom:0.5rem;">🔒</div>
                 <div style="color:#94a3b8;font-size:1rem;font-weight:600;">Login required</div>
@@ -827,7 +887,7 @@ if st.session_state.get("show_dots_menu", False):
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<hr style='border-color:rgba(30,58,95,0.3);margin:0.3rem 0 0.8rem;'>",
+st.markdown("<hr style='border-color:rgba(30,41,59,0.3);margin:0.3rem 0 0.8rem;'>",
             unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -915,7 +975,7 @@ with tab1:
         st.markdown("""
         <div class="empty-state">
             <div class="empty-state-icon">🌍</div>
-            <p style="color:#8b949e;font-size:0.95rem;">Enter a ticker symbol above and click <b>Analyze Stock</b></p>
+            <p style="color:#64748B;font-size:0.95rem;">Enter a ticker symbol above and click <b>Analyze Stock</b></p>
         </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Data from Yahoo Finance (yfinance). For educational purposes only. Not SEBI-registered investment advice.</div>', unsafe_allow_html=True)
@@ -974,7 +1034,7 @@ with tab2:
         st.markdown("""
         <div class="empty-state">
             <div class="empty-state-icon">₿</div>
-            <p style="color:#8b949e;font-size:0.95rem;">Enter a crypto symbol and click <b>Analyze Crypto</b></p>
+            <p style="color:#64748B;font-size:0.95rem;">Enter a crypto symbol and click <b>Analyze Crypto</b></p>
         </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Data from CoinGecko. Crypto is highly volatile & unregulated by SEBI. Educational purposes only.</div>', unsafe_allow_html=True)
@@ -1033,7 +1093,7 @@ with tab3:
         st.markdown("""
         <div class="empty-state">
             <div class="empty-state-icon">🎭</div>
-            <p style="color:#8b949e;font-size:0.95rem;">Enter a meme coin symbol and click <b>Analyze Meme Coin</b></p>
+            <p style="color:#64748B;font-size:0.95rem;">Enter a meme coin symbol and click <b>Analyze Meme Coin</b></p>
         </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Meme coins are unregulated & highly speculative. Not SEBI advice. Never invest borrowed money in meme coins.</div>', unsafe_allow_html=True)
@@ -1050,10 +1110,10 @@ with tab3:
 
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
-st.markdown("<hr style='border-color:rgba(30,58,95,0.4);'>" , unsafe_allow_html=True)
+st.markdown("<hr style='border-color:rgba(30,41,59,0.4);'>" , unsafe_allow_html=True)
 f1, f2, f3 = st.columns([2, 1, 1])
 with f1:
-    st.markdown("<span style='color:#334155;font-size:0.75rem;'>📊 <b style=\"color:#3b82f6;\">FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#64748B;font-size:0.75rem;'>📊 <b style=\"color:#00F2FE;\">FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
     st.markdown("<span style='color:#1e3a5f;font-size:0.7rem;'>Data: Yahoo Finance · CoinGecko | Educational purposes only</span>", unsafe_allow_html=True)
 with f2:
     st.markdown("""<div style='text-align:center;'>
