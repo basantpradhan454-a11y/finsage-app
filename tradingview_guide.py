@@ -37,17 +37,17 @@ def render_tradingview_guide(data: dict = None, report: str = ""):
 
     # ── Header ────────────────────────────────────────────────────────────────
     st.markdown("""
-    <div style="background:linear-gradient(135deg,rgba(72,187,120,0.1),rgba(99,179,237,0.1));
-        border:1px solid rgba(72,187,120,0.2);border-radius:18px;padding:1.2rem 1.5rem;
+    <div style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(0,242,254,0.1));
+        border:1px solid rgba(34,197,94,0.2);border-radius:18px;padding:1.2rem 1.5rem;
         margin-bottom:1.2rem;display:flex;align-items:center;gap:1rem;">
         <div style="font-size:2rem;">📺</div>
         <div>
             <div style="font-size:1.05rem;font-weight:800;
-                background:linear-gradient(90deg,#48bb78,#63b3ed);
+                background:linear-gradient(90deg,#22C55E,#63b3ed);
                 -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
                 TradingView Connect
             </div>
-            <div style="color:#8b949e;font-size:0.8rem;">
+            <div style="color:#64748B;font-size:0.8rem;">
                 Open live chart on TradingView + get step-by-step trading guide
             </div>
         </div>
@@ -56,8 +56,8 @@ def render_tradingview_guide(data: dict = None, report: str = ""):
 
     if not data or not data.get("ticker"):
         st.markdown("""
-        <div style="background:rgba(22,27,34,0.8);border:1px solid rgba(48,54,61,0.4);
-            border-radius:14px;padding:2rem;text-align:center;color:#6e7681;">
+        <div style="background:rgba(30,41,59,0.8);border:1px solid rgba(30,41,59,0.4);
+            border-radius:14px;padding:2rem;text-align:center;color:#64748B;">
             <div style="font-size:2rem;margin-bottom:0.5rem;">📊</div>
             <div style="font-size:0.9rem;">Analyze any stock or crypto first — then get your step-by-step TradingView guide here.</div>
         </div>
@@ -82,18 +82,18 @@ def render_tradingview_guide(data: dict = None, report: str = ""):
 
     tv_url = f"https://www.tradingview.com/chart/?symbol={tv_symbol}"
 
-    chg_color = "#48bb78" if change >= 0 else "#fc8181"
+    chg_color = "#22C55E" if change >= 0 else "#EF4444"
     chg_icon  = "▲" if change >= 0 else "▼"
 
     # ── Asset info + TradingView button ───────────────────────────────────────
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         st.markdown(f"""
-        <div style="background:rgba(22,27,34,0.9);border:1px solid rgba(48,54,61,0.5);
+        <div style="background:rgba(30,41,59,0.9);border:1px solid rgba(30,41,59,0.5);
             border-radius:14px;padding:1rem 1.2rem;">
-            <div style="color:#e6edf3;font-size:1rem;font-weight:800;">{name}</div>
-            <div style="color:#6e7681;font-size:0.78rem;margin-bottom:0.5rem;">{ticker} · {atype.upper()}</div>
-            <div style="font-size:1.4rem;font-weight:900;color:#e6edf3;">
+            <div style="color:#E2E8F0;font-size:1rem;font-weight:800;">{name}</div>
+            <div style="color:#64748B;font-size:0.78rem;margin-bottom:0.5rem;">{ticker} · {atype.upper()}</div>
+            <div style="font-size:1.4rem;font-weight:900;color:#E2E8F0;">
                 {'₹' if '.NS' in ticker or '.BO' in ticker else '$'}{price:,.2f}
             </div>
             <div style="color:{chg_color};font-size:0.85rem;font-weight:700;">
@@ -103,12 +103,12 @@ def render_tradingview_guide(data: dict = None, report: str = ""):
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
-        <div style="background:rgba(22,27,34,0.9);border:1px solid rgba(72,187,120,0.3);
+        <div style="background:rgba(30,41,59,0.9);border:1px solid rgba(34,197,94,0.3);
             border-radius:14px;padding:1rem;text-align:center;height:100%;">
             <div style="font-size:1.4rem;margin-bottom:0.3rem;">📺</div>
-            <div style="color:#48bb78;font-size:0.78rem;font-weight:700;">TradingView Chart</div>
+            <div style="color:#22C55E;font-size:0.78rem;font-weight:700;">TradingView Chart</div>
             <a href="{tv_url}" target="_blank" style="text-decoration:none;">
-                <div style="background:linear-gradient(135deg,#48bb78,#38a169);color:#fff;
+                <div style="background:linear-gradient(135deg,#22C55E,#16A34A);color:#fff;
                     border-radius:8px;padding:0.4rem 0.8rem;font-size:0.78rem;font-weight:700;
                     margin-top:0.5rem;display:inline-block;">Open Live Chart →</div>
             </a>
@@ -116,12 +116,12 @@ def render_tradingview_guide(data: dict = None, report: str = ""):
         """, unsafe_allow_html=True)
     with col3:
         st.markdown(f"""
-        <div style="background:rgba(22,27,34,0.9);border:1px solid rgba(99,179,237,0.3);
+        <div style="background:rgba(30,41,59,0.9);border:1px solid rgba(0,242,254,0.3);
             border-radius:14px;padding:1rem;text-align:center;height:100%;">
             <div style="font-size:1.4rem;margin-bottom:0.3rem;">📱</div>
             <div style="color:#63b3ed;font-size:0.78rem;font-weight:700;">TradingView App</div>
             <a href="https://www.tradingview.com/gopro/" target="_blank" style="text-decoration:none;">
-                <div style="background:linear-gradient(135deg,#63b3ed,#4299e1);color:#fff;
+                <div style="background:linear-gradient(135deg,#63b3ed,#00F2FE);color:#fff;
                     border-radius:8px;padding:0.4rem 0.8rem;font-size:0.78rem;font-weight:700;
                     margin-top:0.5rem;display:inline-block;">Get Free Account →</div>
             </a>
@@ -132,7 +132,7 @@ def render_tradingview_guide(data: dict = None, report: str = ""):
 
     # ── Step-by-step guide ────────────────────────────────────────────────────
     st.markdown("""
-    <div style="color:#e6edf3;font-size:0.95rem;font-weight:700;margin-bottom:0.8rem;">
+    <div style="color:#E2E8F0;font-size:0.95rem;font-weight:700;margin-bottom:0.8rem;">
         🎯 Step-by-Step Trading Guide
     </div>
     """, unsafe_allow_html=True)
@@ -174,7 +174,7 @@ Be very specific with price levels. Keep it practical and actionable.
         current_step = ""
         current_content = []
         steps_html = ""
-        step_colors = ["#63b3ed","#9a75ea","#48bb78","#f6ad55","#fc8181","#68d391","#76e4f7","#b794f4","#fbb6ce","#90cdf4"]
+        step_colors = ["#63b3ed","#F59E0B","#22C55E","#F59E0B","#EF4444","#68d391","#76e4f7","#b794f4","#fbb6ce","#90cdf4"]
 
         step_num = 0
         buffer = []
@@ -186,13 +186,13 @@ Be very specific with price levels. Keep it practical and actionable.
                     color = step_colors[(step_num-1) % len(step_colors)]
                     content_html = "<br>".join(b for b in buffer if b.strip())
                     steps_html += f"""
-                    <div style="background:rgba(22,27,34,0.85);border:1px solid rgba(48,54,61,0.5);
+                    <div style="background:rgba(30,41,59,0.85);border:1px solid rgba(30,41,59,0.5);
                         border-left:3px solid {color};border-radius:12px;padding:0.9rem 1.1rem;
                         margin-bottom:0.7rem;">
                         <div style="color:{color};font-size:0.72rem;font-weight:700;text-transform:uppercase;
                             letter-spacing:0.5px;margin-bottom:0.3rem;">Step {step_num}</div>
-                        <div style="color:#e6edf3;font-size:0.88rem;font-weight:700;margin-bottom:0.4rem;">{current_step}</div>
-                        <div style="color:#c9d1d9;font-size:0.82rem;line-height:1.6;">{content_html}</div>
+                        <div style="color:#E2E8F0;font-size:0.88rem;font-weight:700;margin-bottom:0.4rem;">{current_step}</div>
+                        <div style="color:#CBD5E1;font-size:0.82rem;line-height:1.6;">{content_html}</div>
                     </div>"""
                 step_num += 1
                 current_step = m.group(2)
@@ -206,13 +206,13 @@ Be very specific with price levels. Keep it practical and actionable.
             color = step_colors[(step_num-1) % len(step_colors)]
             content_html = "<br>".join(b for b in buffer if b.strip())
             steps_html += f"""
-            <div style="background:rgba(22,27,34,0.85);border:1px solid rgba(48,54,61,0.5);
+            <div style="background:rgba(30,41,59,0.85);border:1px solid rgba(30,41,59,0.5);
                 border-left:3px solid {color};border-radius:12px;padding:0.9rem 1.1rem;
                 margin-bottom:0.7rem;">
                 <div style="color:{color};font-size:0.72rem;font-weight:700;text-transform:uppercase;
                     letter-spacing:0.5px;margin-bottom:0.3rem;">Step {step_num}</div>
-                <div style="color:#e6edf3;font-size:0.88rem;font-weight:700;margin-bottom:0.4rem;">{current_step}</div>
-                <div style="color:#c9d1d9;font-size:0.82rem;line-height:1.6;">{content_html}</div>
+                <div style="color:#E2E8F0;font-size:0.88rem;font-weight:700;margin-bottom:0.4rem;">{current_step}</div>
+                <div style="color:#CBD5E1;font-size:0.82rem;line-height:1.6;">{content_html}</div>
             </div>"""
 
         if steps_html:
@@ -220,31 +220,31 @@ Be very specific with price levels. Keep it practical and actionable.
         else:
             # Fallback plain text
             st.markdown(f"""
-            <div style="background:rgba(22,27,34,0.85);border:1px solid rgba(48,54,61,0.5);
-                border-radius:12px;padding:1rem;color:#c9d1d9;font-size:0.85rem;line-height:1.7;
+            <div style="background:rgba(30,41,59,0.85);border:1px solid rgba(30,41,59,0.5);
+                border-radius:12px;padding:1rem;color:#CBD5E1;font-size:0.85rem;line-height:1.7;
                 white-space:pre-wrap;">{guide_text}</div>
             """, unsafe_allow_html=True)
 
         # TradingView demo setup card
         st.markdown(f"""
-        <div style="background:linear-gradient(135deg,rgba(72,187,120,0.08),rgba(99,179,237,0.08));
-            border:1px solid rgba(72,187,120,0.25);border-radius:14px;padding:1rem 1.2rem;
+        <div style="background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(0,242,254,0.08));
+            border:1px solid rgba(34,197,94,0.25);border-radius:14px;padding:1rem 1.2rem;
             margin-top:1rem;">
-            <div style="color:#48bb78;font-weight:700;font-size:0.88rem;margin-bottom:0.6rem;">
+            <div style="color:#22C55E;font-weight:700;font-size:0.88rem;margin-bottom:0.6rem;">
                 📺 Open This Chart on TradingView Right Now
             </div>
-            <div style="color:#c9d1d9;font-size:0.82rem;line-height:1.8;">
+            <div style="color:#CBD5E1;font-size:0.82rem;line-height:1.8;">
                 1. Click <b style="color:#63b3ed;">Open Live Chart →</b> above<br>
-                2. Search <b style="color:#f6ad55;">{tv_symbol}</b> in TradingView<br>
+                2. Search <b style="color:#F59E0B;">{tv_symbol}</b> in TradingView<br>
                 3. Add indicators: <b>RSI (14)</b> + <b>MACD (12,26,9)</b> + <b>Bollinger Bands (20)</b><br>
                 4. Switch to <b>1D</b> or <b>4H</b> timeframe for swing trade view<br>
                 5. Draw horizontal lines at your Entry, Stop Loss, and Target levels<br>
                 6. Set a <b>Price Alert</b> at your entry zone so TradingView notifies you
             </div>
             <a href="{tv_url}" target="_blank" style="text-decoration:none;">
-                <div style="background:linear-gradient(135deg,#48bb78,#38a169);color:#fff;
+                <div style="background:linear-gradient(135deg,#22C55E,#16A34A);color:#fff;
                     border-radius:10px;padding:0.5rem 1.2rem;font-size:0.85rem;font-weight:700;
-                    margin-top:0.8rem;display:inline-block;box-shadow:0 4px 15px rgba(72,187,120,0.3);">
+                    margin-top:0.8rem;display:inline-block;box-shadow:0 4px 15px rgba(34,197,94,0.3);">
                     🚀 Open {name} on TradingView
                 </div>
             </a>
