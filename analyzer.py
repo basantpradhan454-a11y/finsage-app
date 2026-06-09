@@ -545,7 +545,7 @@ def compute_confidence_score(data: dict, inds: dict = None) -> dict:
     score = max(0, min(100, score))
 
     # Label + color
-    if score >= 80:   label, color, emoji = "Very High Confidence", "#3fb950", "🟢"
+    if score >= 80:   label, color, emoji = "Very High Confidence", "#22C55E", "🟢"
     elif score >= 65: label, color, emoji = "High Confidence",      "#26a69a", "🟢"
     elif score >= 50: label, color, emoji = "Moderate Confidence",  "#f7c948", "🟡"
     elif score >= 35: label, color, emoji = "Low Confidence",       "#d29922", "🟠"
@@ -618,7 +618,7 @@ def partial_take_profit(data: dict, sl_pct: float) -> list:
         return [
             dict(pct_sell=25, label="Sell 25%",  price=round(price*2,   8), note="2x — Get your investment back",    color="#f7c948"),
             dict(pct_sell=50, label="Sell 50%",  price=round(price*5,   8), note="5x — Lock major profits",          color="#26a69a"),
-            dict(pct_sell=25, label="Hold 25%",  price=round(price*20,  8), note="Let it moon — only house money",   color="#3fb950"),
+            dict(pct_sell=25, label="Hold 25%",  price=round(price*20,  8), note="Let it moon — only house money",   color="#22C55E"),
         ]
     else:
         t1_pct = sl_pct * 1.5
@@ -627,7 +627,7 @@ def partial_take_profit(data: dict, sl_pct: float) -> list:
         return [
             dict(pct_sell=35, label="Sell 35%",  price=round(price*(1+t1_pct/100),4), note=f"+{t1_pct:.0f}% — Conservative target",  color="#f7c948"),
             dict(pct_sell=40, label="Sell 40%",  price=round(price*(1+t2_pct/100),4), note=f"+{t2_pct:.0f}% — Main target",           color="#26a69a"),
-            dict(pct_sell=25, label="Hold 25%",  price=round(price*(1+t3_pct/100),4), note=f"+{t3_pct:.0f}% — Full potential",        color="#3fb950"),
+            dict(pct_sell=25, label="Hold 25%",  price=round(price*(1+t3_pct/100),4), note=f"+{t3_pct:.0f}% — Full potential",        color="#22C55E"),
         ]
 
 
