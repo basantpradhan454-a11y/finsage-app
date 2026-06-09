@@ -199,6 +199,33 @@ hr { border-color: rgba(30,58,95,0.5) !important; }
     border-radius: 14px !important;
     padding: 1rem !important;
 }
+
+/* ── 3-dots menu button ── */
+button[data-testid="baseButton-secondary"][kind="secondary"]:has(div:contains("⋮")),
+button[key="open_dots_menu"] {
+    background: rgba(59,130,246,0.08) !important;
+    border: 1px solid rgba(59,130,246,0.3) !important;
+    color: #3b82f6 !important;
+    font-size: 1.4rem !important;
+    font-weight: 900 !important;
+    border-radius: 10px !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+}
+button[key="open_dots_menu"]:hover {
+    background: rgba(59,130,246,0.15) !important;
+    transform: none !important;
+}
+/* Menu panel close button */
+button[key="close_dots_menu"] {
+    background: rgba(239,68,68,0.08) !important;
+    border: 1px solid rgba(239,68,68,0.2) !important;
+    color: #ef4444 !important;
+    border-radius: 8px !important;
+    font-size: 0.82rem !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -704,9 +731,109 @@ def render_results(data, report):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# HEADER + 3-DOTS MENU
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── App Header with 3-dots menu ───────────────────────────────────────────────
+hcol1, hcol2, hcol3 = st.columns([1, 5, 1])
+with hcol1:
+    st.markdown("""
+    <div style="display:flex;align-items:center;height:60px;">
+        <div style="background:linear-gradient(135deg,#3b82f6,#06b6d4);
+            border-radius:12px;padding:0.5rem 0.7rem;font-size:1.4rem;">📊</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with hcol2:
+    st.markdown("""
+    <div style="padding:0.5rem 0;">
+        <div style="font-size:1.5rem;font-weight:900;
+            background:linear-gradient(90deg,#3b82f6,#06b6d4,#8b5cf6);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+            line-height:1.1;">FinSage</div>
+        <div style="color:#64748b;font-size:0.75rem;margin-top:0.1rem;font-weight:500;">
+            Global Financial Intelligence Platform
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with hcol3:
+    dots_open = st.button("⋮", key="open_dots_menu",
+        help="More options", use_container_width=True)
+    if dots_open:
+        st.session_state["show_dots_menu"] = not st.session_state.get("show_dots_menu", False)
+
+# ── 3-dots dropdown panel ─────────────────────────────────────────────────────
+if st.session_state.get("show_dots_menu", False):
+    menu_tab = st.session_state.get("menu_active_tab", "ai_chat")
+
+    st.markdown("""
+    <div style="background:rgba(10,15,30,0.98);border:1px solid rgba(59,130,246,0.3);
+        border-radius:18px;padding:1.2rem;margin-bottom:1rem;
+        box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+    """, unsafe_allow_html=True)
+
+    # Menu tab bar
+    mcols = st.columns(4)
+    menu_tabs  = [("🤖", "AI Chat",    "ai_chat"),
+                  ("📺", "TV Guide",   "tv_guide"),
+                  ("🕐", "History",    "history"),
+                  ("💬", "Feedback",   "feedback")]
+    for mi, (icon, label, key) in enumerate(menu_tabs):
+        with mcols[mi]:
+            active = menu_tab == key
+            btn_style = "primary" if active else "secondary"
+            if st.button(f"{icon} {label}", key=f"mtab_{key}", type=btn_style, use_container_width=True):
+                st.session_state["menu_active_tab"] = key
+                st.rerun()
+
+    st.markdown("<hr style='border-color:rgba(30,58,95,0.4);margin:0.8rem 0;'>", unsafe_allow_html=True)
+
+    # ── AI CHAT panel ─────────────────────────────────────────────────────────
+    if menu_tab == "ai_chat":
+        chat_ctx = st.session_state.stock_data or st.session_state.crypto_data or st.session_state.meme_data or {}
+        render_ai_chat(chat_ctx)
+
+    # ── TV GUIDE panel ────────────────────────────────────────────────────────
+    elif menu_tab == "tv_guide":
+        tv_data   = st.session_state.stock_data or st.session_state.crypto_data or st.session_state.meme_data or {}
+        tv_report = st.session_state.stock_report or st.session_state.crypto_report or st.session_state.meme_report or ""
+        render_tradingview_guide(tv_data, tv_report)
+
+    # ── HISTORY panel ─────────────────────────────────────────────────────────
+    elif menu_tab == "history":
+        if is_logged_in():
+            render_history_page(get_current_user())
+        else:
+            st.markdown("""
+            <div style="background:rgba(14,22,40,0.9);border:1px solid rgba(30,58,95,0.5);
+                border-radius:14px;padding:2rem;text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:0.5rem;">🔒</div>
+                <div style="color:#94a3b8;font-size:1rem;font-weight:600;">Login required</div>
+                <div style="color:#64748b;font-size:0.85rem;margin-top:0.3rem;">
+                    Sign in to view your search & analysis history
+                </div>
+            </div>""", unsafe_allow_html=True)
+
+    # ── FEEDBACK panel ────────────────────────────────────────────────────────
+    elif menu_tab == "feedback":
+        render_feedback_page(get_current_user())
+
+    # Close panel button
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("✕ Close Menu", key="close_dots_menu", use_container_width=True):
+        st.session_state["show_dots_menu"] = False
+        st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("<hr style='border-color:rgba(30,58,95,0.3);margin:0.3rem 0 0.8rem;'>",
+            unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🌍 Stocks", "₿ Crypto", "🎭 Meme", "📺 TV Guide", "🤖 AI Chat", "🕐 History", "💬 Feedback"])
+tab1, tab2, tab3 = st.tabs(["🌍  Stocks", "₿  Crypto", "🎭  Meme Coins"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
@@ -916,35 +1043,10 @@ with tab3:
 
 
 
-# ─── TAB 4: TRADINGVIEW GUIDE ────────────────────────────────────────────────
-with tab4:
-    # Get last analyzed data for context
-    tv_data   = st.session_state.stock_data or st.session_state.crypto_data or st.session_state.meme_data or {}
-    tv_report = st.session_state.stock_report or st.session_state.crypto_report or st.session_state.meme_report or ""
-    render_tradingview_guide(tv_data, tv_report)
-
-# ─── TAB 5: AI CHAT ────────────────────────────────────────────────────────────
-with tab5:
-    chat_ctx = st.session_state.stock_data or st.session_state.crypto_data or st.session_state.meme_data or {}
-    render_ai_chat(chat_ctx)
-
-# ─── TAB 6: HISTORY ───────────────────────────────────────────────────────────
-with tab6:
-    if is_logged_in():
-        render_history_page(get_current_user())
-    else:
-        st.markdown("""
-        <div style="background:rgba(14,22,40,0.9);border:1px solid rgba(30,58,95,0.6);
-            border-radius:14px;padding:2rem;text-align:center;color:#64748b;">
-            <div style="font-size:2rem;margin-bottom:0.5rem;">🔒</div>
-            <p style="color:#94a3b8;font-size:1rem;font-weight:600;">Login required</p>
-            <p style="color:#64748b;">Please log in to view your search history.</p>
-        </div>""", unsafe_allow_html=True)
 
 
-# ─── TAB 7: FEEDBACK ────────────────────────────────────────────────────────
-with tab7:
-    render_feedback_page(get_current_user())
+
+
 
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
