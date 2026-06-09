@@ -20,6 +20,8 @@ from analyzer import (analyze_stock, analyze_crypto, format_number,
 from auth_page import render_auth_page, is_logged_in, get_current_user
 from history_page import render_history_page, save_search
 from feedback_page import render_feedback_page
+from ai_chat import render_ai_chat
+from tradingview_guide import render_tradingview_guide
 from privacy_policy import render_privacy_policy
 
 # ── Page Config ────────────────────────────────────────────────────────────────
@@ -30,247 +32,176 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Premium Global CSS ─────────────────────────────────────────────────────────
+# ── Global CSS — Ocean Blue Theme ─────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ── Root Variables ── */
+:root {
+    --bg-primary:   #0a0f1e;
+    --bg-card:      #0e1628;
+    --bg-card2:     #111827;
+    --border:       rgba(30,58,95,0.7);
+    --accent1:      #3b82f6;
+    --accent2:      #06b6d4;
+    --accent3:      #8b5cf6;
+    --green:        #10b981;
+    --red:          #ef4444;
+    --gold:         #f59e0b;
+    --text-primary: #e2e8f0;
+    --text-muted:   #64748b;
+    --text-sub:     #94a3b8;
+}
+
+/* ── Base ── */
+html, body, [data-testid="stApp"] {
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+[data-testid="stAppViewContainer"] {
+    background: linear-gradient(135deg, #0a0f1e 0%, #0d1424 50%, #0a1628 100%) !important;
+}
 
 /* ── Hide Streamlit chrome ── */
-#MainMenu,footer,header,[data-testid="stToolbar"],
-[data-testid="manage-app-button"],[data-testid="stDecoration"],
-[data-testid="stStatusWidget"],[data-testid="stBottom"],
-.stDeployButton,.viewerBadge_container__r5tak,
-button[kind="header"],.st-emotion-cache-czk5ss,
-._link_gzau3_10,.st-emotion-cache-1dp5vir {
-    visibility:hidden !important; display:none !important;
+#MainMenu, footer, header, [data-testid="stToolbar"],
+[data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
+[data-testid="collapsedControl"] { display:none !important; }
+.stDeployButton { display:none !important; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(59,130,246,0.3); border-radius:4px; }
+
+/* ── Main content padding ── */
+.block-container { padding: 0.8rem 1.5rem 2rem !important; max-width:1280px !important; }
+
+/* ── TABS ── */
+[data-testid="stTabs"] [role="tablist"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    padding: 0.3rem !important;
+    gap: 0.2rem !important;
+}
+[data-testid="stTabs"] [role="tab"] {
+    color: var(--text-muted) !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    border-radius: 8px !important;
+    padding: 0.45rem 1rem !important;
+    transition: all 0.2s !important;
+    border: none !important;
+}
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+    background: linear-gradient(135deg, var(--accent1), var(--accent2)) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 15px rgba(59,130,246,0.3) !important;
+}
+[data-testid="stTabs"] [role="tabpanel"] {
+    padding-top: 1rem !important;
 }
 
-/* ── Deep space background ── */
-html, body, .stApp {
-    background: #020510 !important;
-    font-family: 'Inter', sans-serif !important;
-    color: #e6edf3 !important;
+/* ── Inputs ── */
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea {
+    background: var(--bg-card) !important;
+    border: 1px solid rgba(59,130,246,0.3) !important;
+    border-radius: 10px !important;
+    color: var(--text-primary) !important;
+    font-size: 0.88rem !important;
 }
-.stApp {
-    background:
-        radial-gradient(ellipse 90% 60% at 15% 5%,  rgba(88,166,255,0.10) 0%, transparent 55%),
-        radial-gradient(ellipse 70% 50% at 85% 90%,  rgba(167,139,250,0.09) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(63,185,80,0.04) 0%, transparent 60%),
-        #020510 !important;
-}
-
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background: rgba(13,17,23,0.95) !important;
-    border-right: 1px solid rgba(48,54,61,0.6) !important;
-    backdrop-filter: blur(20px);
+[data-testid="stTextInput"] input:focus,
+[data-testid="stTextArea"] textarea:focus {
+    border-color: var(--accent1) !important;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
 }
 
-/* ── Navbar brand ── */
-.fs-brand {
-    font-size:1.5rem; font-weight:900; letter-spacing:-0.5px;
-    background: linear-gradient(135deg,#58a6ff,#a78bfa);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    background-clip:text;
+/* ── Buttons ── */
+[data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, var(--accent1), var(--accent2)) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    box-shadow: 0 4px 15px rgba(59,130,246,0.3) !important;
+    transition: all 0.2s !important;
 }
-.fs-tagline { color:#484f58; font-size:0.78rem; margin-left:0.6rem; }
-.fs-free-badge {
-    background: linear-gradient(135deg,rgba(63,185,80,0.2),rgba(63,185,80,0.08));
-    color:#3fb950; border:1px solid rgba(63,185,80,0.3);
-    padding:0.18rem 0.65rem; border-radius:20px; font-size:0.7rem; font-weight:700;
-    letter-spacing:0.3px;
+[data-testid="baseButton-primary"]:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(59,130,246,0.4) !important;
+}
+[data-testid="baseButton-secondary"],
+[data-testid="stButton"] > button {
+    background: var(--bg-card) !important;
+    border: 1px solid rgba(59,130,246,0.25) !important;
+    border-radius: 8px !important;
+    color: var(--text-sub) !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    transition: all 0.18s !important;
+}
+[data-testid="stButton"] > button:hover {
+    border-color: var(--accent1) !important;
+    color: var(--accent1) !important;
+    background: rgba(59,130,246,0.06) !important;
 }
 
-/* ── Ticker bar ── */
-.ticker-bar {
-    background: linear-gradient(135deg, rgba(22,27,34,0.9), rgba(13,17,23,0.95));
-    border:1px solid rgba(48,54,61,0.7);
-    border-radius:12px; padding:0.6rem 1.2rem;
-    margin-bottom:1rem; overflow-x:auto; white-space:nowrap;
-    backdrop-filter:blur(12px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+/* ── Select / Radio ── */
+[data-testid="stSelectbox"] > div,
+[data-testid="stRadio"] label {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text-sub) !important;
 }
-.ticker-item { display:inline-block; margin-right:1.6rem; font-size:0.82rem; }
-.ticker-sym   { color:#58a6ff; font-weight:700; margin-right:4px; }
-.ticker-price { color:#c9d1d9; margin-right:3px; }
-.up   { color:#3fb950; font-weight:600; }
-.down { color:#f85149; font-weight:600; }
 
-/* ── Tabs ── */
-.stTabs [data-baseweb="tab-list"] {
-    background: rgba(22,27,34,0.8) !important;
-    border-radius:14px 14px 0 0 !important;
-    border:1px solid rgba(48,54,61,0.6) !important;
-    border-bottom:none !important;
-    gap:0; padding:0.4rem 0.4rem 0;
-    backdrop-filter:blur(12px);
+/* ── Metrics ── */
+[data-testid="stMetric"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    padding: 0.8rem !important;
 }
-.stTabs [data-baseweb="tab"] {
-    background:transparent !important; color:#6e7681 !important;
-    border-radius:10px 10px 0 0 !important; font-weight:600 !important;
-    font-size:0.92rem !important; padding:0.65rem 1.8rem !important;
-    border:none !important; transition:all 0.2s !important;
-}
-.stTabs [data-baseweb="tab"]:hover { color:#c9d1d9 !important; }
-.stTabs [aria-selected="true"] {
-    background: linear-gradient(180deg, rgba(88,166,255,0.12), rgba(88,166,255,0.05)) !important;
-    color:#58a6ff !important;
-    border-top:2px solid #58a6ff !important;
-    box-shadow: inset 0 -1px 0 rgba(88,166,255,0.1) !important;
-}
-.stTabs [data-baseweb="tab-panel"] {
-    background: rgba(13,17,23,0.8) !important;
-    border:1px solid rgba(48,54,61,0.6) !important;
-    border-top:none !important; border-radius:0 0 14px 14px !important;
-    padding:1.6rem !important;
-    backdrop-filter:blur(12px);
-}
+[data-testid="stMetric"] label { color: var(--text-muted) !important; font-size:0.72rem !important; }
+[data-testid="stMetric"] [data-testid="stMetricValue"] { color: var(--text-primary) !important; font-weight:800 !important; }
+
+/* ── Spinner ── */
+[data-testid="stSpinner"] { color: var(--accent1) !important; }
+
+/* ── Divider ── */
+hr { border-color: rgba(30,58,95,0.5) !important; }
 
 /* ── Section headings ── */
 .section-heading {
-    font-size:1.35rem; font-weight:800; letter-spacing:-0.5px;
-    background:linear-gradient(135deg,#e6edf3,#8b949e);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    background-clip:text; margin-bottom:0.2rem;
+    font-size: 1.2rem; font-weight: 800; margin-bottom: 0.2rem;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
-.section-sub { color:#484f58; font-size:0.83rem; margin-bottom:1rem; }
-
-/* ── Inputs ── */
-[data-testid="stTextInput"] input {
-    background: rgba(13,17,23,0.9) !important;
-    border:1px solid rgba(48,54,61,0.8) !important;
-    border-radius:10px !important; color:#e6edf3 !important;
-    font-size:0.92rem !important; font-family:'Inter',sans-serif !important;
-    transition:border-color 0.2s, box-shadow 0.2s !important;
-}
-[data-testid="stTextInput"] input:focus {
-    border-color:rgba(88,166,255,0.6) !important;
-    box-shadow:0 0 0 3px rgba(88,166,255,0.1), 0 0 20px rgba(88,166,255,0.06) !important;
-    outline:none !important;
-}
-[data-testid="stTextInput"] label { color:#8b949e !important; font-size:0.82rem !important; font-weight:600 !important; }
-
-/* ── Buttons ── */
-.stButton > button {
-    background: rgba(22,27,34,0.9) !important;
-    color:#58a6ff !important; border:1px solid rgba(88,166,255,0.25) !important;
-    border-radius:10px !important; font-size:0.82rem !important; font-weight:600 !important;
-    transition:all 0.2s !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-}
-.stButton > button:hover {
-    background: linear-gradient(135deg,rgba(88,166,255,0.2),rgba(167,139,250,0.15)) !important;
-    border-color:rgba(88,166,255,0.6) !important; color:#ffffff !important;
-    transform:translateY(-1px) !important;
-    box-shadow:0 4px 16px rgba(88,166,255,0.2) !important;
-}
-/* Primary button */
-[data-testid="stFormSubmitButton"] button,
-button[kind="primary"] {
-    background: linear-gradient(135deg,#1a6bc7,#2563eb 50%,#7c3aed) !important;
-    color:#ffffff !important; border:none !important;
-    border-radius:12px !important; font-weight:700 !important;
-    font-size:0.95rem !important;
-    box-shadow:0 4px 16px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.1) !important;
-    transition:all 0.2s !important;
-}
-button[kind="primary"]:hover {
-    transform:translateY(-2px) !important;
-    box-shadow:0 8px 24px rgba(37,99,235,0.45), 0 0 40px rgba(124,58,237,0.15) !important;
-}
-
-/* ── Metric cards ── */
-[data-testid="stMetric"] {
-    background: linear-gradient(145deg, rgba(22,27,34,0.95), rgba(13,17,23,0.98)) !important;
-    border:1px solid rgba(48,54,61,0.7) !important;
-    border-radius:14px !important; padding:1rem 1.1rem !important;
-    box-shadow:0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04) !important;
-    transition:transform 0.2s, box-shadow 0.2s !important;
-    position:relative; overflow:hidden;
-}
-[data-testid="stMetric"]::before {
-    content:''; position:absolute; top:0; left:0; right:0; height:2px;
-    background:linear-gradient(90deg,#58a6ff,#a78bfa);
-    opacity:0.6;
-}
-[data-testid="stMetric"]:hover {
-    transform:translateY(-2px) !important;
-    box-shadow:0 8px 24px rgba(0,0,0,0.4), 0 0 24px rgba(88,166,255,0.06) !important;
-}
-[data-testid="stMetricLabel"]  { color:#8b949e !important; font-size:0.78rem !important; font-weight:600 !important; }
-[data-testid="stMetricValue"]  { color:#e6edf3 !important; font-size:1.3rem !important; font-weight:800 !important; }
-[data-testid="stMetricDelta"]  { font-size:0.8rem !important; font-weight:700 !important; }
-
-/* ── Section card (result area) ── */
-.result-card {
-    background:linear-gradient(145deg,rgba(22,27,34,0.9),rgba(13,17,23,0.95));
-    border:1px solid rgba(48,54,61,0.6); border-radius:16px;
-    padding:1.4rem; margin-bottom:1rem;
-    box-shadow:0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
-}
-
-/* ── Divider ── */
-hr { border-color:rgba(48,54,61,0.5) !important; margin:1rem 0 !important; }
-
-/* ── Quick pick label ── */
+.section-sub { color: var(--text-muted); font-size:0.82rem; margin-bottom:1rem; }
 .quickpick-label {
-    color:#58a6ff; font-size:0.78rem; font-weight:700;
-    letter-spacing:0.5px; text-transform:uppercase; margin-bottom:0.4rem;
+    color: var(--text-muted); font-size:0.72rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:1px; margin-bottom:0.4rem; margin-top:0.8rem;
 }
 
-/* ── Meme warning ── */
-.meme-warning {
-    background:linear-gradient(135deg,rgba(45,27,27,0.9),rgba(35,17,17,0.95));
-    border:1px solid rgba(248,81,73,0.35);
-    border-radius:12px; padding:0.8rem 1rem;
-    color:#f85149; font-size:0.83rem; margin-bottom:0.9rem;
-    box-shadow:0 0 20px rgba(248,81,73,0.06);
+/* ── Animations ── */
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.stMarkdown { animation: fadeIn 0.3s ease; }
+
+/* ── Form ── */
+[data-testid="stForm"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 14px !important;
+    padding: 1rem !important;
 }
-
-/* ── Disclaimer ── */
-.disclaimer {
-    background:linear-gradient(135deg,rgba(22,27,34,0.8),rgba(13,17,23,0.9));
-    border-left:3px solid rgba(210,153,34,0.6);
-    border-radius:0 10px 10px 0; padding:0.75rem 1rem;
-    color:#6e7681; font-size:0.78rem; margin-top:1rem;
-    backdrop-filter:blur(8px);
-}
-
-/* ── Empty state ── */
-.empty-state {
-    text-align:center; padding:3rem 1rem; color:#484f58;
-    background:rgba(13,17,23,0.5); border-radius:16px;
-    border:1px dashed rgba(48,54,61,0.5);
-}
-.empty-state-icon { font-size:3rem; margin-bottom:0.5rem; opacity:0.6; }
-
-/* ── Analysis report text ── */
-.stMarkdown h4 { color:#c9d1d9 !important; font-weight:700 !important; }
-.stMarkdown p  { color:#8b949e !important; line-height:1.7 !important; }
-
-/* ── Download button ── */
-[data-testid="stDownloadButton"] button {
-    background:rgba(22,27,34,0.8) !important;
-    border:1px solid rgba(88,166,255,0.2) !important;
-    color:#58a6ff !important; border-radius:10px !important;
-    font-weight:600 !important;
-}
-[data-testid="stDownloadButton"] button:hover {
-    background:rgba(88,166,255,0.1) !important;
-    border-color:rgba(88,166,255,0.5) !important;
-}
-
-/* ── Caption ── */
-.stCaption { color:#484f58 !important; font-size:0.75rem !important; }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width:6px; height:6px; }
-::-webkit-scrollbar-track { background:rgba(13,17,23,0.5); }
-::-webkit-scrollbar-thumb { background:rgba(48,54,61,0.8); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background:rgba(88,166,255,0.4); }
-
 </style>
 """, unsafe_allow_html=True)
+
 
 # ── Session State ──────────────────────────────────────────────────────────────
 defaults = {
@@ -775,7 +706,7 @@ def render_results(data, report):
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins", "🕐  History", "💬  Feedback"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🌍 Stocks", "₿ Crypto", "🎭 Meme", "📺 TV Guide", "🤖 AI Chat", "🕐 History", "💬 Feedback"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
@@ -829,36 +760,6 @@ with tab1:
                     st.rerun()
 
     sym = (st.session_state.stock_selected or stock_ticker).strip().upper()
-
-    # Timeframe + Trading Mode
-    tf_col1, tf_col2, tf_col3 = st.columns([2, 1, 1])
-    with tf_col1:
-        tf_options = ["1m","5m","15m","30m","1h","4h","1D","1W","1M"]
-        tf_labels  = ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","Daily","Weekly","Monthly"]
-        stock_tf   = st.select_slider("Timeframe", options=tf_options,
-                        format_func=lambda x: tf_labels[tf_options.index(x)],
-                        value=st.session_state.get("stock_tf","1D"), key="stock_tf_slider")
-        st.session_state["stock_tf"] = stock_tf
-    with tf_col2:
-        trading_mode_map = {"1m":"Intraday","5m":"Intraday","15m":"Intraday","30m":"Intraday",
-                            "1h":"Swing","4h":"Swing","1D":"Swing","1W":"Position","1M":"Position"}
-        mode = trading_mode_map.get(stock_tf,"Swing")
-        mode_color = {"Intraday":"#58a6ff","Swing":"#3fb950","Position":"#a78bfa"}[mode]
-        st.markdown(f"""<div style="background:rgba(0,0,0,0.2);border:1px solid {mode_color}44;
-            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
-            <div style="color:{mode_color};font-size:0.7rem;font-weight:700;text-transform:uppercase;
-                letter-spacing:1px;">Trading Mode</div>
-            <div style="color:{mode_color};font-size:0.88rem;font-weight:800;">{mode}</div>
-        </div>""", unsafe_allow_html=True)
-    with tf_col3:
-        tf_cfg = TIMEFRAME_CONFIG.get(stock_tf,{})
-        st.markdown(f"""<div style="background:rgba(0,0,0,0.2);border:1px solid rgba(88,166,255,0.2);
-            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
-            <div style="color:#6e7681;font-size:0.7rem;font-weight:700;text-transform:uppercase;
-                letter-spacing:1px;">Period</div>
-            <div style="color:#e6edf3;font-size:0.88rem;font-weight:800;">{tf_cfg.get("period","6mo")}</div>
-        </div>""", unsafe_allow_html=True)
-
     if st.button("🔍 Analyze Stock", key="btn_stock", type="primary", use_container_width=True):
         if sym:
             with st.spinner(f"Fetching data for **{sym}**..."):
@@ -916,28 +817,6 @@ with tab2:
                 st.rerun()
 
     csym = (st.session_state.crypto_selected or crypto_ticker).strip().upper()
-
-    ctf_c1, ctf_c2 = st.columns([3, 1])
-    with ctf_c1:
-        tf_opts_c = ["1m","5m","15m","30m","1h","4h","1D","1W","1M"]
-        tf_lbls_c = ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","Daily","Weekly","Monthly"]
-        crypto_tf = st.select_slider("Chart Timeframe",
-                      options=tf_opts_c,
-                      format_func=lambda x: tf_lbls_c[tf_opts_c.index(x)],
-                      value=st.session_state.get("crypto_tf", "1D"),
-                      key="crypto_tf_slider")
-        st.session_state["crypto_tf"] = crypto_tf
-    with ctf_c2:
-        _cmode = {"1m":"Intraday","5m":"Intraday","15m":"Intraday","30m":"Intraday",
-                  "1h":"Swing","4h":"Swing","1D":"Swing","1W":"Position","1M":"Position"}.get(crypto_tf,"Swing")
-        _ccolor = {"Intraday":"#58a6ff","Swing":"#3fb950","Position":"#a78bfa"}[_cmode]
-        st.markdown(f'''<div style="background:rgba(0,0,0,0.2);border:1px solid {_ccolor}44;
-            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
-            <div style="color:{_ccolor};font-size:0.7rem;font-weight:700;text-transform:uppercase;
-                letter-spacing:1px;">Mode</div>
-            <div style="color:{_ccolor};font-size:0.88rem;font-weight:800;">{_cmode}</div>
-        </div>''', unsafe_allow_html=True)
-
     if st.button("🔍 Analyze Crypto", key="btn_crypto", type="primary", use_container_width=True):
         if csym:
             with st.spinner(f"Fetching data for **{csym}**..."):
@@ -997,26 +876,6 @@ with tab3:
                 st.rerun()
 
     msym = (st.session_state.meme_selected or meme_ticker).strip().upper()
-
-    mtf_col1, mtf_col2 = st.columns([3,1])
-    with mtf_col1:
-        tf_opts_m  = ["1m","5m","15m","30m","1h","4h","1D","1W"]
-        tf_lbls_m  = ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","Daily","Weekly"]
-        meme_tf    = st.select_slider("Timeframe", options=tf_opts_m,
-                       format_func=lambda x: tf_lbls_m[tf_opts_m.index(x)],
-                       value=st.session_state.get("meme_tf","1D"), key="meme_tf_slider")
-        st.session_state["meme_tf"] = meme_tf
-    with mtf_col2:
-        mode_m  = {"1m":"Intraday","5m":"Intraday","15m":"Intraday","30m":"Intraday",
-                   "1h":"Swing","4h":"Swing","1D":"Swing","1W":"Position"}.get(meme_tf,"Swing")
-        mm_color = {"Intraday":"#58a6ff","Swing":"#3fb950","Position":"#a78bfa"}[mode_m]
-        st.markdown(f"""<div style="background:rgba(0,0,0,0.2);border:1px solid {mm_color}44;
-            border-radius:10px;padding:0.5rem 0.8rem;margin-top:1.3rem;text-align:center;">
-            <div style="color:{mm_color};font-size:0.7rem;font-weight:700;text-transform:uppercase;
-                letter-spacing:1px;">Mode</div>
-            <div style="color:{mm_color};font-size:0.88rem;font-weight:800;">{mode_m}</div>
-        </div>""", unsafe_allow_html=True)
-
     if st.button("🔍 Analyze Meme Coin", key="btn_meme", type="primary", use_container_width=True):
         if msym:
             with st.spinner(f"Fetching data for **{msym}**..."):
@@ -1054,34 +913,51 @@ with tab3:
 
 
 # ─── TAB 4: HISTORY ───────────────────────────────────────────────────────────
+
+
+
+# ─── TAB 4: TRADINGVIEW GUIDE ────────────────────────────────────────────────
 with tab4:
+    # Get last analyzed data for context
+    tv_data   = st.session_state.stock_data or st.session_state.crypto_data or st.session_state.meme_data or {}
+    tv_report = st.session_state.stock_report or st.session_state.crypto_report or st.session_state.meme_report or ""
+    render_tradingview_guide(tv_data, tv_report)
+
+# ─── TAB 5: AI CHAT ────────────────────────────────────────────────────────────
+with tab5:
+    chat_ctx = st.session_state.stock_data or st.session_state.crypto_data or st.session_state.meme_data or {}
+    render_ai_chat(chat_ctx)
+
+# ─── TAB 6: HISTORY ───────────────────────────────────────────────────────────
+with tab6:
     if is_logged_in():
         render_history_page(get_current_user())
     else:
         st.markdown("""
-        <div class="empty-state">
-            <div class="empty-state-icon">🔒</div>
-            <p style="color:#c9d1d9;font-size:1rem;font-weight:600;">Login required</p>
-            <p style="color:#8b949e;">Please log in to view your search history.</p>
+        <div style="background:rgba(14,22,40,0.9);border:1px solid rgba(30,58,95,0.6);
+            border-radius:14px;padding:2rem;text-align:center;color:#64748b;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">🔒</div>
+            <p style="color:#94a3b8;font-size:1rem;font-weight:600;">Login required</p>
+            <p style="color:#64748b;">Please log in to view your search history.</p>
         </div>""", unsafe_allow_html=True)
 
 
-# ─── TAB 5: FEEDBACK ─────────────────────────────────────────────────────────
-with tab5:
+# ─── TAB 7: FEEDBACK ────────────────────────────────────────────────────────
+with tab7:
     render_feedback_page(get_current_user())
 
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
-st.markdown("<hr style='border-color:rgba(48,54,61,0.4);'>", unsafe_allow_html=True)
+st.markdown("<hr style='border-color:rgba(30,58,95,0.4);'>" , unsafe_allow_html=True)
 f1, f2, f3 = st.columns([2, 1, 1])
 with f1:
-    st.markdown("<span style='color:#484f58;font-size:0.75rem;'>📊 <b style=\"color:#58a6ff;\">FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
-    st.markdown("<span style='color:#30363d;font-size:0.7rem;'>Data: Yahoo Finance · CoinGecko &nbsp;|&nbsp; Educational purposes only</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#334155;font-size:0.75rem;'>📊 <b style=\"color:#3b82f6;\">FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#1e3a5f;font-size:0.7rem;'>Data: Yahoo Finance · CoinGecko | Educational purposes only</span>", unsafe_allow_html=True)
 with f2:
     st.markdown("""<div style='text-align:center;'>
-        <span style='color:#3fb950;font-size:0.72rem;font-weight:700;'>📞 Customer Care</span><br>
-        <span style='color:#e6edf3;font-size:0.85rem;font-weight:800;letter-spacing:0.5px;'>9692723774</span><br>
-        <span style='color:#6e7681;font-size:0.68rem;'>Mon–Sat · 10 AM – 7 PM</span>
+        <span style='color:#10b981;font-size:0.72rem;font-weight:700;'>📞 Customer Care</span><br>
+        <span style='color:#e2e8f0;font-size:0.85rem;font-weight:800;letter-spacing:0.5px;'>9692723774</span><br>
+        <span style='color:#64748b;font-size:0.68rem;'>Mon–Sat · 10 AM – 7 PM</span>
     </div>""", unsafe_allow_html=True)
 with f3:
-    st.markdown("<span style='color:#30363d;font-size:0.7rem;display:block;text-align:right;'>© 2025 FinSage</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#1e3a5f;font-size:0.7rem;display:block;text-align:right;'>© 2025 FinSage</span>", unsafe_allow_html=True)
