@@ -794,32 +794,31 @@ def render_results(data, report):
 # HEADER + 3-DOTS MENU
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── App Header with 3-dots menu ───────────────────────────────────────────────
-hcol1, hcol2, hcol3 = st.columns([1, 5, 1])
-with hcol1:
+# ── App Header ──────────────────────────────────────────────────────────────
+# Logo + Title on left, ⋮ button on right
+_h_left, _h_right = st.columns([8, 1])
+with _h_left:
     st.markdown("""
-    <div style="display:flex;align-items:center;height:60px;">
-        <div style="background:linear-gradient(135deg,#00F2FE,#00C6FF);
-            border-radius:12px;padding:0.5rem 0.7rem;font-size:1.4rem;">📊</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with hcol2:
-    st.markdown("""
-    <div style="padding:0.5rem 0;">
-        <div style="font-size:1.5rem;font-weight:900;
-            background:linear-gradient(90deg,#00F2FE,#00C6FF,#F59E0B);
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-            line-height:1.1;">FinSage</div>
-        <div style="color:#64748b;font-size:0.75rem;margin-top:0.1rem;font-weight:500;">
-            Global Financial Intelligence Platform
+    <div style="display:flex;align-items:center;gap:0.9rem;padding:0.3rem 0 0.4rem;">
+        <div style="background:linear-gradient(135deg,#00C6FF,#00F2FE);
+            border-radius:13px;padding:0.5rem 0.7rem;font-size:1.45rem;
+            box-shadow:0 0 18px rgba(0,242,254,0.25);flex-shrink:0;">📊</div>
+        <div>
+            <div style="font-size:1.55rem;font-weight:900;letter-spacing:-0.5px;
+                background:linear-gradient(90deg,#00F2FE 0%,#00C6FF 45%,#F59E0B 100%);
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                line-height:1.1;">FinSage</div>
+            <div style="color:#64748B;font-size:0.7rem;font-weight:500;letter-spacing:0.2px;">
+                Global Financial Intelligence Platform
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-with hcol3:
-    dots_open = st.button("⋮", key="open_dots_menu",
-        help="More options", use_container_width=True)
+with _h_right:
+    st.markdown("<div style='padding-top:0.55rem;'>", unsafe_allow_html=True)
+    dots_open = st.button("⋮", key="open_dots_menu", help="AI Chat · TV Guide · History · Feedback",
+                          use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     if dots_open:
         st.session_state["show_dots_menu"] = not st.session_state.get("show_dots_menu", False)
 
@@ -900,53 +899,19 @@ with tab1:
     st.markdown('<div class="section-heading">🌍 Global Stock Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Real-time data from NSE India, US, UK, Germany, Japan & more.</div>', unsafe_allow_html=True)
 
-    s1, s2 = st.columns([2, 1])
-    with s1:
-        stock_ticker = st.text_input("Enter Stock Ticker Symbol",
-            placeholder="e.g. AAPL, RELIANCE.NS, TCS.NS, TSLA", key="stock_input")
-    with s2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.caption("🇮🇳 NSE: RELIANCE.NS · TCS.NS · INFY.NS")
-        st.caption("🇺🇸 US: AAPL · TSLA · NVDA · MSFT")
-        st.caption("🌐 Others: .L (London) · .DE (Germany)")
+    stock_ticker = st.text_input(
+        "🔍 Search Stock Ticker",
+        placeholder="e.g.  RELIANCE.NS · TCS.NS · AAPL · TSLA · NVDA",
+        key="stock_input",
+        label_visibility="collapsed",
+    )
+    st.markdown("""
+    <div style="color:#64748B;font-size:0.72rem;margin-bottom:0.6rem;margin-top:-0.3rem;">
+        🇮🇳 NSE: add <b>.NS</b> &nbsp;·&nbsp; 🇺🇸 US: AAPL, TSLA &nbsp;·&nbsp; 🌐 London: <b>.L</b> &nbsp;·&nbsp; Germany: <b>.DE</b>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ── Index filter tabs ─────────────────────────────────────────────────────
-    st.markdown('<div class="quickpick-label">⚡ Quick Pick — Nifty 50 & Sensex</div>', unsafe_allow_html=True)
-
-    NIFTY50_LIST  = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 'INFOSYS.NS', 'SBIN.NS', 'LICI.NS', 'HINDUNILVR.NS', 'ITC.NS', 'BAJFINANCE.NS', 'KOTAKBANK.NS', 'LT.NS', 'HCLTECH.NS', 'MARUTI.NS', 'AXISBANK.NS', 'SUNPHARMA.NS', 'TITAN.NS', 'ASIANPAINT.NS', 'ULTRACEMCO.NS', 'NTPC.NS', 'POWERGRID.NS', 'WIPRO.NS', 'ADANIENT.NS', 'ADANIPORTS.NS', 'ONGC.NS', 'COALINDIA.NS', 'JSWSTEEL.NS', 'TATASTEEL.NS', 'TATACONSUM.NS', 'TATAMOTORS.NS', 'M&M.NS', 'BAJAJFINSV.NS', 'BAJAJ-AUTO.NS', 'HEROMOTOCO.NS', 'CIPLA.NS', 'DRREDDY.NS', 'DIVISLAB.NS', 'EICHERMOT.NS', 'GRASIM.NS', 'HINDALCO.NS', 'INDUSINDBK.NS', 'NESTLEIND.NS', 'SBILIFE.NS', 'HDFCLIFE.NS', 'APOLLOHOSP.NS', 'BPCL.NS', 'BRITANNIA.NS', 'TECHM.NS', 'SHRIRAMFIN.NS']
-    SENSEX30_LIST = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'INFOSYS.NS', 'BHARTIARTL.NS', 'SBIN.NS', 'BAJFINANCE.NS', 'HINDUNILVR.NS', 'KOTAKBANK.NS', 'LT.NS', 'ITC.NS', 'AXISBANK.NS', 'MARUTI.NS', 'TITAN.NS', 'HCLTECH.NS', 'SUNPHARMA.NS', 'ASIANPAINT.NS', 'ULTRACEMCO.NS', 'WIPRO.NS', 'NTPC.NS', 'POWERGRID.NS', 'JSWSTEEL.NS', 'TATAMOTORS.NS', 'TATASTEEL.NS', 'BAJAJ-AUTO.NS', 'M&M.NS', 'NESTLEIND.NS', 'ADANIENT.NS', 'INDUSINDBK.NS']
-    US_LIST       = ["AAPL","TSLA","NVDA","MSFT","GOOGL","AMZN","META","NFLX","BABA","UBER"]
-    TICKER_NAMES  = {'RELIANCE.NS': 'Reliance', 'TCS.NS': 'TCS', 'HDFCBANK.NS': 'HDFC Bank', 'BHARTIARTL.NS': 'Airtel', 'ICICIBANK.NS': 'ICICI Bank', 'INFOSYS.NS': 'Infosys', 'SBIN.NS': 'SBI', 'LICI.NS': 'LIC', 'HINDUNILVR.NS': 'HUL', 'ITC.NS': 'ITC', 'BAJFINANCE.NS': 'Bajaj Fin', 'KOTAKBANK.NS': 'Kotak', 'LT.NS': 'L&T', 'HCLTECH.NS': 'HCL Tech', 'MARUTI.NS': 'Maruti', 'AXISBANK.NS': 'Axis Bank', 'SUNPHARMA.NS': 'Sun Pharma', 'TITAN.NS': 'Titan', 'ASIANPAINT.NS': 'Asian Paint', 'ULTRACEMCO.NS': 'UltraCem', 'NTPC.NS': 'NTPC', 'POWERGRID.NS': 'PowerGrid', 'WIPRO.NS': 'Wipro', 'ADANIENT.NS': 'Adani Ent', 'ADANIPORTS.NS': 'Adani Ports', 'ONGC.NS': 'ONGC', 'COALINDIA.NS': 'Coal India', 'JSWSTEEL.NS': 'JSW Steel', 'TATASTEEL.NS': 'Tata Steel', 'TATACONSUM.NS': 'Tata Cons', 'TATAMOTORS.NS': 'Tata Motors', 'M&M.NS': 'M&M', 'BAJAJFINSV.NS': 'Bajaj FSv', 'BAJAJ-AUTO.NS': 'Bajaj Auto', 'HEROMOTOCO.NS': 'Hero Moto', 'CIPLA.NS': 'Cipla', 'DRREDDY.NS': 'Dr Reddy', 'DIVISLAB.NS': 'Divis Lab', 'EICHERMOT.NS': 'Eicher', 'GRASIM.NS': 'Grasim', 'HINDALCO.NS': 'Hindalco', 'INDUSINDBK.NS': 'IndusInd', 'NESTLEIND.NS': 'Nestle', 'SBILIFE.NS': 'SBI Life', 'HDFCLIFE.NS': 'HDFC Life', 'APOLLOHOSP.NS': 'Apollo Hosp', 'BPCL.NS': 'BPCL', 'BRITANNIA.NS': 'Britannia', 'TECHM.NS': 'Tech M', 'SHRIRAMFIN.NS': 'Shriram Fin', 'AAPL': 'Apple', 'TSLA': 'Tesla', 'NVDA': 'Nvidia', 'MSFT': 'Microsoft', 'GOOGL': 'Google', 'AMZN': 'Amazon', 'META': 'Meta', 'NFLX': 'Netflix'}
-
-    idx_tab = st.radio("Filter by Index", ["🇮🇳 Nifty 50", "📊 Sensex 30", "🇺🇸 US Stocks"],
-                        horizontal=True, key="stock_idx_filter", label_visibility="collapsed")
-
-    if idx_tab == "🇮🇳 Nifty 50":
-        pick_list = NIFTY50_LIST
-    elif idx_tab == "📊 Sensex 30":
-        pick_list = SENSEX30_LIST
-    else:
-        pick_list = US_LIST
-
-    # Search within list
-    search_q = st.text_input("🔍 Search within list", placeholder="Type company name or ticker...",
-                              key="stock_search_filter", label_visibility="collapsed")
-    if search_q:
-        sq = search_q.upper()
-        pick_list = [s for s in pick_list if sq in s.upper() or sq in TICKER_NAMES.get(s,"").upper()]
-
-    # Render as scrollable button grid — 8 per row
-    for row_start in range(0, len(pick_list), 8):
-        row_tickers = pick_list[row_start:row_start+8]
-        cols = st.columns(len(row_tickers))
-        for ci, s in enumerate(row_tickers):
-            label = TICKER_NAMES.get(s, s.replace(".NS",""))
-            with cols[ci]:
-                if st.button(label, key=f"sq_{s}", use_container_width=True, help=s):
-                    st.session_state.stock_selected = s
-                    st.rerun()
-
-    sym = (st.session_state.stock_selected or stock_ticker).strip().upper()
+    sym = (st.session_state.get("stock_selected","") or stock_ticker).strip().upper()
     if st.button("🔍 Analyze Stock", key="btn_stock", type="primary", use_container_width=True):
         if sym:
             with st.spinner(f"Fetching data for **{sym}**..."):
@@ -986,24 +951,19 @@ with tab2:
     st.markdown('<div class="section-heading">₿ Cryptocurrency Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Real-time data from CoinGecko — 100+ coins supported.</div>', unsafe_allow_html=True)
 
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        crypto_ticker = st.text_input("Enter Crypto Symbol",
-            placeholder="e.g. BTC, ETH, SOL, BNB, ADA, XRP", key="crypto_input")
-    with c2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.caption("Large Cap: BTC · ETH · BNB · SOL")
-        st.caption("Mid Cap: ADA · AVAX · DOT · MATIC")
+    crypto_ticker = st.text_input(
+        "🔍 Search Crypto Symbol",
+        placeholder="e.g.  BTC · ETH · SOL · BNB · XRP · ADA · AVAX · DOGE",
+        key="crypto_input",
+        label_visibility="collapsed",
+    )
+    st.markdown("""
+    <div style="color:#64748B;font-size:0.72rem;margin-bottom:0.6rem;margin-top:-0.3rem;">
+        100+ coins supported via CoinGecko &nbsp;·&nbsp; Enter symbol e.g. BTC, ETH, SOL
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown('<div class="quickpick-label">⚡ Quick Pick</div>', unsafe_allow_html=True)
-    cc = st.columns(8)
-    for i, c in enumerate(["BTC","ETH","SOL","BNB","XRP","ADA","AVAX","DOT"]):
-        with cc[i]:
-            if st.button(c, key=f"cq_{c}"):
-                st.session_state.crypto_selected = c
-                st.rerun()
-
-    csym = (st.session_state.crypto_selected or crypto_ticker).strip().upper()
+    csym = (st.session_state.get("crypto_selected","") or crypto_ticker).strip().upper()
     if st.button("🔍 Analyze Crypto", key="btn_crypto", type="primary", use_container_width=True):
         if csym:
             with st.spinner(f"Fetching data for **{csym}**..."):
@@ -1045,24 +1005,19 @@ with tab3:
     st.markdown('<div class="section-heading">🎭 Meme Coin Analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="meme-warning">⚠️ <b>HIGH RISK:</b> Meme coins are purely speculative. Prices can crash 80–90% overnight. Only use money you can afford to lose completely.</div>', unsafe_allow_html=True)
 
-    m1, m2 = st.columns([2, 1])
-    with m1:
-        meme_ticker = st.text_input("Enter Meme Coin Symbol",
-            placeholder="e.g. DOGE, SHIB, PEPE, FLOKI, BONK", key="meme_input")
-    with m2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.caption("Popular: DOGE · SHIB · PEPE · FLOKI")
-        st.caption("Trending: BONK · WIF · MEME · TURBO")
+    meme_ticker = st.text_input(
+        "🔍 Search Meme Coin Symbol",
+        placeholder="e.g.  DOGE · SHIB · PEPE · FLOKI · BONK · WIF",
+        key="meme_input",
+        label_visibility="collapsed",
+    )
+    st.markdown("""
+    <div style="color:#64748B;font-size:0.72rem;margin-bottom:0.6rem;margin-top:-0.3rem;">
+        ⚠️ High risk — meme coins can crash 80–90% overnight. Enter symbol above.
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown('<div class="quickpick-label">⚡ Quick Pick</div>', unsafe_allow_html=True)
-    mc = st.columns(8)
-    for i, m in enumerate(["DOGE","SHIB","PEPE","FLOKI","BONK","WIF","MEME","TURBO"]):
-        with mc[i]:
-            if st.button(m, key=f"mq_{m}"):
-                st.session_state.meme_selected = m
-                st.rerun()
-
-    msym = (st.session_state.meme_selected or meme_ticker).strip().upper()
+    msym = (st.session_state.get("meme_selected","") or meme_ticker).strip().upper()
     if st.button("🔍 Analyze Meme Coin", key="btn_meme", type="primary", use_container_width=True):
         if msym:
             with st.spinner(f"Fetching data for **{msym}**..."):
