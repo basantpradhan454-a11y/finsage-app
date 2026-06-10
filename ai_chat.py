@@ -12,7 +12,7 @@ import re
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
 
-SYSTEM_PROMPT = """You are FinSage AI — an advanced automated trading agent.
+SYSTEM_PROMPT = """You are StoxAI — an advanced automated trading agent.
 
 When user asks you to analyze a stock/crypto OR set up a trade, you MUST:
 1. Give a clear technical analysis in simple English
@@ -247,11 +247,11 @@ def render_ai_chat(analysis_context: dict = None):
     <div style="background:linear-gradient(135deg,#0F172A,#1E293B);
         border:2px solid rgba(0,242,254,0.4);border-radius:14px;
         width:46px;height:46px;display:flex;align-items:center;justify-content:center;
-        font-size:1.4rem;box-shadow:0 0 16px rgba(0,242,254,0.2);">🤖</div>
+        font-size:1rem;box-shadow:0 0 16px rgba(0,242,254,0.2);padding:0;overflow:hidden;"><img src="https://raw.githubusercontent.com/basantpradhan454-a11y/finsage-app/main/static/stoxai_logo.png" style="width:46px;height:46px;object-fit:cover;border-radius:12px;display:block;"/></div>
     <div style="flex:1;">
       <div style="font-size:1rem;font-weight:800;background:linear-gradient(90deg,#00F2FE,#F59E0B);
           -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
-          FinSage AI Trading Agent
+          StoxAI — Smart Trading Agent
       </div>
       <div style="color:#64748B;font-size:0.75rem;margin-top:0.1rem;">
           Type any stock or crypto → AI analyzes + auto-sets up TradingView with bars, SL & demo trade
