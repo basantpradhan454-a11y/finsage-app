@@ -1,144 +1,144 @@
 """
-FinSage — Privacy Policy Page
+STOX AI Privacy Policy
 """
-import streamlit as st
 
+def get_privacy_policy():
+    return """
+# 🔒 Privacy Policy
 
-def render_privacy_policy():
-    if st.button("← Back to FinSage", key="back_privacy_btn"):
-        st.session_state["show_privacy"] = False
-        st.rerun()
-
-    st.markdown("""
-## 🔒 Privacy Policy — FinSage
-
-**Last Updated:** May 2026 &nbsp;|&nbsp; Version 1.0
+**STOX AI — Global Financial Intelligence Platform**  
+**Effective Date:** June 1, 2026  
+**Last Updated:** May 29, 2026
 
 ---
 
-### 1. Introduction
-FinSage ("we", "us", "our") is a financial intelligence platform providing real-time market data, AI-powered analysis, and educational insights. This Privacy Policy explains how we collect, use, store, and protect your information when you use FinSage.
+## 1. Introduction
 
-By creating an account or using FinSage, you agree to this Privacy Policy.
+Welcome to **STOX AI** ("we", "our", or "us"). STOX AI is a Global Financial Intelligence Platform that provides real-time analysis of stocks, cryptocurrencies, and meme coins for educational and informational purposes.
 
----
+This Privacy Policy explains how we collect, use, store, and protect your personal information when you use STOX AI at [finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app](https://finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app/).
 
-### 2. Information We Collect
-
-**Account Information:**
-- Full name, email address (via Firebase Authentication)
-- Encrypted password (Firebase handles this — we never see plain-text passwords)
-- Account creation date, selected subscription plan
-
-**Usage Data:**
-- Assets analyzed (ticker symbols searched)
-- Features used, pages visited
-- Time and frequency of usage
-
-**Device & Technical Info:**
-- Browser type and version
-- Operating system
-- IP address (for security and fraud prevention)
-
-**Payment Information (Stripe):**
-- Billing name, email, card last 4 digits
-- Transaction history
-- We **never** store full card numbers — Stripe handles all payment data securely
+By signing up and using STOX AI, you agree to this Privacy Policy.
 
 ---
 
-### 3. How We Use Your Information
+## 2. Information We Collect
 
-- **Account Management:** To create, maintain, and secure your account
-- **Service Delivery:** To provide market data, analysis, and AI insights
-- **Billing:** To process subscription payments via Stripe
-- **Security:** To detect and prevent fraudulent activity
-- **Improvement:** To analyze usage patterns and improve the platform
-- **Communication:** Important account/service updates only (no spam)
+When you sign up or log in to STOX AI using Google OAuth, we collect the following information from your Google account:
 
----
+| Data | Purpose |
+|------|---------|
+| **Full Name** | To personalize your STOX AI experience |
+| **Email Address** | To identify your account and for communications |
+| **Profile Picture** | To display in your STOX AI dashboard |
+| **Google Account ID** | To securely authenticate your identity |
 
-### 4. Data Security
-
-- **Authentication:** Powered by **Google Firebase** — industry-standard OAuth 2.0
-- **Passwords:** SHA-256 hashed by Firebase — never stored as plain text
-- **Payments:** Processed by **Stripe** — PCI DSS Level 1 certified
-- **Data Transit:** All connections use HTTPS/TLS encryption
-- **Database:** Firebase Firestore with security rules limiting access to account owners only
+We do **not** collect:
+- Your Google password
+- Your financial account details
+- Your payment information
+- Any data beyond what you explicitly provide
 
 ---
 
-### 5. Third-Party Services
+## 3. How We Use Your Information
+
+We use your information to:
+
+- **Authenticate** your identity and provide secure access to STOX AI
+- **Personalize** your dashboard experience (e.g., greeting you by name)
+- **Maintain** your session securely during your visit
+- **Improve** STOX AI features and user experience
+- **Communicate** important updates about the platform (only if necessary)
+
+We do **not**:
+- Sell your data to third parties
+- Use your data for advertising purposes
+- Share your data with financial institutions
+- Use your data for any purpose beyond operating STOX AI
+
+---
+
+## 4. Data Storage & Security
+
+- Your authentication is handled via **Google OAuth 2.0** — we never see or store your Google password
+- User session data is stored securely using **encrypted session tokens**
+- We use industry-standard **HTTPS encryption** for all data transmission
+- Access to user data is strictly limited to STOX AI's core systems
+- We do not store your data on third-party advertising or analytics platforms
+
+---
+
+## 5. Third-Party Services
+
+STOX AI uses the following third-party services:
 
 | Service | Purpose | Privacy Policy |
 |---------|---------|----------------|
-| **Google Firebase** | Authentication + Database | [firebase.google.com/support/privacy](https://firebase.google.com/support/privacy) |
-| **Stripe** | Payment processing | [stripe.com/privacy](https://stripe.com/privacy) |
-| **Yahoo Finance (yfinance)** | Stock market data | Public API, no personal data shared |
-| **CoinGecko** | Cryptocurrency data | Public API, no personal data shared |
-| **Groq API** | AI-powered insights | No personal data sent — only market data |
-| **Google News RSS** | News headlines | Public RSS feed, no personal data |
+| **Google OAuth** | User authentication | [Google Privacy Policy](https://policies.google.com/privacy) |
+| **Yahoo Finance (yfinance)** | Stock market data | [Yahoo Privacy Policy](https://legal.yahoo.com/us/en/yahoo/privacy/index.html) |
+| **CoinGecko** | Cryptocurrency data | [CoinGecko Privacy Policy](https://www.coingecko.com/en/privacy) |
+| **Streamlit Cloud** | App hosting | [Streamlit Privacy Policy](https://streamlit.io/privacy-policy) |
 
 ---
 
-### 6. Data Retention
+## 6. Data Retention
 
-- Account data is retained while your account is active
-- You can request deletion at any time
-- Payment records are retained for 7 years as required by Indian financial regulations
-- Usage logs are retained for 90 days
-
----
-
-### 7. Cookies & Sessions
-
-- FinSage uses **session-only cookies** to maintain your login state
-- No tracking, advertising, or third-party analytics cookies
-- Sessions expire when you close the browser or click Logout
+- Your account data is retained as long as your account is active
+- If you request account deletion, we will remove your data within **30 days**
+- Session data is automatically cleared when you log out
 
 ---
 
-### 8. Your Rights (GDPR & IT Act 2000)
+## 7. Your Rights
 
 You have the right to:
-- ✅ **Access** your personal data
-- ✅ **Correct** inaccurate information
+
+- ✅ **Access** the personal data we hold about you
+- ✅ **Correct** any inaccurate personal data
 - ✅ **Delete** your account and all associated data
-- ✅ **Export** your data in machine-readable format
-- ✅ **Opt out** of all marketing communications
-- ✅ **Withdraw consent** at any time
+- ✅ **Withdraw** your consent at any time by logging out and not using STOX AI
+- ✅ **Data Portability** — request a copy of your data
 
-To exercise these rights, contact: **support@finsage.app**
-
----
-
-### 9. Subscription & Refunds
-
-- Subscriptions are billed monthly via Stripe
-- **7-day no-questions-asked refund policy** for first-time subscribers
-- Cancel anytime — access continues until end of billing period
-- No hidden charges; GST extra as applicable
+To exercise any of these rights, contact us at the email below.
 
 ---
 
-### 10. Disclaimer
+## 8. Cookies & Sessions
 
-> FinSage is an **educational and informational platform only**. Nothing on this platform constitutes financial advice, investment recommendation, or solicitation to buy or sell any security. Past performance is not indicative of future results. Always consult a **SEBI-registered investment advisor** before making any investment decisions. FinSage is **not** a SEBI-registered investment advisor.
+STOX AI uses minimal session cookies to:
+- Keep you logged in during your session
+- Remember your preferences within the app
 
----
-
-### 11. Changes to This Policy
-
-We may update this policy from time to time. Significant changes will be notified via email. Continued use of FinSage after changes constitutes acceptance.
+We do **not** use tracking cookies or advertising cookies.
 
 ---
 
-### 12. Contact Us
+## 9. Children's Privacy
 
-📧 **Email:** support@finsage.app  
-🌐 **Website:** finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app  
-📍 **Jurisdiction:** India (governed by Indian IT Act 2000 & applicable laws)
+STOX AI is intended for users **18 years of age and older**. We do not knowingly collect data from minors. If you believe a minor has registered, please contact us immediately.
 
 ---
-*FinSage — Global Financial Intelligence Platform | © 2026 FinSage. All rights reserved.*
-""")
+
+## 10. Changes to This Policy
+
+We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated **"Last Updated"** date. Continued use of STOX AI after changes constitutes acceptance of the new policy.
+
+---
+
+## 11. Contact Us
+
+For any privacy-related questions, data requests, or concerns:
+
+📧 **Email:** privacy@finsage.app  
+🌐 **Platform:** STOX AI — Global Financial Intelligence Platform  
+📍 **Jurisdiction:** India
+
+---
+
+*This Privacy Policy is governed by the laws of India. Any disputes shall be subject to the jurisdiction of Indian courts.*
+
+---
+
+**STOX AI** — *Empowering Investors with Intelligence* 📊
+"""
