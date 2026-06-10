@@ -1,5 +1,5 @@
 """
-FinSage Configuration Module
+STOX AI Configuration Module
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 100% FREE APIs — No paid keys required!
   • yfinance    → Stocks (Yahoo Finance) — completely free
@@ -26,7 +26,6 @@ logger = logging.getLogger("finsage.config")
 # ── API Keys — ALL OPTIONAL (app works 100% without them) ────────────────────
 COINGECKO_API_KEY: str | None = os.getenv("COINGECKO_API_KEY")  # Optional: free demo key
 # NOTE: yfinance needs NO API key — it scrapes Yahoo Finance directly
-GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")  # Free: gemini-2.5-flash
 
 # ── Performance Settings ──────────────────────────────────────────────────────
 CACHE_TTL_SECONDS: int  = int(os.getenv("CACHE_TTL_SECONDS", "300"))   # 5 min cache
@@ -50,16 +49,12 @@ def coingecko_headers() -> dict:
 # ── Startup Info ──────────────────────────────────────────────────────────────
 def print_api_status():
     logger.info("=" * 50)
-    logger.info("FinSage API Status:")
+    logger.info("STOX AI API Status:")
     logger.info("  ✅ yfinance     → FREE (no key needed)")
     if COINGECKO_API_KEY:
         logger.info("  ✅ CoinGecko    → FREE Demo Key (higher limits)")
     else:
         logger.info("  ✅ CoinGecko    → FREE Public API (30 req/min)")
-    if GEMINI_API_KEY:
-        logger.info("  ✅ Gemini AI    → FREE (gemini-2.5-flash)")
-    else:
-        logger.info("  ⚠️  Gemini AI    → No key (set GEMINI_API_KEY for AI insights)")
     logger.info("=" * 50)
 
 print_api_status()
