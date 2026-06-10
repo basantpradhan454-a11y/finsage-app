@@ -1,5 +1,5 @@
 """
-FinSage — Global Financial Intelligence Platform
+StoxAI — Analyze. Attract. Thrive.
 Free APIs: yfinance + CoinGecko
 Auth: Google OAuth + Email/Password (Firestore)
 """
@@ -26,8 +26,8 @@ from privacy_policy import render_privacy_policy
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="FinSage — Global Financial Intelligence",
-    page_icon="📊",
+    page_title="StoxAI — Analyze. Attract. Thrive.",
+    page_icon="https://raw.githubusercontent.com/basantpradhan454-a11y/finsage-app/main/static/favicon.png",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -785,7 +785,7 @@ def render_results(data, report):
 
     st.download_button("📥 Download Report",
         data=report,
-        file_name=f"FinSage_{ticker_sym}_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+        file_name=f"StoxAI_{ticker_sym}_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
         mime="text/markdown", use_container_width=True)
 
 
@@ -799,17 +799,21 @@ def render_results(data, report):
 _h_left, _h_right = st.columns([8, 1])
 with _h_left:
     st.markdown("""
-    <div style="display:flex;align-items:center;gap:0.9rem;padding:0.3rem 0 0.4rem;">
-        <div style="background:linear-gradient(135deg,#00C6FF,#00F2FE);
-            border-radius:13px;padding:0.5rem 0.7rem;font-size:1.45rem;
-            box-shadow:0 0 18px rgba(0,242,254,0.25);flex-shrink:0;">📊</div>
+    <div style="display:flex;align-items:center;gap:0.85rem;padding:0.2rem 0 0.3rem;">
+        <img src="https://raw.githubusercontent.com/basantpradhan454-a11y/finsage-app/main/static/stoxai_logo.png"
+             style="width:52px;height:52px;border-radius:14px;
+                    box-shadow:0 0 22px rgba(0,242,254,0.3);
+                    object-fit:cover;flex-shrink:0;" />
         <div>
-            <div style="font-size:1.55rem;font-weight:900;letter-spacing:-0.5px;
-                background:linear-gradient(90deg,#00F2FE 0%,#00C6FF 45%,#F59E0B 100%);
+            <div style="font-size:1.55rem;font-weight:900;letter-spacing:1px;
+                background:linear-gradient(90deg,#00F2FE 0%,#ffffff 40%,#F59E0B 100%);
                 -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-                line-height:1.1;">FinSage</div>
-            <div style="color:#64748B;font-size:0.7rem;font-weight:500;letter-spacing:0.2px;">
-                Global Financial Intelligence Platform
+                line-height:1.05;font-family:'Inter',sans-serif;">
+                STOX<span style="color:#00F2FE;-webkit-text-fill-color:#00F2FE;">|</span>AI
+            </div>
+            <div style="color:#64748B;font-size:0.62rem;font-weight:600;
+                letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;">
+                Analyze &nbsp;·&nbsp; Attract &nbsp;·&nbsp; Thrive
             </div>
         </div>
     </div>
@@ -896,7 +900,7 @@ tab1, tab2, tab3 = st.tabs(["🌍  Stocks", "₿  Crypto", "🎭  Meme Coins"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
-    st.markdown('<div class="section-heading">🌍 Global Stock Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-heading">🌍 Stock Analysis — StoxAI</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Real-time data from NSE India, US, UK, Germany, Japan & more.</div>', unsafe_allow_html=True)
 
     stock_ticker = st.text_input(
@@ -948,7 +952,7 @@ with tab1:
 
 # ─── TAB 2: CRYPTO ────────────────────────────────────────────────────────────
 with tab2:
-    st.markdown('<div class="section-heading">₿ Cryptocurrency Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-heading">₿ Crypto Analysis — StoxAI</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Real-time data from CoinGecko — 100+ coins supported.</div>', unsafe_allow_html=True)
 
     crypto_ticker = st.text_input(
@@ -1002,7 +1006,7 @@ with tab2:
 
 # ─── TAB 3: MEME COINS ────────────────────────────────────────────────────────
 with tab3:
-    st.markdown('<div class="section-heading">🎭 Meme Coin Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-heading">🎭 Meme Coins — StoxAI</div>', unsafe_allow_html=True)
     st.markdown('<div class="meme-warning">⚠️ <b>HIGH RISK:</b> Meme coins are purely speculative. Prices can crash 80–90% overnight. Only use money you can afford to lose completely.</div>', unsafe_allow_html=True)
 
     meme_ticker = st.text_input(
@@ -1068,7 +1072,7 @@ with tab3:
 st.markdown("<hr style='border-color:rgba(30,41,59,0.4);'>" , unsafe_allow_html=True)
 f1, f2, f3 = st.columns([2, 1, 1])
 with f1:
-    st.markdown("<span style='color:#64748B;font-size:0.75rem;'>📊 <b style=\"color:#00F2FE;\">FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#64748B;font-size:0.75rem;'>📊 <b style=\"color:#00F2FE;\">StoxAI</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
     st.markdown("<span style='color:#1e3a5f;font-size:0.7rem;'>Data: Yahoo Finance · CoinGecko | Educational purposes only</span>", unsafe_allow_html=True)
 with f2:
     st.markdown("""<div style='text-align:center;'>
