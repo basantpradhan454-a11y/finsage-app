@@ -1,5 +1,5 @@
 """
-FinSage — Admin Panel
+STOX AI — Admin Panel
 View all registered users (admin only)
 """
 
