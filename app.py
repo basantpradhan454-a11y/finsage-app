@@ -14,7 +14,9 @@ from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_d
 from analyzer import analyze_stock, analyze_crypto, format_number
 from auth_page import render_auth_page, render_sidebar_auth, is_logged_in, get_current_user, logout
 from admin_panel import render_admin_panel
-from trading_agent import render_trading_agent
+from ai_assistant import render_ai_assistant
+from feedback_dashboard import render_feedback_dashboard
+from advanced_features import render_advanced_features
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -106,6 +108,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Session State ──────────────────────────────────────────────────────────────
+if "active_page" not in st.session_state:
+    st.session_state.active_page = "main"
+
 defaults = {
     "user": None,
     "stock_data": None, "stock_report": None,
@@ -124,6 +129,19 @@ user = get_current_user()
 
 # ── Admin Panel (only visible to admin) ───────────────────────────────────────
 render_admin_panel()
+
+# ── Page Router (3-dot menu navigation) ───────────────────────────────────────
+_page = st.session_state.get("active_page", "main")
+if _page != "main":
+    _page_titles = {
+        "🤖 AI Assistant": render_ai_assistant,
+        "⭐ Feedback & Community": render_feedback_dashboard,
+        "🧠 Advanced Intelligence": render_advanced_features,
+        "👤 Admin Panel": render_admin_panel,
+    }
+    # Navbar first
+    # (falls through to navbar below, then renders page)
+    pass
 
 # ── Ticker refresh ─────────────────────────────────────────────────────────────
 now_ts = time.time()
@@ -146,20 +164,33 @@ with n1:
     </div>
     """, unsafe_allow_html=True)
 with n2:
-    # Show user info if logged in, else nothing
-    if user:
-        provider_icon = "🔵" if user.get("provider") == "google" else "📧"
-        user_name = user.get("name", "User")
-        c1, c2 = st.columns([3, 1])
-        with c1:
-            st.markdown(f"""
+    top_col1, top_col2 = st.columns([3, 1])
+    with top_col1:
+        if user:
+            provider_icon = "🔵" if user.get("provider") == "google" else "📧"
+            user_name = user.get("name", "User")
+            st.markdown(f'''
             <div style="padding-top:0.5rem;text-align:right;">
                 <span class="user-badge">{provider_icon} {user_name}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            if st.button("Logout", key="logout_btn"):
-                logout()
+            </div>''', unsafe_allow_html=True)
+    with top_col2:
+        with st.popover("⋮", use_container_width=True):
+            st.markdown("**⚙️ More Features**")
+            st.markdown("---")
+            menu_choice = st.radio("Navigate to:", [
+                "🤖 AI Assistant",
+                "⭐ Feedback & Community",
+                "🧠 Advanced Intelligence",
+                "👤 Admin Panel",
+            ], key="menu_nav", label_visibility="collapsed")
+            go_btn = st.button("Open →", key="menu_go", type="primary", use_container_width=True)
+            if go_btn:
+                st.session_state.active_page = menu_choice
+                st.rerun()
+            if user:
+                st.markdown("---")
+                if st.button("🚪 Logout", key="logout_btn_menu", use_container_width=True):
+                    logout()
 
 st.markdown("<hr style='border-color:#30363d;margin:0.2rem 0 0.8rem;'>", unsafe_allow_html=True)
 
@@ -277,7 +308,25 @@ def render_results(data, report):
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab1, tab2, tab3, tab4 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins", "🤖  AI Trading"])
+# ── Conditional Page Render ───────────────────────────────────────────────────
+_ap = st.session_state.get("active_page", "main")
+if _ap == "🤖 AI Assistant":
+    if st.button("← Back to Dashboard", key="back_ai"):
+        st.session_state.active_page = "main"; st.rerun()
+    render_ai_assistant()
+    st.stop()
+elif _ap == "⭐ Feedback & Community":
+    if st.button("← Back to Dashboard", key="back_fb"):
+        st.session_state.active_page = "main"; st.rerun()
+    render_feedback_dashboard()
+    st.stop()
+elif _ap == "🧠 Advanced Intelligence":
+    if st.button("← Back to Dashboard", key="back_adv"):
+        st.session_state.active_page = "main"; st.rerun()
+    render_advanced_features()
+    st.stop()
+
+tab1, tab2, tab3 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
@@ -418,10 +467,6 @@ with tab3:
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Meme coins are unregulated & highly speculative. Not SEBI advice. Never invest borrowed money in meme coins.</div>', unsafe_allow_html=True)
 
-
-# ─── TAB 4: AI TRADING AGENT ──────────────────────────────────────────────────
-with tab4:
-    render_trading_agent()
 
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
