@@ -14,6 +14,7 @@ from data_fetcher import fetch_stock_data, fetch_crypto_data, fetch_ticker_bar_d
 from analyzer import analyze_stock, analyze_crypto, format_number
 from auth_page import render_auth_page, render_sidebar_auth, is_logged_in, get_current_user, logout
 from admin_panel import render_admin_panel
+from trading_agent import render_trading_agent
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -276,7 +277,7 @@ def render_results(data, report):
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab1, tab2, tab3 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins"])
+tab1, tab2, tab3, tab4 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins", "🤖  AI Trading"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
@@ -416,6 +417,11 @@ with tab3:
         st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🎭</div><p>Enter a meme coin symbol and click <b>Analyze Meme Coin</b>.</p></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Meme coins are unregulated & highly speculative. Not SEBI advice. Never invest borrowed money in meme coins.</div>', unsafe_allow_html=True)
+
+
+# ─── TAB 4: AI TRADING AGENT ──────────────────────────────────────────────────
+with tab4:
+    render_trading_agent()
 
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
