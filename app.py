@@ -17,97 +17,159 @@ from admin_panel import render_admin_panel
 from ai_assistant import render_ai_assistant
 from feedback_dashboard import render_feedback_dashboard
 from advanced_features import render_advanced_features
+from chart_analyzer import render_chart_analyzer
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="FinSage — Global Financial Intelligence",
-    page_icon="💹",
+    page_title="STOX AI — Analyze. Attract. Thrive.",
+    page_icon="📈",
     layout="wide",
-    initial_sidebar_state="auto",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Global CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    #MainMenu { visibility: hidden !important; }
-    footer { visibility: hidden !important; }
-    header { visibility: hidden !important; }
-    [data-testid="stToolbar"] { display: none !important; }
-    [data-testid="manage-app-button"] { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-    [data-testid="stStatusWidget"] { display: none !important; }
-    [data-testid="stBottom"] { display: none !important; }
-    .stDeployButton { display: none !important; }
-    .viewerBadge_container__r5tak { display: none !important; }
-    button[kind="header"] { display: none !important; }
-    .st-emotion-cache-czk5ss { display: none !important; }
-    ._link_gzau3_10 { display: none !important; }
-    .st-emotion-cache-1dp5vir { display: none !important; }
+    /* ─── Hide Streamlit chrome ─── */
+    #MainMenu,footer,header,[data-testid="stToolbar"],[data-testid="manage-app-button"],
+    [data-testid="stDecoration"],[data-testid="stStatusWidget"],[data-testid="stBottom"],
+    .stDeployButton,.viewerBadge_container__r5tak,button[kind="header"],
+    .st-emotion-cache-czk5ss,._link_gzau3_10,.st-emotion-cache-1dp5vir,
+    [data-testid="stSidebarCollapsedControl"] { display:none !important; visibility:hidden !important; }
 
-    .stApp { background-color: #0d1117; color: #c9d1d9; }
-    [data-testid="stSidebar"] { background-color: #161b22; }
+    /* ─── Base ─── */
+    .stApp { background:#050a12 !important; color:#c9d1d9; font-family:'Inter',sans-serif; }
+    [data-testid="stSidebar"] { background:#0a0f1a !important; border-right:1px solid #1a2535; }
 
-    .fs-brand { font-size: 1.35rem; font-weight: 800; color: #58a6ff; }
-    .fs-tagline { color: #8b949e; font-size: 0.8rem; margin-left: 0.7rem; }
+    /* ─── Futuristic glow scrollbar ─── */
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-track { background:#0d1117; }
+    ::-webkit-scrollbar-thumb { background:#1f6feb; border-radius:4px; }
 
-    .ticker-bar {
-        background: #161b22; border: 1px solid #30363d;
-        border-radius: 10px; padding: 0.55rem 1.1rem;
-        margin-bottom: 1rem; overflow-x: auto; white-space: nowrap;
+    /* ─── Navbar ─── */
+    .stox-navbar {
+        background:linear-gradient(135deg,rgba(13,17,23,0.98),rgba(22,27,34,0.98));
+        border:1px solid rgba(88,166,255,0.18);
+        border-radius:14px; padding:0.7rem 1.2rem;
+        margin-bottom:0.6rem;
+        box-shadow:0 0 30px rgba(88,166,255,0.06),inset 0 0 30px rgba(88,166,255,0.02);
+        backdrop-filter:blur(20px);
     }
-    .ticker-item { display: inline-block; margin-right: 1.4rem; font-size: 0.83rem; }
-    .ticker-sym { color: #58a6ff; font-weight: 700; margin-right: 3px; }
-    .ticker-price { color: #c9d1d9; margin-right: 3px; }
-    .up { color: #3fb950; } .down { color: #f85149; }
 
+    /* ─── Ticker ─── */
+    .ticker-bar {
+        background:linear-gradient(90deg,#0a0f1a,#0d1117,#0a0f1a);
+        border:1px solid rgba(88,166,255,0.12);
+        border-radius:10px; padding:0.55rem 1.1rem;
+        margin-bottom:1rem; overflow-x:auto; white-space:nowrap;
+        box-shadow:0 0 20px rgba(88,166,255,0.04);
+    }
+    .ticker-item { display:inline-block; margin-right:1.5rem; font-size:0.82rem; }
+    .ticker-sym  { color:#58a6ff; font-weight:700; margin-right:4px; letter-spacing:0.03em; }
+    .ticker-price{ color:#c9d1d9; margin-right:4px; }
+    .up   { color:#3fb950; font-weight:600; }
+    .down { color:#f85149; font-weight:600; }
+
+    /* ─── Tabs ─── */
     .stTabs [data-baseweb="tab-list"] {
-        background: #161b22; border-radius: 12px 12px 0 0;
-        border: 1px solid #30363d; border-bottom: none;
-        gap: 0; padding: 0.35rem 0.35rem 0;
+        background:rgba(22,27,34,0.8); border-radius:12px 12px 0 0;
+        border:1px solid rgba(88,166,255,0.12); border-bottom:none;
+        gap:0; padding:0.3rem 0.3rem 0;
+        backdrop-filter:blur(10px);
     }
     .stTabs [data-baseweb="tab"] {
-        background: transparent; color: #8b949e;
-        border-radius: 8px 8px 0 0; font-weight: 600;
-        font-size: 0.95rem; padding: 0.65rem 1.8rem; border: none;
+        background:transparent; color:#8b949e;
+        border-radius:8px 8px 0 0; font-weight:600;
+        font-size:0.92rem; padding:0.6rem 1.6rem; border:none;
+        transition:all 0.2s ease;
     }
     .stTabs [aria-selected="true"] {
-        background: #0d1117 !important; color: #58a6ff !important;
-        border-top: 2px solid #58a6ff !important;
+        background:rgba(88,166,255,0.08) !important; color:#58a6ff !important;
+        border-top:2px solid #58a6ff !important;
+        box-shadow:0 -4px 20px rgba(88,166,255,0.15) !important;
     }
     .stTabs [data-baseweb="tab-panel"] {
-        background: #0d1117; border: 1px solid #30363d;
-        border-top: none; border-radius: 0 0 12px 12px; padding: 1.4rem;
+        background:rgba(13,17,23,0.95); border:1px solid rgba(88,166,255,0.1);
+        border-top:none; border-radius:0 0 12px 12px; padding:1.4rem;
     }
 
+    /* ─── Buttons ─── */
     .stButton > button {
-        background: #21262d; color: #58a6ff;
-        border: 1px solid #30363d; border-radius: 8px;
-        font-size: 0.83rem; font-weight: 600; width: 100%;
+        background:linear-gradient(135deg,#161b22,#1a2535);
+        color:#58a6ff; border:1px solid rgba(88,166,255,0.25);
+        border-radius:8px; font-size:0.83rem; font-weight:600;
+        transition:all 0.2s ease; width:100%;
     }
-    .stButton > button:hover { background: #1f6feb; color: white; border-color: #1f6feb; }
+    .stButton > button:hover {
+        background:linear-gradient(135deg,#1f6feb,#388bfd) !important;
+        color:white !important; border-color:#1f6feb !important;
+        box-shadow:0 0 20px rgba(31,111,235,0.4) !important;
+        transform:translateY(-1px);
+    }
+    .stButton > button[kind="primary"] {
+        background:linear-gradient(135deg,#1f6feb,#388bfd) !important;
+        color:white !important; border-color:#1f6feb !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        box-shadow:0 0 25px rgba(31,111,235,0.5) !important;
+        transform:translateY(-1px);
+    }
 
+    /* ─── Inputs ─── */
+    .stTextInput > div > div > input, .stSelectbox > div > div {
+        background:#0d1117 !important; color:#c9d1d9 !important;
+        border:1px solid rgba(88,166,255,0.2) !important; border-radius:8px !important;
+    }
+    .stTextInput > div > div > input:focus {
+        border-color:#58a6ff !important;
+        box-shadow:0 0 12px rgba(88,166,255,0.2) !important;
+    }
+
+    /* ─── Metrics ─── */
+    [data-testid="stMetric"] {
+        background:linear-gradient(135deg,#0d1117,#161b22);
+        border:1px solid rgba(88,166,255,0.1); border-radius:10px;
+        padding:0.6rem 0.8rem;
+        box-shadow:0 0 15px rgba(88,166,255,0.03);
+    }
+
+    /* ─── 3-dot hover menu ─── */
+    .dot-menu-wrapper { position:relative; display:inline-block; }
+    .dot-menu-trigger {
+        background:rgba(22,27,34,0.9); border:1px solid rgba(88,166,255,0.2);
+        border-radius:8px; padding:0.35rem 0.7rem; cursor:pointer;
+        color:#58a6ff; font-size:1.2rem; font-weight:700;
+        transition:all 0.2s; line-height:1;
+        box-shadow:0 0 15px rgba(88,166,255,0.08);
+    }
+    .dot-menu-trigger:hover { background:#1f6feb; color:white; border-color:#1f6feb; }
+
+    /* ─── Misc ─── */
     .meme-warning {
-        background: #2d1b1b; border: 1px solid #f85149;
-        border-radius: 8px; padding: 0.75rem 0.9rem;
-        color: #f85149; font-size: 0.83rem; margin-bottom: 0.9rem;
+        background:linear-gradient(135deg,#1a0808,#2d1b1b);
+        border:1px solid rgba(248,81,73,0.4); border-radius:8px;
+        padding:0.75rem 0.9rem; color:#f85149; font-size:0.83rem;
+        margin-bottom:0.9rem;
+        box-shadow:0 0 15px rgba(248,81,73,0.08);
     }
-
     .disclaimer {
-        background: #161b22; border-left: 4px solid #d29922;
-        border-radius: 0 8px 8px 0; padding: 0.7rem 0.9rem;
-        color: #8b949e; font-size: 0.78rem; margin-top: 0.9rem;
+        background:linear-gradient(135deg,#161b22,#1a2010);
+        border-left:3px solid rgba(210,153,34,0.6);
+        border-radius:0 8px 8px 0; padding:0.7rem 0.9rem;
+        color:#8b949e; font-size:0.78rem; margin-top:0.9rem;
     }
-
     .user-badge {
-        background: #161b22; border: 1px solid #30363d;
-        border-radius: 20px; padding: 0.3rem 0.9rem;
-        color: #c9d1d9; font-size: 0.82rem; display: inline-flex;
-        align-items: center; gap: 0.4rem;
+        background:rgba(22,27,34,0.9); border:1px solid rgba(88,166,255,0.2);
+        border-radius:20px; padding:0.3rem 0.9rem;
+        color:#c9d1d9; font-size:0.82rem; display:inline-flex;
+        align-items:center; gap:0.4rem;
     }
+    hr { border-color:rgba(88,166,255,0.1) !important; }
+    [data-testid="stMarkdownContainer"] h3 { color:#e6edf3; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Session State ──────────────────────────────────────────────────────────────
+# ── Session State ───────────────────────────────────────────────────────────── ──────────────────────────────────────────────────────────────
 if "active_page" not in st.session_state:
     st.session_state.active_page = "main"
 
@@ -127,22 +189,6 @@ for k, v in defaults.items():
 render_sidebar_auth()
 user = get_current_user()
 
-# ── Admin Panel (only visible to admin) ───────────────────────────────────────
-render_admin_panel()
-
-# ── Page Router (3-dot menu navigation) ───────────────────────────────────────
-_page = st.session_state.get("active_page", "main")
-if _page != "main":
-    _page_titles = {
-        "🤖 AI Assistant": render_ai_assistant,
-        "⭐ Feedback & Community": render_feedback_dashboard,
-        "🧠 Advanced Intelligence": render_advanced_features,
-        "👤 Admin Panel": render_admin_panel,
-    }
-    # Navbar first
-    # (falls through to navbar below, then renders page)
-    pass
-
 # ── Ticker refresh ─────────────────────────────────────────────────────────────
 now_ts = time.time()
 if now_ts - st.session_state.last_ticker_refresh > 60:
@@ -150,62 +196,66 @@ if now_ts - st.session_state.last_ticker_refresh > 60:
     st.session_state.last_ticker_refresh = now_ts
 
 # ── Navbar ─────────────────────────────────────────────────────────────────────
-n1, n2 = st.columns([5, 2])
-with n1:
-    st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:0.7rem;padding:0.3rem 0 0.3rem;">
-        <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png" style="height:52px;width:52px;border-radius:10px;object-fit:cover;">
+nb_left, nb_right = st.columns([6, 1])
+with nb_left:
+    st.markdown("""
+    <div class="stox-navbar" style="display:flex;align-items:center;gap:0.8rem;">
+        <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
+             style="height:46px;width:46px;border-radius:10px;object-fit:cover;box-shadow:0 0 15px rgba(88,166,255,0.3);">
         <div>
-            <div style="font-size:1.45rem;font-weight:900;background:linear-gradient(90deg,#58a6ff,#a5d6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.1;">STOX AI</div>
-            <div style="font-size:0.68rem;color:#8b949e;letter-spacing:0.12em;font-weight:600;">ANALYZE. ATTRACT. THRIVE.</div>
+            <div style="font-size:1.4rem;font-weight:900;background:linear-gradient(90deg,#58a6ff,#a5d6ff,#79c0ff);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.1;letter-spacing:-0.02em;">
+                STOX AI
+            </div>
+            <div style="font-size:0.64rem;color:#8b949e;letter-spacing:0.18em;font-weight:600;text-transform:uppercase;">
+                Analyze &middot; Attract &middot; Thrive
+            </div>
         </div>
-        &nbsp;
-        <span style="background:#1a3a1a;color:#3fb950;padding:0.15rem 0.55rem;border-radius:20px;font-size:0.72rem;font-weight:600;">✅ 100% FREE</span>
+        <span style="background:linear-gradient(135deg,#0f2a0f,#1a3a1a);color:#3fb950;padding:0.18rem 0.65rem;
+        border-radius:20px;font-size:0.7rem;font-weight:700;border:1px solid rgba(63,185,80,0.3);
+        box-shadow:0 0 10px rgba(63,185,80,0.15);letter-spacing:0.05em;">✅ 100% FREE</span>
     </div>
     """, unsafe_allow_html=True)
-with n2:
-    top_col1, top_col2 = st.columns([3, 1])
-    with top_col1:
-        if user:
-            provider_icon = "🔵" if user.get("provider") == "google" else "📧"
-            user_name = user.get("name", "User")
-            st.markdown(f'''
-            <div style="padding-top:0.5rem;text-align:right;">
-                <span class="user-badge">{provider_icon} {user_name}</span>
-            </div>''', unsafe_allow_html=True)
-    with top_col2:
-        with st.popover("⋮", use_container_width=True):
-            st.markdown("**⚙️ More Features**")
-            st.markdown("---")
-            menu_choice = st.radio("Navigate to:", [
-                "🤖 AI Assistant",
-                "⭐ Feedback & Community",
-                "🧠 Advanced Intelligence",
-                "👤 Admin Panel",
-            ], key="menu_nav", label_visibility="collapsed")
-            go_btn = st.button("Open →", key="menu_go", type="primary", use_container_width=True)
-            if go_btn:
-                st.session_state.active_page = menu_choice
-                st.rerun()
-            if user:
-                st.markdown("---")
-                if st.button("🚪 Logout", key="logout_btn_menu", use_container_width=True):
-                    logout()
 
-st.markdown("<hr style='border-color:#30363d;margin:0.2rem 0 0.8rem;'>", unsafe_allow_html=True)
+with nb_right:
+    st.markdown("<div style='padding-top:0.4rem;'>", unsafe_allow_html=True)
+    with st.popover("⋮", use_container_width=True):
+        st.markdown("""
+        <div style="font-size:0.9rem;font-weight:700;color:#58a6ff;margin-bottom:0.5rem;">
+        ⚡ Quick Navigation
+        </div>""", unsafe_allow_html=True)
+        
+        menu_items = {
+            "🤖 AI Assistant": "🤖 AI Assistant",
+            "📸 Chart Analyzer": "📸 Chart Analyzer",
+            "⭐ Community": "⭐ Feedback & Community",
+            "🧠 Advanced Intel": "🧠 Advanced Intelligence",
+        }
+        for label, page_key in menu_items.items():
+            if st.button(label, key=f"nav_{label}", use_container_width=True):
+                st.session_state.active_page = page_key
+                st.rerun()
+        
+        if user:
+            st.markdown("---")
+            if st.button("🚪 Logout", key="logout_dot_menu", use_container_width=True):
+                logout()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("<hr style='margin:0.3rem 0 0.7rem;'>", unsafe_allow_html=True)
 
 # ── Live Ticker Bar ────────────────────────────────────────────────────────────
 if st.session_state.ticker_data:
-    html = '<div class="ticker-bar">🔴 <b style="color:#f85149;">LIVE</b>&nbsp;&nbsp;|&nbsp;&nbsp;'
+    ticker_html = '<div class="ticker-bar">🔴 <b style="color:#f85149;">LIVE</b>&nbsp;&nbsp;|&nbsp;&nbsp;'
     for item in st.session_state.ticker_data:
         chg = item.get("change", 0) or 0
-        p = item.get("price", 0) or 0
+        p   = item.get("price", 0) or 0
         cls = "up" if chg >= 0 else "down"
         arrow = "▲" if chg >= 0 else "▼"
-        ps = f"${p:,.6f}" if p < 0.01 else f"${p:,.2f}"
-        html += f'<span class="ticker-item"><span class="ticker-sym">{item["symbol"]}</span><span class="ticker-price">{ps}</span><span class="{cls}">{arrow}{abs(chg):.2f}%</span></span>'
-    html += "</div>"
-    st.markdown(html, unsafe_allow_html=True)
+        ps  = f"${p:,.6f}" if p < 0.01 else f"${p:,.2f}"
+        ticker_html += f'<span class="ticker-item"><span class="ticker-sym">{item["symbol"]}</span><span class="ticker-price">{ps}</span><span class="{cls}">{arrow}{abs(chg):.2f}%</span></span>'
+    ticker_html += "</div>"
+    st.markdown(ticker_html, unsafe_allow_html=True)
 
 
 # ── Results Renderer ───────────────────────────────────────────────────────────
@@ -308,23 +358,21 @@ def render_results(data, report):
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-# ── Conditional Page Render ───────────────────────────────────────────────────
+# ── Page Router ───────────────────────────────────────────────────────────────
+def _back_btn(key):
+    if st.button("← Back to Dashboard", key=key):
+        st.session_state.active_page = "main"
+        st.rerun()
+
 _ap = st.session_state.get("active_page", "main")
 if _ap == "🤖 AI Assistant":
-    if st.button("← Back to Dashboard", key="back_ai"):
-        st.session_state.active_page = "main"; st.rerun()
-    render_ai_assistant()
-    st.stop()
+    _back_btn("back_ai"); render_ai_assistant(); st.stop()
+elif _ap == "📸 Chart Analyzer":
+    _back_btn("back_ca"); render_chart_analyzer(); st.stop()
 elif _ap == "⭐ Feedback & Community":
-    if st.button("← Back to Dashboard", key="back_fb"):
-        st.session_state.active_page = "main"; st.rerun()
-    render_feedback_dashboard()
-    st.stop()
+    _back_btn("back_fb"); render_feedback_dashboard(); st.stop()
 elif _ap == "🧠 Advanced Intelligence":
-    if st.button("← Back to Dashboard", key="back_adv"):
-        st.session_state.active_page = "main"; st.rerun()
-    render_advanced_features()
-    st.stop()
+    _back_btn("back_adv"); render_advanced_features(); st.stop()
 
 tab1, tab2, tab3 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins"])
 
