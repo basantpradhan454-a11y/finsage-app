@@ -12,6 +12,15 @@ import re
 from datetime import datetime, timedelta
 from data_fetcher import fetch_stock_data, fetch_crypto_data
 
+# Cache to avoid re-fetching within same session
+@st.cache_data(ttl=120, show_spinner=False)
+def _cached_stock(ticker: str):
+    return fetch_stock_data(ticker)
+
+@st.cache_data(ttl=120, show_spinner=False)
+def _cached_crypto(sym: str):
+    return fetch_crypto_data(sym)
+
 LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -122,10 +131,18 @@ def detect_volume_anomaly(symbol: str, asset_type: str = "stock") -> dict:
     try:
         import yfinance as yf
         if asset_type == "stock":
-            ticker = yf.Ticker(symbol)
-            hist = ticker.history(period="30d")
-            if hist.empty:
-                return {"error": "No data"}
+            hist = None
+            for attempt in range(3):
+                try:
+                    ticker = yf.Ticker(symbol)
+                    hist = ticker.history(period="30d")
+                    if not hist.empty:
+                        break
+                    time.sleep(1.5)
+                except Exception:
+                    time.sleep(2)
+            if hist is None or hist.empty:
+                return {"error": f"Could not fetch data for '{symbol}'. Try again in 30 seconds."}
             avg_vol = hist["Volume"].mean()
             latest_vol = hist["Volume"].iloc[-1]
             ratio = latest_vol / avg_vol if avg_vol else 0
