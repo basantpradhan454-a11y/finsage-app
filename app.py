@@ -27,145 +27,381 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Global CSS ─────────────────────────────────────────────────────────────────
+# ── Global CSS — Cyberpunk Holographic 3D Futuristic ─────────────────────────
 st.markdown("""
 <style>
-    /* ─── Hide Streamlit chrome ─── */
-    #MainMenu,footer,header,[data-testid="stToolbar"],[data-testid="manage-app-button"],
-    [data-testid="stDecoration"],[data-testid="stStatusWidget"],[data-testid="stBottom"],
-    .stDeployButton,.viewerBadge_container__r5tak,button[kind="header"],
-    .st-emotion-cache-czk5ss,._link_gzau3_10,.st-emotion-cache-1dp5vir,
-    [data-testid="stSidebarCollapsedControl"] { display:none !important; visibility:hidden !important; }
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap');
 
-    /* ─── Base ─── */
-    .stApp { background:#050a12 !important; color:#c9d1d9; font-family:'Inter',sans-serif; }
-    [data-testid="stSidebar"] { background:#0a0f1a !important; border-right:1px solid #1a2535; }
+/* ════════════════════════════════════════════
+   HIDE STREAMLIT CHROME
+════════════════════════════════════════════ */
+#MainMenu,footer,header,
+[data-testid="stToolbar"],[data-testid="manage-app-button"],
+[data-testid="stDecoration"],[data-testid="stStatusWidget"],
+[data-testid="stBottom"],[data-testid="stSidebarCollapsedControl"],
+.stDeployButton,.viewerBadge_container__r5tak,
+button[kind="header"],.st-emotion-cache-czk5ss,
+._link_gzau3_10,.st-emotion-cache-1dp5vir
+{ display:none !important; visibility:hidden !important; }
 
-    /* ─── Futuristic glow scrollbar ─── */
-    ::-webkit-scrollbar { width:4px; height:4px; }
-    ::-webkit-scrollbar-track { background:#0d1117; }
-    ::-webkit-scrollbar-thumb { background:#1f6feb; border-radius:4px; }
+/* ════════════════════════════════════════════
+   BASE — DEEP SPACE OBSIDIAN
+════════════════════════════════════════════ */
+.stApp {
+    background: #020609 !important;
+    background-image:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,212,255,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(110,64,201,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0,80,160,0.04) 0%, transparent 70%);
+    color: #c9d1d9;
+    font-family: 'Inter', sans-serif;
+}
 
-    /* ─── Navbar ─── */
-    .stox-navbar {
-        background:linear-gradient(135deg,rgba(13,17,23,0.98),rgba(22,27,34,0.98));
-        border:1px solid rgba(88,166,255,0.18);
-        border-radius:14px; padding:0.7rem 1.2rem;
-        margin-bottom:0.6rem;
-        box-shadow:0 0 30px rgba(88,166,255,0.06),inset 0 0 30px rgba(88,166,255,0.02);
-        backdrop-filter:blur(20px);
-    }
+/* ════════════════════════════════════════════
+   CYBER GRID BACKGROUND
+════════════════════════════════════════════ */
+.stApp::before {
+    content: "";
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none; z-index: 0;
+    animation: gridPulse 8s ease-in-out infinite;
+}
+@keyframes gridPulse {
+    0%,100% { opacity:0.4; } 50% { opacity:0.8; }
+}
 
-    /* ─── Ticker ─── */
-    .ticker-bar {
-        background:linear-gradient(90deg,#0a0f1a,#0d1117,#0a0f1a);
-        border:1px solid rgba(88,166,255,0.12);
-        border-radius:10px; padding:0.55rem 1.1rem;
-        margin-bottom:1rem; overflow-x:auto; white-space:nowrap;
-        box-shadow:0 0 20px rgba(88,166,255,0.04);
-    }
-    .ticker-item { display:inline-block; margin-right:1.5rem; font-size:0.82rem; }
-    .ticker-sym  { color:#58a6ff; font-weight:700; margin-right:4px; letter-spacing:0.03em; }
-    .ticker-price{ color:#c9d1d9; margin-right:4px; }
-    .up   { color:#3fb950; font-weight:600; }
-    .down { color:#f85149; font-weight:600; }
+/* ════════════════════════════════════════════
+   SCROLLBAR — NEON CYAN
+════════════════════════════════════════════ */
+::-webkit-scrollbar { width:4px; height:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg,#00d4ff,#6e40c9);
+    border-radius:4px;
+    box-shadow: 0 0 8px rgba(0,212,255,0.6);
+}
 
-    /* ─── Tabs ─── */
-    .stTabs [data-baseweb="tab-list"] {
-        background:rgba(22,27,34,0.8); border-radius:12px 12px 0 0;
-        border:1px solid rgba(88,166,255,0.12); border-bottom:none;
-        gap:0; padding:0.3rem 0.3rem 0;
-        backdrop-filter:blur(10px);
-    }
-    .stTabs [data-baseweb="tab"] {
-        background:transparent; color:#8b949e;
-        border-radius:8px 8px 0 0; font-weight:600;
-        font-size:0.92rem; padding:0.6rem 1.6rem; border:none;
-        transition:all 0.2s ease;
-    }
-    .stTabs [aria-selected="true"] {
-        background:rgba(88,166,255,0.08) !important; color:#58a6ff !important;
-        border-top:2px solid #58a6ff !important;
-        box-shadow:0 -4px 20px rgba(88,166,255,0.15) !important;
-    }
-    .stTabs [data-baseweb="tab-panel"] {
-        background:rgba(13,17,23,0.95); border:1px solid rgba(88,166,255,0.1);
-        border-top:none; border-radius:0 0 12px 12px; padding:1.4rem;
-    }
+/* ════════════════════════════════════════════
+   NAVBAR — GLASSMORPHISM + HOLOGRAPHIC
+════════════════════════════════════════════ */
+.stox-navbar {
+    background: linear-gradient(135deg,
+        rgba(2,6,9,0.92) 0%,
+        rgba(10,20,35,0.88) 50%,
+        rgba(2,6,9,0.92) 100%);
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg,
+        rgba(0,212,255,0.4),
+        rgba(110,64,201,0.4),
+        rgba(0,212,255,0.4)) 1;
+    border-radius: 16px;
+    padding: 0.8rem 1.3rem;
+    margin-bottom: 0.6rem;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow:
+        0 0 40px rgba(0,212,255,0.08),
+        0 0 80px rgba(110,64,201,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 0 40px rgba(0,212,255,0.03);
+    position: relative; overflow: hidden;
+}
+.stox-navbar::before {
+    content:"";
+    position:absolute; top:-1px; left:0; right:0; height:1px;
+    background: linear-gradient(90deg,transparent,rgba(0,212,255,0.6),rgba(110,64,201,0.6),transparent);
+    animation: scanLine 4s linear infinite;
+}
+@keyframes scanLine {
+    0% { transform:translateX(-100%); } 100% { transform:translateX(100%); }
+}
 
-    /* ─── Buttons ─── */
-    .stButton > button {
-        background:linear-gradient(135deg,#161b22,#1a2535);
-        color:#58a6ff; border:1px solid rgba(88,166,255,0.25);
-        border-radius:8px; font-size:0.83rem; font-weight:600;
-        transition:all 0.2s ease; width:100%;
-    }
-    .stButton > button:hover {
-        background:linear-gradient(135deg,#1f6feb,#388bfd) !important;
-        color:white !important; border-color:#1f6feb !important;
-        box-shadow:0 0 20px rgba(31,111,235,0.4) !important;
-        transform:translateY(-1px);
-    }
-    .stButton > button[kind="primary"] {
-        background:linear-gradient(135deg,#1f6feb,#388bfd) !important;
-        color:white !important; border-color:#1f6feb !important;
-    }
-    .stButton > button[kind="primary"]:hover {
-        box-shadow:0 0 25px rgba(31,111,235,0.5) !important;
-        transform:translateY(-1px);
-    }
+/* ════════════════════════════════════════════
+   BRAND NAME — ORBITRON HOLOGRAPHIC
+════════════════════════════════════════════ */
+.stox-brand {
+    font-family: 'Orbitron', monospace !important;
+    font-size: 1.5rem !important; font-weight: 900 !important;
+    background: linear-gradient(90deg, #00d4ff, #7b8cde, #a371f7, #00d4ff);
+    background-size: 300% 100%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: holoShift 5s linear infinite;
+    letter-spacing: 0.08em;
+    filter: drop-shadow(0 0 12px rgba(0,212,255,0.4));
+}
+@keyframes holoShift {
+    0% { background-position:0% 50%; }
+    100% { background-position:300% 50%; }
+}
+.stox-tagline {
+    font-size: 0.6rem; color: #4a9eff; letter-spacing: 0.22em;
+    font-weight: 600; text-transform: uppercase; opacity: 0.8;
+    font-family: 'Orbitron', monospace;
+}
 
-    /* ─── Inputs ─── */
-    .stTextInput > div > div > input, .stSelectbox > div > div {
-        background:#0d1117 !important; color:#c9d1d9 !important;
-        border:1px solid rgba(88,166,255,0.2) !important; border-radius:8px !important;
-    }
-    .stTextInput > div > div > input:focus {
-        border-color:#58a6ff !important;
-        box-shadow:0 0 12px rgba(88,166,255,0.2) !important;
-    }
+/* ════════════════════════════════════════════
+   LIVE TICKER BAR — 3D NEON SCROLL
+════════════════════════════════════════════ */
+.ticker-bar {
+    background: linear-gradient(90deg,
+        rgba(2,6,9,0.98) 0%,
+        rgba(0,20,40,0.95) 50%,
+        rgba(2,6,9,0.98) 100%);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 10px;
+    padding: 0.6rem 1.2rem;
+    margin-bottom: 1rem;
+    overflow-x: auto; white-space: nowrap;
+    box-shadow:
+        0 0 25px rgba(0,212,255,0.06),
+        inset 0 1px 0 rgba(0,212,255,0.08),
+        inset 0 -1px 0 rgba(110,64,201,0.08);
+    scrollbar-width: none;
+    position: relative;
+}
+.ticker-bar::-webkit-scrollbar { display:none; }
+.ticker-sep {
+    color: rgba(0,212,255,0.4); margin: 0 0.8rem;
+    font-size: 0.75rem;
+}
+.ticker-live {
+    color: #ff4444; font-weight:800; font-size:0.78rem;
+    text-shadow: 0 0 8px rgba(255,68,68,0.7);
+    animation: livePulse 1.2s ease-in-out infinite;
+    font-family: 'Orbitron', monospace;
+}
+@keyframes livePulse {
+    0%,100% { opacity:1; text-shadow:0 0 8px rgba(255,68,68,0.7); }
+    50%      { opacity:0.6; text-shadow:0 0 4px rgba(255,68,68,0.3); }
+}
+.ticker-item {
+    display: inline-flex; align-items: center;
+    gap: 0.3rem; margin-right: 1.6rem;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 5px;
+    background: rgba(0,212,255,0.03);
+    border: 1px solid rgba(0,212,255,0.07);
+    transition: all 0.2s;
+}
+.ticker-item:hover {
+    background: rgba(0,212,255,0.08);
+    border-color: rgba(0,212,255,0.3);
+    box-shadow: 0 0 10px rgba(0,212,255,0.15);
+}
+.ticker-sym  {
+    color: #00d4ff; font-weight:800; font-size:0.75rem;
+    letter-spacing:0.05em; font-family:'Orbitron',monospace;
+    text-shadow: 0 0 6px rgba(0,212,255,0.5);
+}
+.ticker-price{ color: #c9d1d9; font-weight:600; font-size:0.75rem; }
+.up   {
+    color: #00ff88; font-weight:700;
+    text-shadow: 0 0 6px rgba(0,255,136,0.5);
+}
+.down {
+    color: #ff4466; font-weight:700;
+    text-shadow: 0 0 6px rgba(255,68,102,0.5);
+}
+.ticker-type-badge {
+    font-size:0.58rem; padding:0.05rem 0.25rem; border-radius:3px;
+    font-weight:700; letter-spacing:0.05em;
+}
+.badge-crypto { background:rgba(110,64,201,0.25); color:#a371f7; border:1px solid rgba(110,64,201,0.3); }
+.badge-stock  { background:rgba(0,100,200,0.2); color:#4a9eff; border:1px solid rgba(0,100,200,0.3); }
+.badge-meme   { background:rgba(255,100,0,0.15); color:#ff8800; border:1px solid rgba(255,100,0,0.3); }
 
-    /* ─── Metrics ─── */
-    [data-testid="stMetric"] {
-        background:linear-gradient(135deg,#0d1117,#161b22);
-        border:1px solid rgba(88,166,255,0.1); border-radius:10px;
-        padding:0.6rem 0.8rem;
-        box-shadow:0 0 15px rgba(88,166,255,0.03);
-    }
+/* ════════════════════════════════════════════
+   TABS — 3D HOLOGRAPHIC
+════════════════════════════════════════════ */
+.stTabs [data-baseweb="tab-list"] {
+    background: rgba(2,6,9,0.85);
+    border-radius: 14px 14px 0 0;
+    border: 1px solid rgba(0,212,255,0.1);
+    border-bottom: none;
+    gap: 0; padding: 0.35rem 0.35rem 0;
+    backdrop-filter: blur(12px);
+}
+.stTabs [data-baseweb="tab"] {
+    background: transparent; color: rgba(100,130,160,0.8);
+    border-radius: 10px 10px 0 0; font-weight:600;
+    font-size: 0.88rem; padding: 0.6rem 1.5rem; border:none;
+    transition: all 0.25s ease;
+    font-family: 'Inter', sans-serif;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    color: #00d4ff !important;
+    text-shadow: 0 0 8px rgba(0,212,255,0.4);
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(180deg,rgba(0,212,255,0.08),rgba(0,212,255,0.04)) !important;
+    color: #00d4ff !important;
+    border-top: 2px solid #00d4ff !important;
+    box-shadow: 0 -6px 20px rgba(0,212,255,0.15) !important;
+    text-shadow: 0 0 10px rgba(0,212,255,0.5) !important;
+}
+.stTabs [data-baseweb="tab-panel"] {
+    background: rgba(2,6,9,0.95);
+    border: 1px solid rgba(0,212,255,0.08);
+    border-top: none; border-radius: 0 0 14px 14px;
+    padding: 1.5rem;
+    box-shadow: inset 0 0 60px rgba(0,212,255,0.02);
+}
 
-    /* ─── 3-dot hover menu ─── */
-    .dot-menu-wrapper { position:relative; display:inline-block; }
-    .dot-menu-trigger {
-        background:rgba(22,27,34,0.9); border:1px solid rgba(88,166,255,0.2);
-        border-radius:8px; padding:0.35rem 0.7rem; cursor:pointer;
-        color:#58a6ff; font-size:1.2rem; font-weight:700;
-        transition:all 0.2s; line-height:1;
-        box-shadow:0 0 15px rgba(88,166,255,0.08);
-    }
-    .dot-menu-trigger:hover { background:#1f6feb; color:white; border-color:#1f6feb; }
+/* ════════════════════════════════════════════
+   BUTTONS — GLASSMORPHISM + GLOW
+════════════════════════════════════════════ */
+.stButton > button {
+    background: linear-gradient(135deg,rgba(0,20,40,0.8),rgba(10,25,50,0.8)) !important;
+    color: #00d4ff !important;
+    border: 1px solid rgba(0,212,255,0.25) !important;
+    border-radius: 9px !important;
+    font-size: 0.83rem !important; font-weight:600 !important;
+    transition: all 0.25s ease !important;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 10px rgba(0,212,255,0.05), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.stButton > button:hover {
+    background: linear-gradient(135deg,rgba(0,212,255,0.15),rgba(110,64,201,0.15)) !important;
+    color: #ffffff !important;
+    border-color: rgba(0,212,255,0.6) !important;
+    box-shadow: 0 0 25px rgba(0,212,255,0.3), 0 0 50px rgba(0,212,255,0.1) !important;
+    transform: translateY(-2px) !important;
+}
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg,#0066cc,#0044aa,#6e40c9) !important;
+    color: white !important;
+    border: 1px solid rgba(0,212,255,0.4) !important;
+    box-shadow: 0 0 20px rgba(0,100,204,0.4), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(135deg,#0080ff,#6e40c9,#00d4ff) !important;
+    box-shadow: 0 0 35px rgba(0,128,255,0.5), 0 0 70px rgba(0,212,255,0.2) !important;
+    transform: translateY(-2px) scale(1.01) !important;
+}
 
-    /* ─── Misc ─── */
-    .meme-warning {
-        background:linear-gradient(135deg,#1a0808,#2d1b1b);
-        border:1px solid rgba(248,81,73,0.4); border-radius:8px;
-        padding:0.75rem 0.9rem; color:#f85149; font-size:0.83rem;
-        margin-bottom:0.9rem;
-        box-shadow:0 0 15px rgba(248,81,73,0.08);
-    }
-    .disclaimer {
-        background:linear-gradient(135deg,#161b22,#1a2010);
-        border-left:3px solid rgba(210,153,34,0.6);
-        border-radius:0 8px 8px 0; padding:0.7rem 0.9rem;
-        color:#8b949e; font-size:0.78rem; margin-top:0.9rem;
-    }
-    .user-badge {
-        background:rgba(22,27,34,0.9); border:1px solid rgba(88,166,255,0.2);
-        border-radius:20px; padding:0.3rem 0.9rem;
-        color:#c9d1d9; font-size:0.82rem; display:inline-flex;
-        align-items:center; gap:0.4rem;
-    }
-    hr { border-color:rgba(88,166,255,0.1) !important; }
-    [data-testid="stMarkdownContainer"] h3 { color:#e6edf3; }
+/* ════════════════════════════════════════════
+   INPUTS — GLASS
+════════════════════════════════════════════ */
+.stTextInput > div > div > input {
+    background: rgba(0,10,20,0.8) !important;
+    color: #c9d1d9 !important;
+    border: 1px solid rgba(0,212,255,0.2) !important;
+    border-radius: 9px !important;
+    backdrop-filter: blur(8px);
+}
+.stTextInput > div > div > input:focus {
+    border-color: #00d4ff !important;
+    box-shadow: 0 0 15px rgba(0,212,255,0.25), inset 0 0 10px rgba(0,212,255,0.05) !important;
+}
+.stSelectbox > div > div,
+.stTextArea > div > div > textarea {
+    background: rgba(0,10,20,0.8) !important;
+    color: #c9d1d9 !important;
+    border: 1px solid rgba(0,212,255,0.2) !important;
+    border-radius: 9px !important;
+}
+
+/* ════════════════════════════════════════════
+   METRICS — 3D GLASS CARD
+════════════════════════════════════════════ */
+[data-testid="stMetric"] {
+    background: linear-gradient(135deg,rgba(0,20,40,0.8),rgba(0,10,25,0.9)) !important;
+    border: 1px solid rgba(0,212,255,0.12) !important;
+    border-radius: 12px !important;
+    padding: 0.7rem 0.9rem !important;
+    backdrop-filter: blur(10px);
+    box-shadow:
+        0 0 20px rgba(0,212,255,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 0 20px rgba(0,212,255,0.02);
+    transition: all 0.3s ease;
+}
+[data-testid="stMetric"]:hover {
+    border-color: rgba(0,212,255,0.3) !important;
+    box-shadow: 0 0 30px rgba(0,212,255,0.12) !important;
+    transform: translateY(-2px);
+}
+[data-testid="stMetricLabel"] { color: #4a9eff !important; font-size:0.75rem !important; }
+[data-testid="stMetricValue"] {
+    color: #e6edf3 !important; font-weight:700 !important;
+    text-shadow: 0 0 8px rgba(0,212,255,0.2);
+}
+[data-testid="stMetricDelta"] { font-weight:600 !important; }
+
+/* ════════════════════════════════════════════
+   SIDEBAR — DARK GLASS
+════════════════════════════════════════════ */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg,rgba(2,6,9,0.98),rgba(5,10,20,0.98)) !important;
+    border-right: 1px solid rgba(0,212,255,0.1) !important;
+    backdrop-filter: blur(20px);
+}
+
+/* ════════════════════════════════════════════
+   MISC — ALERTS, DISCLAIMERS
+════════════════════════════════════════════ */
+.meme-warning {
+    background: linear-gradient(135deg,rgba(10,0,0,0.9),rgba(30,0,0,0.8));
+    border: 1px solid rgba(255,68,68,0.4); border-radius: 10px;
+    padding: 0.75rem 0.9rem; color: #ff6680; font-size:0.82rem;
+    box-shadow: 0 0 15px rgba(255,68,68,0.08);
+}
+.disclaimer {
+    background: linear-gradient(135deg,rgba(5,10,15,0.9),rgba(10,15,5,0.8));
+    border-left: 3px solid rgba(0,212,255,0.4);
+    border-radius: 0 10px 10px 0; padding: 0.7rem 0.9rem;
+    color: rgba(100,140,180,0.85); font-size: 0.77rem; margin-top: 0.9rem;
+}
+.user-badge {
+    background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25);
+    border-radius: 20px; padding: 0.3rem 0.9rem;
+    color: #00d4ff; font-size: 0.82rem;
+    box-shadow: 0 0 10px rgba(0,212,255,0.1);
+}
+
+/* ════════════════════════════════════════════
+   HR, HEADINGS
+════════════════════════════════════════════ */
+hr {
+    border: none !important;
+    height: 1px !important;
+    background: linear-gradient(90deg,transparent,rgba(0,212,255,0.3),rgba(110,64,201,0.3),transparent) !important;
+    margin: 0.5rem 0 !important;
+}
+h3, h2 {
+    color: #e6edf3 !important;
+    text-shadow: 0 0 15px rgba(0,212,255,0.1);
+}
+
+/* ════════════════════════════════════════════
+   PLOTLY CHARTS — DARK
+════════════════════════════════════════════ */
+.js-plotly-plot .plotly { background:transparent !important; }
+
+/* ════════════════════════════════════════════
+   EXPANDER — GLASS
+════════════════════════════════════════════ */
+.streamlit-expanderHeader {
+    background: rgba(0,10,20,0.7) !important;
+    border: 1px solid rgba(0,212,255,0.15) !important;
+    border-radius: 8px !important; color: #00d4ff !important;
+}
+
+/* ════════════════════════════════════════════
+   BACK BUTTON — minimal
+════════════════════════════════════════════ */
+.back-btn button {
+    background: transparent !important;
+    color: rgba(0,212,255,0.7) !important;
+    border: none !important; padding: 0.2rem 0.5rem !important;
+    font-size: 0.8rem !important; width:auto !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -189,31 +425,48 @@ for k, v in defaults.items():
 render_sidebar_auth()
 user = get_current_user()
 
-# ── Ticker refresh ─────────────────────────────────────────────────────────────
+# ── Ticker refresh — every 60s auto ────────────────────────────────────────────
 now_ts = time.time()
 if now_ts - st.session_state.last_ticker_refresh > 60:
     st.session_state.ticker_data = fetch_ticker_bar_data()
     st.session_state.last_ticker_refresh = now_ts
 
+# Auto-rerun every 60 seconds for live price updates
+st_auto = st.empty()
+if "last_auto_rerun" not in st.session_state:
+    st.session_state.last_auto_rerun = time.time()
+if time.time() - st.session_state.last_auto_rerun > 60:
+    st.session_state.last_auto_rerun = time.time()
+    time.sleep(0.1)
+    st.rerun()
+
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 nb_left, nb_right = st.columns([6, 1])
 with nb_left:
     st.markdown("""
-    <div class="stox-navbar" style="display:flex;align-items:center;gap:0.8rem;">
-        <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
-             style="height:46px;width:46px;border-radius:10px;object-fit:cover;box-shadow:0 0 15px rgba(88,166,255,0.3);">
-        <div>
-            <div style="font-size:1.4rem;font-weight:900;background:linear-gradient(90deg,#58a6ff,#a5d6ff,#79c0ff);
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.1;letter-spacing:-0.02em;">
-                STOX AI
-            </div>
-            <div style="font-size:0.64rem;color:#8b949e;letter-spacing:0.18em;font-weight:600;text-transform:uppercase;">
-                Analyze &middot; Attract &middot; Thrive
-            </div>
+    <div class="stox-navbar" style="display:flex;align-items:center;gap:1rem;">
+        <div style="position:relative;">
+            <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
+                 style="height:48px;width:48px;border-radius:12px;object-fit:cover;
+                 box-shadow:0 0 20px rgba(0,212,255,0.4),0 0 40px rgba(0,212,255,0.1);
+                 border:1px solid rgba(0,212,255,0.3);">
+            <div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;
+            background:#00ff88;border-radius:50%;border:2px solid #020609;
+            box-shadow:0 0 6px rgba(0,255,136,0.8);animation:livePulse 1.2s infinite;"></div>
         </div>
-        <span style="background:linear-gradient(135deg,#0f2a0f,#1a3a1a);color:#3fb950;padding:0.18rem 0.65rem;
-        border-radius:20px;font-size:0.7rem;font-weight:700;border:1px solid rgba(63,185,80,0.3);
-        box-shadow:0 0 10px rgba(63,185,80,0.15);letter-spacing:0.05em;">✅ 100% FREE</span>
+        <div>
+            <div class="stox-brand">STOX AI</div>
+            <div class="stox-tagline">Analyze &middot; Attract &middot; Thrive</div>
+        </div>
+        <div style="margin-left:0.5rem;display:flex;flex-direction:column;gap:0.25rem;">
+            <span style="background:linear-gradient(135deg,rgba(0,255,136,0.1),rgba(0,255,136,0.05));
+            color:#00ff88;padding:0.15rem 0.6rem;border-radius:20px;font-size:0.65rem;font-weight:700;
+            border:1px solid rgba(0,255,136,0.25);letter-spacing:0.08em;
+            box-shadow:0 0 10px rgba(0,255,136,0.15);">✅ 100% FREE</span>
+            <span style="background:linear-gradient(135deg,rgba(0,212,255,0.1),rgba(110,64,201,0.08));
+            color:#a371f7;padding:0.12rem 0.5rem;border-radius:20px;font-size:0.6rem;font-weight:600;
+            border:1px solid rgba(110,64,201,0.2);letter-spacing:0.05em;">🤖 AI POWERED</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -221,8 +474,9 @@ with nb_right:
     st.markdown("<div style='padding-top:0.4rem;'>", unsafe_allow_html=True)
     with st.popover("⋮", use_container_width=True):
         st.markdown("""
-        <div style="font-size:0.9rem;font-weight:700;color:#58a6ff;margin-bottom:0.5rem;">
-        ⚡ Quick Navigation
+        <div style="font-size:0.82rem;font-weight:700;color:#00d4ff;margin-bottom:0.5rem;
+        letter-spacing:0.08em;font-family:Orbitron,monospace;text-shadow:0 0 8px rgba(0,212,255,0.5);">
+        ⚡ NAVIGATION
         </div>""", unsafe_allow_html=True)
         
         menu_items = {
@@ -246,15 +500,42 @@ st.markdown("<hr style='margin:0.3rem 0 0.7rem;'>", unsafe_allow_html=True)
 
 # ── Live Ticker Bar ────────────────────────────────────────────────────────────
 if st.session_state.ticker_data:
-    ticker_html = '<div class="ticker-bar">🔴 <b style="color:#f85149;">LIVE</b>&nbsp;&nbsp;|&nbsp;&nbsp;'
-    for item in st.session_state.ticker_data:
-        chg = item.get("change", 0) or 0
-        p   = item.get("price", 0) or 0
-        cls = "up" if chg >= 0 else "down"
+    # Separate sections: crypto, stocks, meme
+    crypto_items = [i for i in st.session_state.ticker_data if i.get("type") == "crypto"
+                    and i["symbol"] not in ["DOGE","SHIB","PEPE","FLOKI","BONK"]]
+    meme_items   = [i for i in st.session_state.ticker_data if i["symbol"] in ["DOGE","SHIB","PEPE","FLOKI","BONK"]]
+    stock_items  = [i for i in st.session_state.ticker_data if i.get("type") == "stock"]
+
+    def _ticker_item(item):
+        chg   = item.get("change", 0) or 0
+        p     = item.get("price", 0) or 0
+        cls   = "up" if chg >= 0 else "down"
         arrow = "▲" if chg >= 0 else "▼"
-        ps  = f"${p:,.6f}" if p < 0.01 else f"${p:,.2f}"
-        ticker_html += f'<span class="ticker-item"><span class="ticker-sym">{item["symbol"]}</span><span class="ticker-price">{ps}</span><span class="{cls}">{arrow}{abs(chg):.2f}%</span></span>'
-    ticker_html += "</div>"
+        ps    = f"${p:.8f}".rstrip("0") if p < 0.001 else (f"${p:,.4f}" if p < 0.1 else f"${p:,.2f}")
+        t     = item.get("type","crypto")
+        badge_cls = "badge-meme" if item["symbol"] in ["DOGE","SHIB","PEPE","FLOKI","BONK"] else (
+                    "badge-stock" if t == "stock" else "badge-crypto")
+        badge_lbl = "MEME" if badge_cls == "badge-meme" else ("STK" if t == "stock" else "DeFi")
+        return (f'<span class="ticker-item">' +
+                f'<span class="ticker-sym">{item["symbol"]}</span>' +
+                f'<span class="ticker-price">{ps}</span>' +
+                f'<span class="{cls}">{arrow}{abs(chg):.2f}%</span>' +
+                f'<span class="ticker-type-badge {badge_cls}">{badge_lbl}</span>' +
+                f'</span>')
+
+    def _sep(label, color):
+        return (f'<span class="ticker-sep" style="color:{color};font-size:0.65rem;' +
+                f'font-weight:800;letter-spacing:0.1em;font-family:Orbitron,monospace;">{label}</span>')
+
+    ticker_html  = '<div class="ticker-bar">'
+    ticker_html += '<span class="ticker-live">◉ LIVE</span>'
+    ticker_html += _sep("  CRYPTO", "#00d4ff")
+    for it in crypto_items: ticker_html += _ticker_item(it)
+    ticker_html += _sep("  STOCKS", "#4a9eff")
+    for it in stock_items:  ticker_html += _ticker_item(it)
+    ticker_html += _sep("  MEME", "#ff8800")
+    for it in meme_items:   ticker_html += _ticker_item(it)
+    ticker_html += '</div>'
     st.markdown(ticker_html, unsafe_allow_html=True)
 
 
