@@ -1,144 +1,198 @@
 """
-STOX AI Privacy Policy
+FinsageAI — Privacy Policy & Signup Page
 """
+import streamlit as st
+from config import LOGO_URL, APP_NAME
 
-def get_privacy_policy():
-    return """
-# 🔒 Privacy Policy
+def render_privacy_policy():
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,rgba(2,6,9,0.95),rgba(0,15,30,0.9));
+    border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:1.2rem 1.5rem;margin-bottom:1.2rem;">
+        <div style="display:flex;align-items:center;gap:0.9rem;">
+            <img src="{LOGO_URL}" style="height:48px;border-radius:10px;">
+            <div>
+                <div style="font-size:1.15rem;font-weight:800;color:#00d4ff;
+                font-family:Orbitron,monospace;">🔒 Privacy Policy</div>
+                <div style="color:#4a9eff;font-size:0.75rem;">
+                {APP_NAME} — Effective June 2026
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-**STOX AI — Global Financial Intelligence Platform**  
-**Effective Date:** June 1, 2026  
-**Last Updated:** May 29, 2026
+    st.markdown(f"""
+## Privacy Policy — {APP_NAME}
 
----
-
-## 1. Introduction
-
-Welcome to **STOX AI** ("we", "our", or "us"). STOX AI is a Global Financial Intelligence Platform that provides real-time analysis of stocks, cryptocurrencies, and meme coins for educational and informational purposes.
-
-This Privacy Policy explains how we collect, use, store, and protect your personal information when you use STOX AI at [finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app](https://finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app/).
-
-By signing up and using STOX AI, you agree to this Privacy Policy.
-
----
-
-## 2. Information We Collect
-
-When you sign up or log in to STOX AI using Google OAuth, we collect the following information from your Google account:
-
-| Data | Purpose |
-|------|---------|
-| **Full Name** | To personalize your STOX AI experience |
-| **Email Address** | To identify your account and for communications |
-| **Profile Picture** | To display in your STOX AI dashboard |
-| **Google Account ID** | To securely authenticate your identity |
-
-We do **not** collect:
-- Your Google password
-- Your financial account details
-- Your payment information
-- Any data beyond what you explicitly provide
+**Last Updated:** June 13, 2026 | **Version:** 1.0
 
 ---
 
-## 3. How We Use Your Information
+### 1. Introduction
+Welcome to **{APP_NAME}** ("we", "our", "the platform"). This Privacy Policy explains how we collect,
+use, and protect your information when you use our financial intelligence platform.
 
-We use your information to:
-
-- **Authenticate** your identity and provide secure access to STOX AI
-- **Personalize** your dashboard experience (e.g., greeting you by name)
-- **Maintain** your session securely during your visit
-- **Improve** STOX AI features and user experience
-- **Communicate** important updates about the platform (only if necessary)
-
-We do **not**:
-- Sell your data to third parties
-- Use your data for advertising purposes
-- Share your data with financial institutions
-- Use your data for any purpose beyond operating STOX AI
+By using {APP_NAME}, you agree to the collection and use of information as described in this policy.
 
 ---
 
-## 4. Data Storage & Security
+### 2. Information We Collect
 
-- Your authentication is handled via **Google OAuth 2.0** — we never see or store your Google password
-- User session data is stored securely using **encrypted session tokens**
-- We use industry-standard **HTTPS encryption** for all data transmission
-- Access to user data is strictly limited to STOX AI's core systems
-- We do not store your data on third-party advertising or analytics platforms
+**2.1 Information You Provide**
+- **Account Registration:** Email address, display name (optional)
+- **Google OAuth:** If you sign in with Google, we receive your Google profile name and email
+- **Community Reviews:** Any ratings or comments you voluntarily submit
+- **Trade Sharing:** Profit/loss data you voluntarily share with the community
 
----
+**2.2 Automatically Collected Data**
+- Usage analytics (pages visited, features used)
+- Session timestamps
+- Device type (mobile/desktop) — for UI optimization only
+- No IP addresses stored permanently
 
-## 5. Third-Party Services
-
-STOX AI uses the following third-party services:
-
-| Service | Purpose | Privacy Policy |
-|---------|---------|----------------|
-| **Google OAuth** | User authentication | [Google Privacy Policy](https://policies.google.com/privacy) |
-| **Yahoo Finance (yfinance)** | Stock market data | [Yahoo Privacy Policy](https://legal.yahoo.com/us/en/yahoo/privacy/index.html) |
-| **CoinGecko** | Cryptocurrency data | [CoinGecko Privacy Policy](https://www.coingecko.com/en/privacy) |
-| **Streamlit Cloud** | App hosting | [Streamlit Privacy Policy](https://streamlit.io/privacy-policy) |
-
----
-
-## 6. Data Retention
-
-- Your account data is retained as long as your account is active
-- If you request account deletion, we will remove your data within **30 days**
-- Session data is automatically cleared when you log out
+**2.3 What We Do NOT Collect**
+- ❌ Passwords (stored as salted hashes if using email auth)
+- ❌ Financial account details or brokerage credentials
+- ❌ Payment information
+- ❌ Location data
+- ❌ Personal identification numbers (PAN, Aadhaar, SSN)
 
 ---
 
-## 7. Your Rights
+### 3. How We Use Your Information
+
+| Purpose | Data Used | Basis |
+|---------|-----------|-------|
+| Account authentication | Email | Contractual |
+| Personalized analysis history | Session data | Legitimate interest |
+| Community features (ratings) | Name, review text | Consent |
+| Platform improvements | Anonymous usage stats | Legitimate interest |
+| Admin moderation | Email | Legitimate interest |
+
+---
+
+### 4. Data Sharing & Third Parties
+
+**We DO NOT sell your personal data.**
+
+We use the following third-party services:
+- **Google OAuth** (authentication) — Google Privacy Policy applies
+- **Yahoo Finance / yfinance** (market data) — data is publicly available
+- **CoinGecko API** (crypto data) — no personal data shared
+- **TradingView** (charts) — embedded widgets, TradingView's policy applies
+- **Streamlit Cloud** (hosting) — Streamlit's privacy policy applies
+
+---
+
+### 5. Data Security
+
+- All data transmission is encrypted via HTTPS/TLS
+- Authentication tokens are stored in secure, httpOnly session cookies
+- We apply principle of least privilege for all data access
+- Regular security reviews of third-party integrations
+
+---
+
+### 6. Your Rights
 
 You have the right to:
+- ✅ **Access** your personal data
+- ✅ **Correct** inaccurate information
+- ✅ **Delete** your account and associated data
+- ✅ **Withdraw consent** at any time
+- ✅ **Data portability** — export your data on request
 
-- ✅ **Access** the personal data we hold about you
-- ✅ **Correct** any inaccurate personal data
-- ✅ **Delete** your account and all associated data
-- ✅ **Withdraw** your consent at any time by logging out and not using STOX AI
-- ✅ **Data Portability** — request a copy of your data
-
-To exercise any of these rights, contact us at the email below.
-
----
-
-## 8. Cookies & Sessions
-
-STOX AI uses minimal session cookies to:
-- Keep you logged in during your session
-- Remember your preferences within the app
-
-We do **not** use tracking cookies or advertising cookies.
+To exercise these rights, contact: **basantpradhan454@gmail.com**
 
 ---
 
-## 9. Children's Privacy
+### 7. Cookies & Local Storage
 
-STOX AI is intended for users **18 years of age and older**. We do not knowingly collect data from minors. If you believe a minor has registered, please contact us immediately.
+We use minimal cookies for:
+- Session management (essential — cannot be disabled)
+- User preferences (UI theme, layout)
 
----
-
-## 10. Changes to This Policy
-
-We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated **"Last Updated"** date. Continued use of STOX AI after changes constitutes acceptance of the new policy.
+We do NOT use tracking cookies or advertising cookies.
 
 ---
 
-## 11. Contact Us
+### 8. Financial Data Disclaimer
 
-For any privacy-related questions, data requests, or concerns:
-
-📧 **Email:** privacy@finsage.app  
-🌐 **Platform:** STOX AI — Global Financial Intelligence Platform  
-📍 **Jurisdiction:** India
+> ⚠️ {APP_NAME} provides market data and analysis for **educational purposes only**.
+> We are NOT a SEBI-registered investment advisor. No content on this platform
+> constitutes investment advice, a recommendation to buy or sell securities,
+> or a guarantee of financial returns.
+>
+> All analysis is generated from publicly available data (Yahoo Finance, CoinGecko).
+> Past performance is not indicative of future results.
+> Trade sharing features display user-reported data — not verified by {APP_NAME}.
 
 ---
 
-*This Privacy Policy is governed by the laws of India. Any disputes shall be subject to the jurisdiction of Indian courts.*
+### 9. Children's Privacy
+
+{APP_NAME} is not intended for users under 18 years of age. We do not knowingly collect
+data from minors. If you believe a minor has provided us data, contact us immediately.
 
 ---
 
-**STOX AI** — *Empowering Investors with Intelligence* 📊
-"""
+### 10. Changes to This Policy
+
+We may update this policy periodically. Significant changes will be notified via:
+- In-app banner notification
+- Email to registered users
+
+Continued use after changes constitutes acceptance.
+
+---
+
+### 11. Contact Us
+
+**{APP_NAME} Support**
+📧 basantpradhan454@gmail.com
+🌐 Platform: FinsageAI Dashboard
+
+---
+
+*This privacy policy was last reviewed on June 13, 2026.*
+    """)
+
+    st.markdown("""
+    <div style="background:rgba(0,20,40,0.7);border:1px solid rgba(0,212,255,0.15);
+    border-radius:8px;padding:0.8rem 1rem;margin-top:1rem;font-size:0.78rem;color:#8b949e;">
+    By continuing to use FinsageAI, you acknowledge that you have read and understood this Privacy Policy.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_signup_page():
+    """Standalone signup/register page."""
+    from auth_page import render_sidebar_auth
+    st.markdown(f"""
+    <div style="max-width:480px;margin:2rem auto;">
+    <div style="text-align:center;margin-bottom:1.5rem;">
+        <img src="{LOGO_URL}" style="height:90px;border-radius:16px;
+        box-shadow:0 0 30px rgba(0,212,255,0.3);margin-bottom:1rem;">
+        <div style="font-size:1.6rem;font-weight:900;color:#00d4ff;
+        font-family:Orbitron,monospace;letter-spacing:0.05em;">FinsageAI</div>
+        <div style="color:#4a9eff;font-size:0.85rem;margin-top:0.3rem;">
+        STOCK · CRYPTO · MEME COIN ANALYSIS
+        </div>
+        <div style="color:#8b949e;font-size:0.8rem;margin-top:0.5rem;">
+        Create your free account to save analysis history and join the community
+        </div>
+    </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    render_sidebar_auth()
+
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align:center;font-size:0.78rem;color:#8b949e;">
+    By creating an account you agree to our
+    <span style="color:#4a9eff;">Terms of Service</span> and
+    <span style="color:#4a9eff;">Privacy Policy</span>.
+    <br>FinsageAI is for educational purposes only. Not financial advice.
+    </div>
+    """, unsafe_allow_html=True)
