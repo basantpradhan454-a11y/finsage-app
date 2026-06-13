@@ -553,7 +553,7 @@ if st.session_state.ticker_data:
             sym   = item["symbol"]
             chg   = item.get("change", 0) or 0
             price = item.get("price", 0) or 0
-            ps    = ("$%.4f" % price) if price < 1 else ("$%,.2f" % price)
+            ps    = ("$%.4f" % price) if price < 1 else ("$" + f"{price:,.2f}")
             color = "#00ff88" if chg >= 0 else "#ff4466"
             arrow = "▲" if chg >= 0 else "▼"
             with btn_cols[i]:
