@@ -266,126 +266,64 @@ def calculate_risk_score(change_pct: float, volatility: float, market_cap: float
 
 
 def fetch_ticker_bar_data() -> list:
-    """Fetch live prices for the top ticker bar."""
+    """Fetch live prices for the expanded 3D ticker bar — all major assets."""
     results = []
+
+    # ── Crypto: top coins + meme coins ────────────────────────────────────────
     try:
         url = "https://api.coingecko.com/api/v3/simple/price"
         params = {
-            "ids": "bitcoin,ethereum,dogecoin,solana,shiba-inu,binancecoin",
+            "ids": (
+                "bitcoin,ethereum,solana,binancecoin,ripple,"
+                "dogecoin,shiba-inu,pepe,floki,bonk,"
+                "avalanche-2,cardano,polkadot,chainlink,uniswap,"
+                "matic-network,toncoin,near,aptos"
+            ),
             "vs_currencies": "usd",
             "include_24hr_change": "true"
         }
-        resp = requests.get(url, params=params, timeout=10)
+        resp = requests.get(url, params=params, timeout=12)
         if resp.status_code == 200:
             data = resp.json()
             id_map = {
-                "bitcoin": "BTC", "ethereum": "ETH", "dogecoin": "DOGE",
-                "solana": "SOL", "shiba-inu": "SHIB", "binancecoin": "BNB"
+                "bitcoin": "BTC", "ethereum": "ETH", "solana": "SOL",
+                "binancecoin": "BNB", "ripple": "XRP",
+                "dogecoin": "DOGE", "shiba-inu": "SHIB", "pepe": "PEPE",
+                "floki": "FLOKI", "bonk": "BONK",
+                "avalanche-2": "AVAX", "cardano": "ADA", "polkadot": "DOT",
+                "chainlink": "LINK", "uniswap": "UNI",
+                "matic-network": "MATIC", "toncoin": "TON",
+                "near": "NEAR", "aptos": "APT"
             }
             for coin_id, sym in id_map.items():
                 d = data.get(coin_id, {})
                 price = d.get("usd", 0)
-                chg = d.get("usd_24h_change", 0) or 0
-                results.append({"symbol": sym, "price": price, "change": round(chg, 2)})
+                chg   = d.get("usd_24h_change", 0) or 0
+                if price:
+                    results.append({"symbol": sym, "price": price, "change": round(chg, 2), "type": "crypto"})
     except Exception:
         pass
 
-    # Add stock tickers via yfinance if crypto succeeded
+    # ── Stocks: US + India majors ──────────────────────────────────────────────
     try:
-        stock_syms = ["AAPL", "TSLA", "NVDA"]
-        tickers = yf.Tickers(" ".join(stock_syms))
+        stock_syms = [
+            "AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD",
+            "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "WIPRO.NS",
+            "BAJFINANCE.NS", "ICICIBANK.NS", "NIFTY50.NS"
+        ]
+        tickers_obj = yf.Tickers(" ".join(stock_syms))
         for sym in stock_syms:
             try:
-                t = tickers.tickers[sym]
+                t    = tickers_obj.tickers[sym]
                 hist = t.history(period="2d")
                 if not hist.empty and len(hist) >= 2:
                     price = float(hist["Close"].iloc[-1])
                     prev  = float(hist["Close"].iloc[-2])
-                    chg   = ((price - prev) / prev) * 100 if prev else 0
-                    results.append({"symbol": sym, "price": price, "change": round(chg, 2)})
+                    chg   = ((price - prev) / prev * 100) if prev else 0
+                    results.append({"symbol": sym.replace(".NS",""), "price": price, "change": round(chg, 2), "type": "stock"})
             except Exception:
                 pass
     except Exception:
         pass
 
     return results
-
-
-# ── Timeframe config ──────────────────────────────────────────────────────────
-TIMEFRAME_CONFIG = {
-    "1m":  {"period": "1d",   "interval": "1m",  "label": "1 Minute",   "bars": 390,  "mode": "Intraday"},
-    "5m":  {"period": "5d",   "interval": "5m",  "label": "5 Minutes",  "bars": 288,  "mode": "Intraday"},
-    "15m": {"period": "5d",   "interval": "15m", "label": "15 Minutes", "bars": 200,  "mode": "Intraday"},
-    "30m": {"period": "10d",  "interval": "30m", "label": "30 Minutes", "bars": 200,  "mode": "Intraday"},
-    "1h":  {"period": "1mo",  "interval": "1h",  "label": "1 Hour",     "bars": 168,  "mode": "Swing"},
-    "4h":  {"period": "3mo",  "interval": "4h",  "label": "4 Hours",    "bars": 180,  "mode": "Swing"},
-    "1D":  {"period": "6mo",  "interval": "1d",  "label": "Daily",      "bars": 180,  "mode": "Swing"},
-    "1W":  {"period": "2y",   "interval": "1wk", "label": "Weekly",     "bars": 104,  "mode": "Position"},
-    "1M":  {"period": "5y",   "interval": "1mo", "label": "Monthly",    "bars": 60,   "mode": "Position"},
-}
-
-
-def fetch_history_by_timeframe(ticker: str, timeframe: str = "1D") -> dict:
-    """
-    Fetch OHLCV history for a given timeframe.
-    Returns: {"history": DataFrame, "timeframe": str, "trading_mode": str, "error": str}
-    """
-    cfg = TIMEFRAME_CONFIG.get(timeframe, TIMEFRAME_CONFIG["1D"])
-    try:
-        stock = yf.Ticker(ticker.strip().upper())
-        hist  = stock.history(period=cfg["period"], interval=cfg["interval"])
-        if hist is None or hist.empty:
-            # Fallback to daily
-            hist = stock.history(period="3mo", interval="1d")
-            if hist is None or hist.empty:
-                return {"error": f"No data for {ticker} on {timeframe} timeframe"}
-            return {
-                "history":      hist.tail(cfg["bars"]),
-                "timeframe":    "1D",
-                "trading_mode": "Swing",
-                "fallback":     True,
-            }
-        return {
-            "history":      hist.tail(cfg["bars"]),
-            "timeframe":    timeframe,
-            "trading_mode": cfg["mode"],
-            "fallback":     False,
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def fetch_crypto_history_by_timeframe(coin_id: str, timeframe: str = "1D") -> dict:
-    """
-    Fetch OHLCV history for crypto from CoinGecko for a given timeframe.
-    Returns DataFrame-compatible dict.
-    """
-    import pandas as pd_inner
-
-    # CoinGecko supports: 1 day -> minutely (up to 1d), up to 90 days -> hourly, >90 days -> daily
-    tf_to_days = {
-        "1m": 1, "5m": 1, "15m": 2, "30m": 3,
-        "1h": 7, "4h": 30, "1D": 90, "1W": 365, "1M": 730,
-    }
-    cfg   = TIMEFRAME_CONFIG.get(timeframe, TIMEFRAME_CONFIG["1D"])
-    days  = tf_to_days.get(timeframe, 90)
-    url   = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc?vs_currency=usd&days={days}"
-    try:
-        r = requests.get(url, timeout=15)
-        r.raise_for_status()
-        raw = r.json()
-        if not raw or isinstance(raw, dict):
-            return {"error": "No OHLC data from CoinGecko"}
-        df = pd_inner.DataFrame(raw, columns=["timestamp","Open","High","Low","Close"])
-        df["timestamp"] = pd_inner.to_datetime(df["timestamp"], unit="ms")
-        df.set_index("timestamp", inplace=True)
-        df["Volume"] = 0  # CoinGecko OHLC doesn't include volume
-        return {
-            "history":      df.tail(cfg["bars"]),
-            "timeframe":    timeframe,
-            "trading_mode": cfg["mode"],
-            "fallback":     False,
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
