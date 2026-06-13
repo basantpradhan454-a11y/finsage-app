@@ -18,6 +18,7 @@ from ai_assistant import render_ai_assistant
 from feedback_dashboard import render_feedback_dashboard
 from advanced_features import render_advanced_features
 from chart_analyzer import render_chart_analyzer
+from tradingview_page import render_tradingview_page
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -472,24 +473,30 @@ with nb_left:
 
 with nb_right:
     st.markdown("<div style='padding-top:0.4rem;'>", unsafe_allow_html=True)
-    with st.popover("⋮", use_container_width=True):
+    with st.popover("⋮  ▾", use_container_width=True):
         st.markdown("""
-        <div style="font-size:0.82rem;font-weight:700;color:#00d4ff;margin-bottom:0.5rem;
-        letter-spacing:0.08em;font-family:Orbitron,monospace;text-shadow:0 0 8px rgba(0,212,255,0.5);">
-        ⚡ NAVIGATION
+        <div style="font-size:0.82rem;font-weight:700;color:#00d4ff;margin-bottom:0.6rem;
+        letter-spacing:0.08em;font-family:Orbitron,monospace;
+        text-shadow:0 0 8px rgba(0,212,255,0.5);border-bottom:1px solid rgba(0,212,255,0.15);
+        padding-bottom:0.4rem;">
+        ⚡ MENU
         </div>""", unsafe_allow_html=True)
-        
-        menu_items = {
-            "🤖 AI Assistant": "🤖 AI Assistant",
-            "📸 Chart Analyzer": "📸 Chart Analyzer",
-            "⭐ Community": "⭐ Feedback & Community",
-            "🧠 Advanced Intel": "🧠 Advanced Intelligence",
-        }
-        for label, page_key in menu_items.items():
-            if st.button(label, key=f"nav_{label}", use_container_width=True):
+
+        menu_items = [
+            ("🤖 AI Assistant",      "🤖 AI Assistant",       "10 Pro Analysis Modules"),
+            ("📈 TradingView Charts", "📈 TradingView",        "Live candlestick charts"),
+            ("📸 Chart Analyzer",    "📸 Chart Analyzer",     "Upload & analyze charts"),
+            ("⭐ Community",         "⭐ Community",           "Rate & review STOX AI"),
+            ("🧠 Advanced Intel",    "🧠 Advanced Intel",     "Sentiment, Whale, On-chain"),
+        ]
+        for label, page_key, desc in menu_items:
+            st.markdown(f"""
+            <div style="font-size:0.68rem;color:#8b949e;padding:0 0.1rem 0.1rem;">{desc}</div>
+            """, unsafe_allow_html=True)
+            if st.button(label, key=f"nav_{page_key}", use_container_width=True):
                 st.session_state.active_page = page_key
                 st.rerun()
-        
+
         if user:
             st.markdown("---")
             if st.button("🚪 Logout", key="logout_dot_menu", use_container_width=True):
@@ -537,6 +544,30 @@ if st.session_state.ticker_data:
     for it in meme_items:   ticker_html += _ticker_item(it)
     ticker_html += '</div>'
     st.markdown(ticker_html, unsafe_allow_html=True)
+
+    # Clickable quick-chart row
+    with st.expander("📊 Click any asset to open live candlestick chart", expanded=False):
+        all_items = (crypto_items[:8] + stock_items[:8] + meme_items[:5])[:10]
+        btn_cols  = st.columns(len(all_items)) if all_items else st.columns(1)
+        for i, item in enumerate(all_items):
+            sym   = item["symbol"]
+            chg   = item.get("change", 0) or 0
+            price = item.get("price", 0) or 0
+            ps    = ("$%.4f" % price) if price < 1 else ("$%,.2f" % price)
+            color = "#00ff88" if chg >= 0 else "#ff4466"
+            arrow = "▲" if chg >= 0 else "▼"
+            with btn_cols[i]:
+                st.markdown(
+                    f'<div style="text-align:center;font-size:0.68rem;color:{color};'
+                    f'font-weight:700;">{arrow}{abs(chg):.1f}%</div>'
+                    f'<div style="text-align:center;font-size:0.65rem;color:#8b949e;">{ps}</div>',
+                    unsafe_allow_html=True
+                )
+                if st.button(sym, key=f"tc_btn_{sym}", use_container_width=True):
+                    st.session_state.ticker_chart_symbol = sym
+                    st.session_state.ticker_chart_type   = item.get("type","crypto")
+                    st.session_state.active_page         = "📊 Ticker Chart"
+                    st.rerun()
 
 
 # ── Results Renderer ───────────────────────────────────────────────────────────
@@ -640,20 +671,116 @@ def render_results(data, report):
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
 # ── Page Router ───────────────────────────────────────────────────────────────
+# ── Ticker Candlestick Chart (full page) ─────────────────────────────────────
+def _render_ticker_chart():
+    sym    = st.session_state.get("ticker_chart_symbol", "BTC")
+    stype  = st.session_state.get("ticker_chart_type", "crypto")
+
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,rgba(2,6,9,0.95),rgba(0,15,30,0.9));
+    border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:1rem 1.5rem;
+    margin-bottom:1rem;">
+        <div style="font-size:1.1rem;font-weight:800;color:#00d4ff;
+        font-family:Orbitron,monospace;">📊 {sym} — Live Chart</div>
+        <div style="color:#4a9eff;font-size:0.75rem;">Real-time candlestick • TradingView powered</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    import streamlit.components.v1 as components
+
+    # Map symbol to TradingView format
+    tv_sym_map = {
+        "BTC":"BINANCE:BTCUSDT","ETH":"BINANCE:ETHUSDT","SOL":"BINANCE:SOLUSDT",
+        "BNB":"BINANCE:BNBUSDT","XRP":"BINANCE:XRPUSDT","DOGE":"BINANCE:DOGEUSDT",
+        "SHIB":"BINANCE:SHIBUSDT","PEPE":"BINANCE:PEPEUSDT","FLOKI":"BINANCE:FLOKIUSDT",
+        "BONK":"BINANCE:BONKUSDT","AVAX":"BINANCE:AVAXUSDT","ADA":"BINANCE:ADAUSDT",
+        "DOT":"BINANCE:DOTUSDT","LINK":"BINANCE:LINKUSDT","UNI":"BINANCE:UNIUSDT",
+        "MATIC":"BINANCE:MATICUSDT","TON":"BINANCE:TONUSDT","NEAR":"BINANCE:NEARUSDT",
+        "APT":"BINANCE:APTUSDT",
+        "AAPL":"NASDAQ:AAPL","TSLA":"NASDAQ:TSLA","NVDA":"NASDAQ:NVDA",
+        "MSFT":"NASDAQ:MSFT","GOOGL":"NASDAQ:GOOGL","AMZN":"NASDAQ:AMZN",
+        "META":"NASDAQ:META","AMD":"NASDAQ:AMD",
+        "RELIANCE":"NSE:RELIANCE","TCS":"NSE:TCS","INFY":"NSE:INFY",
+        "HDFCBANK":"NSE:HDFCBANK","WIPRO":"NSE:WIPRO",
+        "BAJFINANCE":"NSE:BAJFINANCE","ICICIBANK":"NSE:ICICIBANK",
+        "NIFTY50":"NSE:NIFTY",
+    }
+    tv_sym = tv_sym_map.get(sym, f"BINANCE:{sym}USDT" if stype=="crypto" else f"NASDAQ:{sym}")
+
+    # Interval selector
+    iv_col1, iv_col2, iv_col3 = st.columns([3,2,2])
+    with iv_col1:
+        interval = st.selectbox("Timeframe",
+            ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","1 Day","1 Week"],
+            index=6, key="tc_interval")
+    with iv_col2:
+        chart_style = st.selectbox("Type",
+            ["Candlestick","Line","Area","Heikin Ashi"], key="tc_style")
+    with iv_col3:
+        show_vol = st.checkbox("Volume", value=True, key="tc_vol")
+
+    iv_map = {"1 Min":"1","5 Min":"5","15 Min":"15","30 Min":"30",
+              "1 Hour":"60","4 Hour":"240","1 Day":"D","1 Week":"W"}
+    cs_map = {"Candlestick":"1","Line":"2","Area":"3","Heikin Ashi":"8"}
+
+    studies = '["Volume@tv-basicstudies","RSI@tv-basicstudies"]' if show_vol else '["RSI@tv-basicstudies"]'
+
+    tv_html = f"""
+    <div style="border-radius:12px;overflow:hidden;border:1px solid rgba(0,212,255,0.15);
+    box-shadow:0 0 30px rgba(0,212,255,0.06);">
+    <div class="tradingview-widget-container">
+      <div id="tv_chart_{sym}"></div>
+      <script src="https://s3.tradingview.com/tv.js"></script>
+      <script>
+      new TradingView.widget({{
+        "autosize":true,"height":520,
+        "symbol":"{tv_sym}",
+        "interval":"{iv_map.get(interval,"D")}",
+        "timezone":"Asia/Kolkata",
+        "theme":"dark","style":"{cs_map.get(chart_style,"1")}",
+        "locale":"en","toolbar_bg":"#020609",
+        "backgroundColor":"rgba(2,6,9,1)",
+        "gridColor":"rgba(0,212,255,0.04)",
+        "enable_publishing":false,"save_image":true,
+        "container_id":"tv_chart_{sym}",
+        "studies":{studies}
+      }});
+      </script>
+    </div></div>
+    """
+    components.html(tv_html, height=540, scrolling=False)
+
+    st.markdown("""
+    <div style="background:rgba(10,8,0,0.8);border:1px solid rgba(210,153,34,0.3);
+    border-radius:8px;padding:0.5rem 1rem;margin-top:0.5rem;font-size:0.74rem;color:#8b949e;">
+    ⚖️ Charts powered by TradingView. For educational purposes only. Not investment advice.
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def _back_btn(key):
-    if st.button("← Back to Dashboard", key=key):
-        st.session_state.active_page = "main"
-        st.rerun()
+    col_b, col_t = st.columns([1, 6])
+    with col_b:
+        if st.button("◀ Dashboard", key=key, use_container_width=True):
+            st.session_state.active_page = "main"
+            st.rerun()
 
 _ap = st.session_state.get("active_page", "main")
 if _ap == "🤖 AI Assistant":
     _back_btn("back_ai"); render_ai_assistant(); st.stop()
+elif _ap == "📈 TradingView":
+    _back_btn("back_tv"); render_tradingview_page(); st.stop()
 elif _ap == "📸 Chart Analyzer":
     _back_btn("back_ca"); render_chart_analyzer(); st.stop()
-elif _ap == "⭐ Feedback & Community":
+elif _ap == "⭐ Community":
     _back_btn("back_fb"); render_feedback_dashboard(); st.stop()
-elif _ap == "🧠 Advanced Intelligence":
+elif _ap == "🧠 Advanced Intel":
     _back_btn("back_adv"); render_advanced_features(); st.stop()
+elif _ap == "📊 Ticker Chart":
+    # Full candlestick chart for clicked ticker item
+    _back_btn("back_tc")
+    _render_ticker_chart()
+    st.stop()
 
 tab1, tab2, tab3 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins"])
 
