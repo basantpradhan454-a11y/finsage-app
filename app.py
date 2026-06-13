@@ -19,10 +19,13 @@ from feedback_dashboard import render_feedback_dashboard
 from advanced_features import render_advanced_features
 from chart_analyzer import render_chart_analyzer
 from tradingview_page import render_tradingview_page
+from ai_chat_assistant import render_ai_chat_assistant
+from privacy_policy import render_privacy_policy, render_signup_page
+from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="STOX AI — Analyze. Attract. Thrive.",
+    page_title="FinsageAI — Stock, Crypto & Meme Coin Analysis",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -447,7 +450,7 @@ with nb_left:
     st.markdown("""
     <div class="stox-navbar" style="display:flex;align-items:center;gap:1rem;">
         <div style="position:relative;">
-            <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
+            <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg"
                  style="height:48px;width:48px;border-radius:12px;object-fit:cover;
                  box-shadow:0 0 20px rgba(0,212,255,0.4),0 0 40px rgba(0,212,255,0.1);
                  border:1px solid rgba(0,212,255,0.3);">
@@ -456,8 +459,8 @@ with nb_left:
             box-shadow:0 0 6px rgba(0,255,136,0.8);animation:livePulse 1.2s infinite;"></div>
         </div>
         <div>
-            <div class="stox-brand">STOX AI</div>
-            <div class="stox-tagline">Analyze &middot; Attract &middot; Thrive</div>
+            <div class="stox-brand">FinsageAI</div>
+            <div class="stox-tagline">STOCK &middot; CRYPTO &middot; MEME COIN ANALYSIS</div>
         </div>
         <div style="margin-left:0.5rem;display:flex;flex-direction:column;gap:0.25rem;">
             <span style="background:linear-gradient(135deg,rgba(0,255,136,0.1),rgba(0,255,136,0.05));
@@ -482,17 +485,18 @@ with nb_right:
         ⚡ MENU
         </div>""", unsafe_allow_html=True)
 
-        menu_items = [
-            ("🤖 AI Assistant",      "🤖 AI Assistant",       "10 Pro Analysis Modules"),
-            ("📈 TradingView Charts", "📈 TradingView",        "Live candlestick charts"),
-            ("📸 Chart Analyzer",    "📸 Chart Analyzer",     "Upload & analyze charts"),
-            ("⭐ Community",         "⭐ Community",           "Rate & review STOX AI"),
-            ("🧠 Advanced Intel",    "🧠 Advanced Intel",     "Sentiment, Whale, On-chain"),
+        all_pages = [
+            ("🤖 AI Assistant",       "🤖 AI Assistant",       "Ask any trading question"),
+            ("🔬 Pro Analyser",       "🔬 Pro Analyser",        "10 deep analysis modules"),
+            ("📈 TradingView Charts", "📈 TradingView",         "Live candlestick charts"),
+            ("📸 Chart Analyzer",     "📸 Chart Analyzer",      "Upload & analyze screenshots"),
+            ("⭐ Community",          "⭐ Community",            "Rate & share real trades"),
+            ("🧠 Advanced Intel",     "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
+            ("🔒 Privacy Policy",     "🔒 Privacy Policy",      "Data & privacy info"),
+            ("📝 Sign Up",            "📝 Sign Up",             "Create free account"),
         ]
-        for label, page_key, desc in menu_items:
-            st.markdown(f"""
-            <div style="font-size:0.68rem;color:#8b949e;padding:0 0.1rem 0.1rem;">{desc}</div>
-            """, unsafe_allow_html=True)
+        for label, page_key, desc in all_pages:
+            st.caption(desc)
             if st.button(label, key=f"nav_{page_key}", use_container_width=True):
                 st.session_state.active_page = page_key
                 st.rerun()
@@ -767,7 +771,9 @@ def _back_btn(key):
 
 _ap = st.session_state.get("active_page", "main")
 if _ap == "🤖 AI Assistant":
-    _back_btn("back_ai"); render_ai_assistant(); st.stop()
+    _back_btn("back_ai"); render_ai_chat_assistant(); st.stop()
+elif _ap == "🔬 Pro Analyser":
+    _back_btn("back_pro"); render_ai_assistant(); st.stop()
 elif _ap == "📈 TradingView":
     _back_btn("back_tv"); render_tradingview_page(); st.stop()
 elif _ap == "📸 Chart Analyzer":
@@ -776,8 +782,11 @@ elif _ap == "⭐ Community":
     _back_btn("back_fb"); render_feedback_dashboard(); st.stop()
 elif _ap == "🧠 Advanced Intel":
     _back_btn("back_adv"); render_advanced_features(); st.stop()
+elif _ap == "🔒 Privacy Policy":
+    _back_btn("back_pp"); render_privacy_policy(); st.stop()
+elif _ap == "📝 Sign Up":
+    _back_btn("back_su"); render_signup_page(); st.stop()
 elif _ap == "📊 Ticker Chart":
-    # Full candlestick chart for clicked ticker item
     _back_btn("back_tc")
     _render_ticker_chart()
     st.stop()
