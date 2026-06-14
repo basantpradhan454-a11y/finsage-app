@@ -1,5 +1,5 @@
 """
-STOX AI — Login Page
+FinsageAI — Login / Sign Up Page
 Google OAuth (proper redirect flow) + Email/Password
 """
 
@@ -297,7 +297,7 @@ def render_auth_page() -> bool:
     st.markdown("""
     <div class="auth-logo-area">
         <div class="auth-logo-icon">📊</div>
-        <div class="auth-logo-name">STOX AI</div>
+        <div class="auth-logo-name">FinsageAI</div>
         <div class="auth-logo-tag">Global Financial Intelligence Platform</div>
         <div class="feature-pills">
             <span class="pill">✅ Stocks</span>
@@ -316,7 +316,7 @@ def render_auth_page() -> bool:
             google_url = get_google_login_url()
             st.markdown(f"""
             <div class="auth-card">
-                <div class="auth-title">Sign in to STOX AI</div>
+                <div class="auth-title">Sign in to FinsageAI</div>
                 <div class="google-btn-wrap">
                     <a href="{google_url}" class="google-btn">
                         <svg width="20" height="20" viewBox="0 0 48 48">
@@ -336,7 +336,7 @@ def render_auth_page() -> bool:
         else:
             st.markdown("""
             <div class="auth-card">
-                <div class="auth-title">Sign in to STOX AI</div>
+                <div class="auth-title">Sign in to FinsageAI</div>
                 <div style="background:#1c2333;border:1px solid #30363d;border-radius:8px;
                     padding:0.65rem 0.9rem;color:#8b949e;font-size:0.8rem;text-align:center;margin-bottom:1rem;">
                     🔵 Google Sign-In — configure <code>GOOGLE_CLIENT_SECRET</code> in Streamlit Secrets to enable
@@ -385,7 +385,7 @@ def render_auth_page() -> bool:
                         if ok:
                             _, user_obj = login_user(email_s, password_s)
                             st.session_state.user = user_obj
-                            st.success(f"✅ Welcome to STOX AI, {name}!")
+                            st.success(f"✅ Welcome to FinsageAI, {name}!")
                             time.sleep(0.5)
                             st.rerun()
                         else:
@@ -394,7 +394,7 @@ def render_auth_page() -> bool:
         st.markdown("""
         <div class="auth-footer">
             🔒 Passwords are SHA-256 hashed — never stored in plain text.<br>
-            STOX AI is for educational purposes only. Not investment advice.
+            FinsageAI is for educational purposes only. Not investment advice.
         </div>
         """, unsafe_allow_html=True)
 
@@ -438,9 +438,9 @@ def render_sidebar_auth():
     with st.sidebar:
         st.markdown("""
         <div style="text-align:center;padding:0.5rem 0 0.8rem;">
-            <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png" style="height:64px;width:64px;border-radius:12px;object-fit:cover;margin-bottom:0.4rem;">
-            <div style="font-size:1.15rem;font-weight:900;background:linear-gradient(90deg,#58a6ff,#a5d6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">STOX AI</div>
-            <div style="font-size:0.65rem;color:#8b949e;letter-spacing:0.1em;">ANALYZE. ATTRACT. THRIVE.</div>
+            <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg" style="height:64px;width:64px;border-radius:12px;object-fit:cover;margin-bottom:0.4rem;">
+            <div style="font-size:1.15rem;font-weight:900;background:linear-gradient(90deg,#58a6ff,#a5d6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">FinsageAI</div>
+            <div style="font-size:0.65rem;color:#8b949e;letter-spacing:0.1em;">STOCK · CRYPTO · MEME COIN ANALYSIS</div>
         </div>
         """, unsafe_allow_html=True)
 
