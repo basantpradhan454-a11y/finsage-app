@@ -1,5 +1,5 @@
 """
-STOX AI — Advanced Intelligence Features
+FinsageAI — Advanced Intelligence Features
 Sentiment, Volume Anomaly, Pattern Detection, Smart Contract Audit, Whale Alerts
 """
 
@@ -21,7 +21,7 @@ def _cached_stock(ticker: str):
 def _cached_crypto(sym: str):
     return fetch_crypto_data(sym)
 
-LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
+LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. FEAR & GREED INDEX + SENTIMENT
