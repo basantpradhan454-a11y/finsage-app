@@ -1,5 +1,5 @@
 """
-STOX AI — AI Chart Analyzer
+FinsageAI — AI Chart Analyzer
 User uploads trading chart screenshot → AI reads candle timeframe → 
 Predicts direction, entry, exit, stop loss with full detail
 """
@@ -11,7 +11,7 @@ import os
 import re
 from datetime import datetime
 
-LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
+LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg"
 
 # ── Timeframe-based analysis rules ──────────────────────────────────────────────
 TIMEFRAME_PROFILES = {
