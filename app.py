@@ -22,6 +22,8 @@ from tradingview_page import render_tradingview_page
 from ai_chat_assistant import render_ai_chat_assistant
 from privacy_policy import render_privacy_policy, render_signup_page
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
+from risk_engine import render_risk_dashboard
+from exchange_backend import render_exchange_backend
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -492,6 +494,8 @@ with nb_right:
             ("📸 Chart Analyzer",     "📸 Chart Analyzer",      "Upload & analyze screenshots"),
             ("⭐ Community",          "⭐ Community",            "Rate & share real trades"),
             ("🧠 Advanced Intel",     "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
+            ("🛡️ Risk Engine",         "🛡️ Risk Engine",         "CRO-level capital protection"),
+            ("⚡ Exchange Backend",   "⚡ Exchange Backend",    "FastAPI + CCXT order routing"),
             ("🔒 Privacy Policy",     "🔒 Privacy Policy",      "Data & privacy info"),
             ("📝 Sign Up",            "📝 Sign Up",             "Create free account"),
         ]
@@ -786,6 +790,10 @@ elif _ap == "🔒 Privacy Policy":
     _back_btn("back_pp"); render_privacy_policy(); st.stop()
 elif _ap == "📝 Sign Up":
     _back_btn("back_su"); render_signup_page(); st.stop()
+elif _ap == "🛡️ Risk Engine":
+    _back_btn("back_re"); render_risk_dashboard(); st.stop()
+elif _ap == "⚡ Exchange Backend":
+    _back_btn("back_eb"); render_exchange_backend(); st.stop()
 elif _ap == "📊 Ticker Chart":
     _back_btn("back_tc")
     _render_ticker_chart()
