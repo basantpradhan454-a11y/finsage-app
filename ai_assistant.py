@@ -1,5 +1,5 @@
 """
-STOX AI — AI Research Assistant
+FinsageAI — AI Research Assistant
 10 Professional Analysis Modules:
 1. Full Stock Research Report
 2. Earnings Call Breakdown
@@ -19,7 +19,7 @@ from datetime import datetime
 from data_fetcher import fetch_stock_data, fetch_crypto_data
 from analyzer import analyze_stock, analyze_crypto, format_number
 
-LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
+LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 10 ANALYSIS MODULE ENGINES
