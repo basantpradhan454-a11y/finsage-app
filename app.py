@@ -25,6 +25,10 @@ from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
 from risk_engine import render_risk_dashboard
 from exchange_backend import render_exchange_backend
 from advanced_analyzer import render_advanced_analyzer
+from screener import render_screener
+from backtester import render_backtester
+from options_calc import render_options_calc
+from portfolio_tracker import render_portfolio_tracker
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -498,6 +502,10 @@ with nb_right:
             ("🛡️ Risk Engine",         "🛡️ Risk Engine",         "CRO-level capital protection"),
             ("⚡ Exchange Backend",   "⚡ Exchange Backend",    "FastAPI + CCXT order routing"),
             ("📡 Adv. Analyzer",      "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
+            ("🔍 Screener",            "🔍 Screener",             "Filter NSE + US + Crypto by signals"),
+            ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
+            ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
+            ("💼 Portfolio",           "💼 Portfolio",            "Live P&L + Price Alerts"),
             ("🔒 Privacy Policy",     "🔒 Privacy Policy",      "Data & privacy info"),
             ("📝 Sign Up",            "📝 Sign Up",             "Create free account"),
         ]
@@ -798,6 +806,14 @@ elif _ap == "⚡ Exchange Backend":
     _back_btn("back_eb"); render_exchange_backend(); st.stop()
 elif _ap == "📡 Adv. Analyzer":
     _back_btn("back_aa"); render_advanced_analyzer(); st.stop()
+elif _ap == "🔍 Screener":
+    _back_btn("back_sc"); render_screener(); st.stop()
+elif _ap == "📊 Backtester":
+    _back_btn("back_bt"); render_backtester(); st.stop()
+elif _ap == "⚙️ Options Greeks":
+    _back_btn("back_oc"); render_options_calc(); st.stop()
+elif _ap == "💼 Portfolio":
+    _back_btn("back_pf"); render_portfolio_tracker(); st.stop()
 elif _ap == "📊 Ticker Chart":
     _back_btn("back_tc")
     _render_ticker_chart()
