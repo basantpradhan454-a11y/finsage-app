@@ -24,6 +24,7 @@ from privacy_policy import render_privacy_policy, render_signup_page
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
 from risk_engine import render_risk_dashboard
 from exchange_backend import render_exchange_backend
+from advanced_analyzer import render_advanced_analyzer
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -496,6 +497,7 @@ with nb_right:
             ("🧠 Advanced Intel",     "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
             ("🛡️ Risk Engine",         "🛡️ Risk Engine",         "CRO-level capital protection"),
             ("⚡ Exchange Backend",   "⚡ Exchange Backend",    "FastAPI + CCXT order routing"),
+            ("📡 Adv. Analyzer",      "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
             ("🔒 Privacy Policy",     "🔒 Privacy Policy",      "Data & privacy info"),
             ("📝 Sign Up",            "📝 Sign Up",             "Create free account"),
         ]
@@ -794,6 +796,8 @@ elif _ap == "🛡️ Risk Engine":
     _back_btn("back_re"); render_risk_dashboard(); st.stop()
 elif _ap == "⚡ Exchange Backend":
     _back_btn("back_eb"); render_exchange_backend(); st.stop()
+elif _ap == "📡 Adv. Analyzer":
+    _back_btn("back_aa"); render_advanced_analyzer(); st.stop()
 elif _ap == "📊 Ticker Chart":
     _back_btn("back_tc")
     _render_ticker_chart()
