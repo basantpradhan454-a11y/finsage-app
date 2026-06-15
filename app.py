@@ -436,20 +436,18 @@ for k, v in defaults.items():
 render_sidebar_auth()
 user = get_current_user()
 
-# ── Ticker refresh — every 60s auto ────────────────────────────────────────────
-now_ts = time.time()
-if now_ts - st.session_state.last_ticker_refresh > 60:
-    st.session_state.ticker_data = fetch_ticker_bar_data()
-    st.session_state.last_ticker_refresh = now_ts
+# Ticker refresh handled by @st.fragment(run_every=60) — no manual refresh needed
 
-# Auto-rerun every 60 seconds for live price updates
-st_auto = st.empty()
-if "last_auto_rerun" not in st.session_state:
-    st.session_state.last_auto_rerun = time.time()
-if time.time() - st.session_state.last_auto_rerun > 60:
-    st.session_state.last_auto_rerun = time.time()
-    time.sleep(0.1)
-    st.rerun()
+# ── Auto-rerun guard — safe 60s refresh (only on main page) ─────────────────
+# Only refresh ticker on main page, never inside sub-pages
+_is_main_page = st.session_state.get("active_page", "main") == "main"
+if _is_main_page:
+    if "last_auto_rerun" not in st.session_state:
+        st.session_state.last_auto_rerun = time.time()
+    _since_rerun = time.time() - st.session_state.last_auto_rerun
+    if _since_rerun > 62:  # 62s buffer to avoid rapid loop
+        st.session_state.last_auto_rerun = time.time()
+        st.rerun()
 
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 nb_left, nb_right = st.columns([6, 1])
@@ -523,70 +521,76 @@ with nb_right:
 
 st.markdown("<hr style='margin:0.3rem 0 0.7rem;'>", unsafe_allow_html=True)
 
-# ── Live Ticker Bar ────────────────────────────────────────────────────────────
-if st.session_state.ticker_data:
-    # Separate sections: crypto, stocks, meme
-    crypto_items = [i for i in st.session_state.ticker_data if i.get("type") == "crypto"
-                    and i["symbol"] not in ["DOGE","SHIB","PEPE","FLOKI","BONK"]]
-    meme_items   = [i for i in st.session_state.ticker_data if i["symbol"] in ["DOGE","SHIB","PEPE","FLOKI","BONK"]]
-    stock_items  = [i for i in st.session_state.ticker_data if i.get("type") == "stock"]
+# ── Live Ticker Bar — @st.fragment (isolated 60s refresh) ──────────────────────
 
-    def _ticker_item(item):
-        chg   = item.get("change", 0) or 0
-        p     = item.get("price", 0) or 0
-        cls   = "up" if chg >= 0 else "down"
-        arrow = "▲" if chg >= 0 else "▼"
-        ps    = f"${p:.8f}".rstrip("0") if p < 0.001 else (f"${p:,.4f}" if p < 0.1 else f"${p:,.2f}")
-        t     = item.get("type","crypto")
-        badge_cls = "badge-meme" if item["symbol"] in ["DOGE","SHIB","PEPE","FLOKI","BONK"] else (
-                    "badge-stock" if t == "stock" else "badge-crypto")
-        badge_lbl = "MEME" if badge_cls == "badge-meme" else ("STK" if t == "stock" else "DeFi")
-        return (f'<span class="ticker-item">' +
-                f'<span class="ticker-sym">{item["symbol"]}</span>' +
-                f'<span class="ticker-price">{ps}</span>' +
-                f'<span class="{cls}">{arrow}{abs(chg):.2f}%</span>' +
-                f'<span class="ticker-type-badge {badge_cls}">{badge_lbl}</span>' +
-                f'</span>')
+_MEME_SYMS = {'DOGE','SHIB','PEPE','FLOKI','BONK','WIF'}
 
-    def _sep(label, color):
-        return (f'<span class="ticker-sep" style="color:{color};font-size:0.65rem;' +
-                f'font-weight:800;letter-spacing:0.1em;font-family:Orbitron,monospace;">{label}</span>')
+def _tk_item(item):
+    chg = item.get('change',0) or 0
+    p   = item.get('price',0) or 0
+    cls = 'up' if chg>=0 else 'down'
+    arr = '▲' if chg>=0 else '▼'
+    if p<0.0001:   ps=f'${p:.8f}'.rstrip('0')
+    elif p<0.01:   ps=f'${p:.6f}'
+    elif p<1:      ps=f'${p:.4f}'
+    else:          ps=f'${p:,.2f}'
+    t  = item.get('type','crypto')
+    bc = 'badge-meme' if item['symbol'] in _MEME_SYMS else ('badge-stock' if t=='stock' else 'badge-crypto')
+    bl = 'MEME' if bc=='badge-meme' else ('STK' if t=='stock' else 'DeFi')
+    return (f'<span class="ticker-item">'
+            f'<span class="ticker-sym">{item["symbol"]}</span>'
+            f'<span class="ticker-price">{ps}</span>'
+            f'<span class="{cls}">{arr}{abs(chg):.2f}%</span>'
+            f'<span class="ticker-type-badge {bc}">{bl}</span>'
+            '</span>')
 
-    ticker_html  = '<div class="ticker-bar">'
-    ticker_html += '<span class="ticker-live">◉ LIVE</span>'
-    ticker_html += _sep("  CRYPTO", "#00d4ff")
-    for it in crypto_items: ticker_html += _ticker_item(it)
-    ticker_html += _sep("  STOCKS", "#4a9eff")
-    for it in stock_items:  ticker_html += _ticker_item(it)
-    ticker_html += _sep("  MEME", "#ff8800")
-    for it in meme_items:   ticker_html += _ticker_item(it)
-    ticker_html += '</div>'
-    st.markdown(ticker_html, unsafe_allow_html=True)
+def _tk_sep(label, color):
+    return (f'<span class="ticker-sep" style="color:{color};font-size:0.65rem;'
+            f'font-weight:800;letter-spacing:0.1em;font-family:Orbitron,monospace;">{label}</span>')
 
-    # Clickable quick-chart row
-    with st.expander("📊 Click any asset to open live candlestick chart", expanded=False):
-        all_items = (crypto_items[:8] + stock_items[:8] + meme_items[:5])[:10]
-        btn_cols  = st.columns(len(all_items)) if all_items else st.columns(1)
-        for i, item in enumerate(all_items):
-            sym   = item["symbol"]
-            chg   = item.get("change", 0) or 0
-            price = item.get("price", 0) or 0
-            ps    = ("$%.4f" % price) if price < 1 else ("$" + f"{price:,.2f}")
-            color = "#00ff88" if chg >= 0 else "#ff4466"
-            arrow = "▲" if chg >= 0 else "▼"
-            with btn_cols[i]:
-                st.markdown(
-                    f'<div style="text-align:center;font-size:0.68rem;color:{color};'
-                    f'font-weight:700;">{arrow}{abs(chg):.1f}%</div>'
-                    f'<div style="text-align:center;font-size:0.65rem;color:#8b949e;">{ps}</div>',
-                    unsafe_allow_html=True
-                )
-                if st.button(sym, key=f"tc_btn_{sym}", use_container_width=True):
-                    st.session_state.ticker_chart_symbol = sym
-                    st.session_state.ticker_chart_type   = item.get("type","crypto")
-                    st.session_state.active_page         = "📊 Ticker Chart"
-                    st.rerun()
+@st.fragment(run_every=60)
+def render_live_ticker():
+    ticker_data = fetch_ticker_bar_data()
+    if not ticker_data:
+        st.caption('⏳ Loading live prices...')
+        return
+    crypto_items = [x for x in ticker_data if x.get('type')=='crypto' and x['symbol'] not in _MEME_SYMS]
+    meme_items   = [x for x in ticker_data if x['symbol'] in _MEME_SYMS]
+    stock_items  = [x for x in ticker_data if x.get('type')=='stock']
+    html  = '<div class="ticker-bar">'
+    html += '<span class="ticker-live">◉ LIVE</span>'
+    html += _tk_sep('  CRYPTO','#00d4ff')
+    for it in crypto_items: html += _tk_item(it)
+    html += _tk_sep('  STOCKS','#4a9eff')
+    for it in stock_items:  html += _tk_item(it)
+    html += _tk_sep('  MEME','#ff8800')
+    for it in meme_items:   html += _tk_item(it)
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
+    with st.expander('📊 Click any asset to open live candlestick chart', expanded=False):
+        all_items = (crypto_items[:6]+stock_items[:6]+meme_items[:4])[:10]
+        if all_items:
+            bc2 = st.columns(len(all_items))
+            for idx, item in enumerate(all_items):
+                sym   = item['symbol']
+                chg   = item.get('change',0) or 0
+                price = item.get('price',0) or 0
+                ps2   = (f'${price:.4f}' if price<1 else f'${price:,.2f}')
+                col2  = '#00ff88' if chg>=0 else '#ff4466'
+                arr2  = '▲' if chg>=0 else '▼'
+                with bc2[idx]:
+                    st.markdown(
+                        f'<div style="text-align:center;font-size:0.68rem;color:{col2};'
+                        f'font-weight:700;">{arr2}{abs(chg):.1f}%</div>'
+                        f'<div style="text-align:center;font-size:0.65rem;color:#8b949e;">{ps2}</div>',
+                        unsafe_allow_html=True)
+                    if st.button(sym, key=f'tc_btn_{sym}', use_container_width=True):
+                        st.session_state.ticker_chart_symbol = sym
+                        st.session_state.ticker_chart_type   = item.get('type','crypto')
+                        st.session_state.active_page         = '📊 Ticker Chart'
+                        st.rerun()
 
+render_live_ticker()
 
 # ── Results Renderer ───────────────────────────────────────────────────────────
 def render_results(data, report):
