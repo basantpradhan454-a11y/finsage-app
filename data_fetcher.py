@@ -4,6 +4,7 @@ Fetches real market data from yfinance (stocks) and CoinGecko (crypto/meme coins
 No API key required — 100% free.
 """
 
+import streamlit as st
 import yfinance as yf
 import requests
 import pandas as pd
@@ -27,6 +28,7 @@ COINGECKO_IDS = {
 MEME_COINS = {"DOGE","SHIB","PEPE","FLOKI","BONK","WIF","MEME","TURBO","BRETT","NEIRO"}
 
 
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_stock_data(ticker: str) -> dict:
     """Fetch stock data from yfinance with robust fallbacks."""
     ticker = ticker.strip().upper()
@@ -148,6 +150,7 @@ def fetch_stock_data(ticker: str) -> dict:
         return {"error": f"Failed to fetch data for '{ticker}': {str(e)}. Try again or check the symbol."}
 
 
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_crypto_data(symbol: str) -> dict:
     """Fetch crypto/meme coin data from CoinGecko (free, no key)."""
     try:
@@ -265,6 +268,7 @@ def calculate_risk_score(change_pct: float, volatility: float, market_cap: float
     return max(1, min(10, score))
 
 
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_ticker_bar_data() -> list:
     """Fetch live prices for the expanded 3D ticker bar — all major assets."""
     results = []
