@@ -201,7 +201,7 @@ def render_portfolio_tracker():
 
         display_df = df.drop(columns=["_pnl"])
         st.dataframe(
-            display_df.style.applymap(_cp, subset=["P&L ($)","P&L %"]),
+            display_df.style.map(_cp, subset=["P&L ($)","P&L %"]),
             use_container_width=True, hide_index=True,
             column_config={
                 "Invested":    st.column_config.NumberColumn(format="$%.2f"),
