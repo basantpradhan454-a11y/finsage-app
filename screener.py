@@ -270,10 +270,10 @@ def render_screener():
         return "color:#00ff88" if val > 0 else "color:#ff4466" if val < 0 else ""
 
     styled = display_df.style\
-        .applymap(color_signal, subset=["Signal"])\
-        .applymap(color_score,  subset=["Score"])\
-        .applymap(color_rsi,    subset=["RSI"])\
-        .applymap(color_chg,    subset=["1D%","5D%"])
+        .map(color_signal, subset=["Signal"])\
+        .map(color_score,  subset=["Score"])\
+        .map(color_rsi,    subset=["RSI"])\
+        .map(color_chg,    subset=["1D%","5D%"])
 
     st.dataframe(styled, use_container_width=True, hide_index=True,
         column_config={
