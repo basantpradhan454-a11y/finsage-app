@@ -452,7 +452,7 @@ def render_backtester():
         else:
             def _color_pnl(val):
                 return "color:#00ff88;font-weight:700" if val > 0 else "color:#ff4466;font-weight:700"
-            styled_t = trades_df.style.applymap(_color_pnl, subset=["PnL ($)", "PnL %"])
+            styled_t = trades_df.style.map(_color_pnl, subset=["PnL ($)", "PnL %"])
             st.dataframe(styled_t, use_container_width=True, hide_index=True,
                 column_config={
                     "PnL ($)": st.column_config.NumberColumn(format="$%.2f"),
