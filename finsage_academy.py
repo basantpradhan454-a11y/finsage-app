@@ -412,10 +412,11 @@ def render_finsage_academy():
                         ):
                             st.session_state["academy_active_chapter"] = chap
                             st.session_state["academy_active_level_color"] = color
+                            st.rerun()
 
                 # Show chapter content if active
                 active = st.session_state.get("academy_active_chapter")
-                if active and active.get("id", "")[:2] == c_id[:2]:
+                if active and active.get("id") == c_id:
                     _render_chapter(active, color)
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -704,6 +705,11 @@ Remember: this is EDUCATIONAL simulation, not a guarantee of future performance.
 # CHAPTER RENDER HELPER
 # ─────────────────────────────────────────────────────────────────────────────
 def _render_chapter(chap: dict, color: str):
+    # Back button
+    if st.button("← Back to Chapters", key=f"back_chap_{chap['id']}", type="secondary"):
+        st.session_state["academy_active_chapter"] = None
+        st.rerun()
+
     st.markdown(f"""
     <div style="background:linear-gradient(135deg,rgba(13,17,23,0.95),rgba(22,27,34,0.9));
     border:1px solid {color}44;border-left:3px solid {color};
