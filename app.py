@@ -23,7 +23,7 @@ from ai_chat_assistant import render_ai_chat_assistant
 from privacy_policy import render_privacy_policy, render_signup_page
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
 from risk_engine import render_risk_dashboard
-from polymarket_bot import render_polymarket_bot
+from finsage_academy import render_finsage_academy
 from advanced_analyzer import render_advanced_analyzer
 from screener import render_screener
 from backtester import render_backtester
@@ -499,7 +499,7 @@ with nb_right:
             ("🧠 Advanced Intel",     "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
             ("🛡️ Risk Engine",         "🛡️ Risk Engine",         "CRO-level capital protection"),
             ("📡 Adv. Analyzer",      "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
-            ("🤖 PolyBot",             "🤖 PolyBot",             "Polymarket edge scanner + Kelly sizer"),
+            ("🎓 Academy",             "🎓 Academy",             "AI Trading School — Learn, Quiz, Earn Badges"),
             ("🔍 Screener",            "🔍 Screener",             "Filter NSE + US + Crypto by signals"),
             ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
             ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
@@ -809,8 +809,8 @@ elif _ap == "🛡️ Risk Engine":
 
 elif _ap == "📡 Adv. Analyzer":
     _back_btn("back_aa"); render_advanced_analyzer(); st.stop()
-elif _ap == "🤖 PolyBot":
-    _back_btn("back_pb"); render_polymarket_bot(); st.stop()
+elif _ap == "🎓 Academy":
+    _back_btn("back_pb"); render_finsage_academy(); st.stop()
 elif _ap == "🔍 Screener":
     _back_btn("back_sc"); render_screener(); st.stop()
 elif _ap == "📊 Backtester":
