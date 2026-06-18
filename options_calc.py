@@ -318,7 +318,11 @@ def render_options_calc():
         return "color:#00ff88;font-weight:700" if v > 0 else "color:#ff4466;font-weight:700"
 
     sc_df = pd.DataFrame(sc_rows)
-    st.dataframe(sc_df.style.map(_cpnl, subset=["P&L ($)", "P&L %"]),
+    try:
+        styled_sc = sc_df.style.map(_cpnl, subset=["P&L ($)", "P&L %"])
+    except AttributeError:
+        styled_sc = sc_df.style.applymap(_cpnl, subset=["P&L ($)", "P&L %"])
+    st.dataframe(styled_sc,
                  use_container_width=True, hide_index=True)
 
     # ── Summary ───────────────────────────────────────────────────────────────
