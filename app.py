@@ -31,131 +31,6 @@ from options_calc import render_options_calc
 from portfolio_tracker import render_portfolio_tracker
 from trading_learning import show_trading_learning
 
-# ── Onboarding helpers ────────────────────────────────────────────────────────
-ONBOARD_LANGUAGES = {
-    "English": "en", "हिंदी": "hi", "తెలుగు": "te", "தமிழ்": "ta",
-    "বাংলা": "bn", "मराठी": "mr", "ਪੰਜਾਬੀ": "pa", "ગુજરાતી": "gu",
-    "Español": "es", "Français": "fr",
-}
-USER_TYPES = {
-    "📈 Trader":     "trader",
-    "💼 Investor":   "investor",
-    "🎓 Student":    "student",
-    "🤔 Other":      "other",
-}
-LANG_UI = {
-    "en": {"title": "Welcome to FinsageAI", "sub": "Choose your language",
-           "step2": "What best describes you?", "continue": "Continue →",
-           "signup": "Create Account", "skip": "Skip for now",
-           "market": "Market language", "user_type": "I am a..."},
-    "hi": {"title": "FinsageAI में आपका स्वागत है", "sub": "अपनी भाषा चुनें",
-           "step2": "आप कौन हैं?", "continue": "आगे बढ़ें →",
-           "signup": "खाता बनाएं", "skip": "अभी छोड़ें",
-           "market": "बाज़ार भाषा", "user_type": "मैं हूँ..."},
-    "te": {"title": "FinsageAI కి స్వాగతం", "sub": "భాష ఎంచుకోండి",
-           "step2": "మీరు ఎవరు?", "continue": "కొనసాగించు →",
-           "signup": "ఖాతా తయారుచేయండి", "skip": "ఇప్పుడు దాటవేయి",
-           "market": "మార్కెట్ భాష", "user_type": "నేను..."},
-    "ta": {"title": "FinsageAI க்கு வரவேற்கிறோம்", "sub": "மொழி தேர்ந்தெடுங்கள்",
-           "step2": "நீங்கள் யார்?", "continue": "தொடர் →",
-           "signup": "கணக்கு உருவாக்கு", "skip": "இப்போது தவிர்",
-           "market": "சந்தை மொழி", "user_type": "நான்..."},
-}
-def _ui(key: str) -> str:
-    lang = st.session_state.get("user_lang", "en")
-    d = LANG_UI.get(lang, LANG_UI["en"])
-    return d.get(key, LANG_UI["en"].get(key, key))
-
-def _save_onboard_to_db(email: str):
-    """Persist language + user_type to users.json after onboarding."""
-    try:
-        from auth_page import load_users, save_users
-        users = load_users()
-        if email in users:
-            users[email]["user_type"] = st.session_state.get("user_type", "")
-            users[email]["language"]  = st.session_state.get("user_lang", "en")
-            save_users(users)
-    except Exception:
-        pass
-
-def render_onboarding():
-    """Full-screen onboarding wizard: language → user type → signup."""
-    ob_step = st.session_state.get("onboard_step", "language")
-
-    # ── Shared header ──────────────────────────────────────────────────────
-    st.markdown("""
-    <div style="text-align:center;padding:2rem 1rem 1rem;">
-        <div style="font-size:2.2rem;font-weight:900;color:#00d4ff;
-        font-family:Orbitron,monospace;letter-spacing:0.06em;">FinsageAI</div>
-        <div style="color:#4a9eff;font-size:0.8rem;letter-spacing:0.15em;margin-top:4px;">
-        STOCK · CRYPTO · FOREX · AI-POWERED</div>
-    </div>""", unsafe_allow_html=True)
-
-    if ob_step == "language":
-        st.markdown(f"""<div style="text-align:center;margin-bottom:1.5rem;">
-        <div style="font-size:1.4rem;font-weight:700;color:#e0e6f0;">🌐 Choose Your Language</div>
-        <div style="color:#8899aa;font-size:0.85rem;margin-top:6px;">
-        You can change this anytime</div></div>""", unsafe_allow_html=True)
-
-        cols = st.columns(5)
-        for i, (name, code) in enumerate(ONBOARD_LANGUAGES.items()):
-            with cols[i % 5]:
-                if st.button(name, key=f"ob_lang_{code}", use_container_width=True):
-                    st.session_state.user_lang = code
-                    st.session_state.onboard_step = "user_type"
-                    st.rerun()
-
-    elif ob_step == "user_type":
-        lang = st.session_state.get("user_lang", "en")
-        ui = LANG_UI.get(lang, LANG_UI["en"])
-        st.markdown(f"""<div style="text-align:center;margin-bottom:1.5rem;">
-        <div style="font-size:1.4rem;font-weight:700;color:#e0e6f0;">{ui['step2']}</div>
-        <div style="color:#8899aa;font-size:0.85rem;margin-top:6px;">
-        This helps us personalise your experience</div></div>""", unsafe_allow_html=True)
-
-        cols = st.columns(4)
-        for i, (label, val) in enumerate(USER_TYPES.items()):
-            with cols[i]:
-                if st.button(label, key=f"ob_type_{val}", use_container_width=True):
-                    st.session_state.user_type = val
-                    st.session_state.onboard_step = "signup"
-                    st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        _, cb, _ = st.columns([2,1,2])
-        with cb:
-            if st.button("← Back", key="ob_back_lang"):
-                st.session_state.onboard_step = "language"; st.rerun()
-
-    elif ob_step == "signup":
-        lang = st.session_state.get("user_lang", "en")
-        ui   = LANG_UI.get(lang, LANG_UI["en"])
-        utype = st.session_state.get("user_type", "")
-
-        st.markdown(f"""<div style="text-align:center;margin-bottom:1rem;">
-        <div style="font-size:1.3rem;font-weight:700;color:#e0e6f0;">
-        {ui.get('signup','Create Account')} / Login</div>
-        <div style="color:#8899aa;font-size:0.83rem;margin-top:5px;">
-        Save your progress, history & preferences</div></div>""", unsafe_allow_html=True)
-
-        from auth_page import render_sidebar_auth as _rsa
-        _rsa()
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        _, cs, _ = st.columns([1,2,1])
-        with cs:
-            if st.button(f"⚡ {ui.get('skip','Skip for now')} — Enter as Guest",
-                         key="ob_skip", use_container_width=True):
-                st.session_state.onboard_done = True
-                st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        _, cb2, _ = st.columns([2,1,2])
-        with cb2:
-            if st.button("← Back", key="ob_back_type"):
-                st.session_state.onboard_step = "user_type"; st.rerun()
-
-
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="FinsageAI — Stock, Crypto & Meme Coin Analysis",
@@ -542,61 +417,306 @@ h3, h2 {
 </style>
 """, unsafe_allow_html=True)
 
-# ── Session State ───────────────────────────────────────────────────────────── ──────────────────────────────────────────────────────────────
+# ── Session State ────────────────────────────────────────────────────────────
 if "active_page" not in st.session_state:
     st.session_state.active_page = "main"
 
-defaults = {
-    "user": None,
-    "stock_data": None, "stock_report": None,
-    "crypto_data": None, "crypto_report": None,
-    "meme_data": None, "meme_report": None,
-    "ticker_data": [], "last_ticker_refresh": 0,
-    "stock_selected": "", "crypto_selected": "", "meme_selected": "",
+_all_defaults = {
+    "user":              None,
+    "stock_data":        None,  "stock_report":  None,
+    "crypto_data":       None,  "crypto_report": None,
+    "meme_data":         None,  "meme_report":   None,
+    "ticker_data":       [],    "last_ticker_refresh": 0,
+    "stock_selected":    "",    "crypto_selected":     "",    "meme_selected": "",
+    # onboarding
+    "ob_step":           "language",   # language | user_type | signup
+    "user_lang":         "en",
+    "user_type":         "",
+    "ob_done":           False,
 }
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
-# ── Onboarding defaults ──────────────────────────────────────────────────────
-_ob_defaults = {
-    "onboard_done":  False,
-    "onboard_step":  "language",
-    "user_lang":     "en",
-    "user_type":     "",
-}
-for _k, _v in _ob_defaults.items():
+for _k, _v in _all_defaults.items():
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
-# ── Check if logged-in user already has onboarding data ──────────────────────
+# ── Google OAuth callback (must run before onboarding gate) ─────────────────
+_qp = st.query_params
+if "code" in _qp and not st.session_state.get("user"):
+    with st.spinner("🔄 Signing in with Google..."):
+        from auth_page import exchange_code_for_user
+        _gu = exchange_code_for_user(_qp["code"])
+        st.query_params.clear()
+        if "error" not in _gu:
+            st.session_state.user = _gu
+            st.session_state.ob_done = True
+            st.rerun()
+
+# ── If already logged in → skip onboarding, restore lang/type from DB ────────
 render_sidebar_auth()
 user = get_current_user()
-if user and not st.session_state.get("onboard_done"):
-    # User already has an account → mark onboarding done
+if user and not st.session_state.get("ob_done"):
     try:
-        from auth_page import load_users
-        _udb = load_users()
+        from auth_page import load_users as _lu
+        _udb = _lu()
         _ue  = (user.get("email","")).lower().strip()
         if _ue in _udb:
             _ud = _udb[_ue]
-            if _ud.get("user_type"):
-                st.session_state.user_type = _ud["user_type"]
-            if _ud.get("language"):
-                st.session_state.user_lang = _ud["language"]
+            if _ud.get("user_type"):  st.session_state.user_type = _ud["user_type"]
+            if _ud.get("language"):   st.session_state.user_lang = _ud["language"]
     except Exception:
         pass
-    st.session_state.onboard_done = True
+    st.session_state.ob_done = True
 
-# ── Onboarding gate — show wizard until done ──────────────────────────────────
-if not st.session_state.get("onboard_done"):
+# ════════════════════════════════════════════════════════════════════
+# ONBOARDING GATE — nothing renders until wizard is complete
+# ════════════════════════════════════════════════════════════════════
+def _save_ob_to_db(email: str):
+    try:
+        from auth_page import load_users, save_users
+        _u = load_users()
+        if email in _u:
+            _u[email]["user_type"] = st.session_state.get("user_type","")
+            _u[email]["language"]  = st.session_state.get("user_lang","en")
+            save_users(_u)
+    except Exception:
+        pass
+
+# ── Onboarding CSS ────────────────────────────────────────────────
+_OB_CSS = """
+<style>
+.ob-wrap{max-width:520px;margin:0 auto;padding:1rem 0.5rem;}
+.ob-logo{text-align:center;padding:2.5rem 0 1.5rem;}
+.ob-logo-name{font-size:2rem;font-weight:900;color:#00d4ff;
+  font-family:Orbitron,monospace;letter-spacing:0.07em;
+  text-shadow:0 0 25px rgba(0,212,255,0.5);}
+.ob-logo-tag{color:#4a9eff;font-size:0.72rem;letter-spacing:0.18em;margin-top:4px;}
+.ob-step-title{font-size:1.35rem;font-weight:800;color:#e0e6f0;
+  text-align:center;margin:1.2rem 0 0.4rem;}
+.ob-step-sub{color:#8899aa;font-size:0.83rem;text-align:center;
+  margin-bottom:1.4rem;}
+.ob-lang-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
+.ob-lang-btn{background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.2);
+  border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;
+  font-size:0.82rem;font-weight:600;color:#c9d1d9;transition:all 0.2s;}
+.ob-lang-btn:hover{border-color:#00d4ff;background:rgba(0,212,255,0.15);}
+.ob-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem;}
+.ob-type-card{background:linear-gradient(135deg,#071525,#0d2040);
+  border:1px solid rgba(0,212,255,0.18);border-radius:14px;
+  padding:22px 16px;text-align:center;cursor:pointer;
+  font-size:1.1rem;font-weight:700;color:#e0e6f0;transition:all 0.25s;}
+.ob-type-card:hover{border-color:#00d4ff;box-shadow:0 0 20px rgba(0,212,255,0.18);}
+.ob-card{background:rgba(7,21,37,0.97);border:1px solid rgba(0,212,255,0.15);
+  border-radius:16px;padding:28px 24px;margin-top:0.5rem;}
+.ob-divider{display:flex;align-items:center;gap:10px;color:#556;
+  font-size:0.78rem;margin:1rem 0;}
+.ob-divider-line{flex:1;height:1px;background:#1a2744;}
+.ob-progress{display:flex;justify-content:center;gap:8px;margin-bottom:1.5rem;}
+.ob-dot{width:8px;height:8px;border-radius:50%;background:#1a2744;transition:all 0.3s;}
+.ob-dot.active{background:#00d4ff;box-shadow:0 0 8px #00d4ff;}
+.ob-dot.done{background:#00ff88;}
+</style>
+"""
+
+_OB_LANG_MAP = {
+    "🇺🇸 English":"en","🇮🇳 हिंदी":"hi","🇮🇳 తెలుగు":"te",
+    "🇮🇳 தமிழ்":"ta","🇮🇳 বাংলা":"bn","🇮🇳 मराठी":"mr",
+    "🇮🇳 ਪੰਜਾਬੀ":"pa","🇮🇳 ગુજરાતી":"gu","🇪🇸 Español":"es","🇫🇷 Français":"fr",
+}
+_OB_TITLES = {
+    "en":{"lang":"🌐 Choose Language","lang_sub":"Select the language for the entire platform",
+          "type":"Who are you?","type_sub":"We'll personalise your experience",
+          "signup":"Create your account","signup_sub":"Save progress, history & preferences",
+          "skip":"Enter as Guest (no account needed)","back":"← Back"},
+    "hi":{"lang":"🌐 भाषा चुनें","lang_sub":"पूरे प्लेटफ़ॉर्म के लिए भाषा चुनें",
+          "type":"आप कौन हैं?","type_sub":"हम आपका अनुभव बेहतर बनाएंगे",
+          "signup":"अपना खाता बनाएं","signup_sub":"प्रगति व इतिहास सुरक्षित रखें",
+          "skip":"अभी Guest के रूप में जारी रखें","back":"← वापस"},
+    "te":{"lang":"🌐 భాష ఎంచుకోండి","lang_sub":"మొత్తం ప్లాట్‌ఫారమ్‌కు భాష ఎంచుకోండి",
+          "type":"మీరు ఎవరు?","type_sub":"మీ అనుభవాన్ని మెరుగుపరుస్తాము",
+          "signup":"ఖాతా సృష్టించండి","signup_sub":"మీ పురోగతి సేవ్ చేయబడుతుంది",
+          "skip":"Guest గా కొనసాగండి","back":"← వెనక్కి"},
+    "ta":{"lang":"🌐 மொழி தேர்வு","lang_sub":"முழு தளத்திற்கும் மொழி தேர்ந்தெடுக்கவும்",
+          "type":"நீங்கள் யார்?","type_sub":"உங்கள் அனுபவத்தை தனிப்பயனாக்குவோம்",
+          "signup":"கணக்கு உருவாக்கவும்","signup_sub":"முன்னேற்றத்தை சேமிக்கவும்",
+          "skip":"விருந்தினராக தொடரவும்","back":"← பின்"},
+}
+
+_OB_USER_TYPES = [
+    ("📈 Trader",    "trader"),
+    ("💼 Investor",  "investor"),
+    ("🎓 Student",   "student"),
+    ("🤔 Other",     "other"),
+]
+
+def _ob_ui(key):
+    lang = st.session_state.get("user_lang","en")
+    d = _OB_TITLES.get(lang, _OB_TITLES["en"])
+    return d.get(key, _OB_TITLES["en"].get(key,key))
+
+def _ob_dots(current_step):
+    steps = ["language","user_type","signup"]
+    idx   = steps.index(current_step) if current_step in steps else 0
+    dots  = ""
+    for i in range(3):
+        cls = "done" if i < idx else ("active" if i == idx else "")
+        dots += f'<div class="ob-dot {cls}"></div>'
+    st.markdown(f'<div class="ob-progress">{dots}</div>', unsafe_allow_html=True)
+
+def render_onboarding():
+    st.markdown(_OB_CSS, unsafe_allow_html=True)
+
+    # Handle Google OAuth inside onboarding
+    _qp2 = st.query_params
+    if "code" in _qp2 and not st.session_state.get("user"):
+        with st.spinner("🔄 Signing in with Google..."):
+            from auth_page import exchange_code_for_user
+            _gu2 = exchange_code_for_user(_qp2["code"])
+            st.query_params.clear()
+            if "error" not in _gu2:
+                st.session_state.user = _gu2
+                _save_ob_to_db((_gu2.get("email","")).lower())
+                st.session_state.ob_done = True
+                st.rerun()
+
+    step = st.session_state.get("ob_step","language")
+
+    # Logo
+    st.markdown("""
+    <div class="ob-logo">
+        <div class="ob-logo-name">FinsageAI</div>
+        <div class="ob-logo-tag">STOCK · CRYPTO · FOREX · AI-POWERED</div>
+    </div>""", unsafe_allow_html=True)
+
+    # Progress dots
+    _ob_dots(step)
+
+    _, col, _ = st.columns([0.5, 3, 0.5])
+    with col:
+
+        if step == "language":
+            st.markdown(f'<div class="ob-step-title">{_ob_ui("lang")}</div>'
+                        f'<div class="ob-step-sub">{_ob_ui("lang_sub")}</div>',
+                        unsafe_allow_html=True)
+            # 5-column language grid
+            for row_start in range(0, len(_OB_LANG_MAP), 5):
+                row_items = list(_OB_LANG_MAP.items())[row_start:row_start+5]
+                cols = st.columns(len(row_items))
+                for ci, (label, code) in enumerate(row_items):
+                    with cols[ci]:
+                        if st.button(label, key=f"ob_lang_{code}",
+                                     use_container_width=True):
+                            st.session_state.user_lang = code
+                            st.session_state.ob_step   = "user_type"
+                            st.rerun()
+
+        elif step == "user_type":
+            st.markdown(f'<div class="ob-step-title">{_ob_ui("type")}</div>'
+                        f'<div class="ob-step-sub">{_ob_ui("type_sub")}</div>',
+                        unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            for i, (label, val) in enumerate(_OB_USER_TYPES):
+                with (c1 if i % 2 == 0 else c2):
+                    if st.button(label, key=f"ob_type_{val}",
+                                 use_container_width=True):
+                        st.session_state.user_type = val
+                        st.session_state.ob_step   = "signup"
+                        st.rerun()
+            st.write("")
+            if st.button(_ob_ui("back"), key="ob_back1"):
+                st.session_state.ob_step = "language"; st.rerun()
+
+        elif step == "signup":
+            st.markdown(f'<div class="ob-step-title">{_ob_ui("signup")}</div>'
+                        f'<div class="ob-step-sub">{_ob_ui("signup_sub")}</div>',
+                        unsafe_allow_html=True)
+
+            st.markdown('<div class="ob-card">', unsafe_allow_html=True)
+
+            # Google button
+            import os as _os
+            _cid = _os.environ.get("GOOGLE_CLIENT_ID","")
+            _cs  = _os.environ.get("GOOGLE_CLIENT_SECRET","")
+            if _cid and _cs:
+                from auth_page import get_google_login_url
+                _gurl = get_google_login_url()
+                st.markdown(f"""<a href="{_gurl}" style="
+                display:flex;align-items:center;justify-content:center;gap:10px;
+                background:#fff;color:#1f1f1f;text-decoration:none;border-radius:10px;
+                padding:0.65rem 1.2rem;font-size:0.9rem;font-weight:600;
+                box-shadow:0 2px 8px rgba(0,0,0,0.35);margin-bottom:1rem;">
+                <svg width="18" height="18" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84L38.34 6.1C34.52 2.31 29.53 0 24 0 14.62 0 6.63 5.47 2.63 13.4l7.08 5.5C11.63 13.15 17.35 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.52 24.5c0-1.6-.14-3.14-.4-4.64H24v9.27h12.67c-.55 2.93-2.2 5.41-4.68 7.09l7.27 5.65C43.52 37.96 46.52 31.7 46.52 24.5z"/>
+                <path fill="#FBBC05" d="M9.71 28.62A14.83 14.83 0 0 1 9.5 24c0-1.6.28-3.15.71-4.62L3.13 13.9A23.93 23.93 0 0 0 0 24c0 3.87.92 7.53 2.54 10.77l7.17-6.15z"/>
+                <path fill="#34A853" d="M24 48c5.53 0 10.17-1.82 13.56-4.95l-7.27-5.65c-1.95 1.3-4.45 2.1-6.29 2.1-6.62 0-12.23-4.47-14.25-10.5l7.17-6.15C6.6 42.58 14.62 48 24 48z"/>
+                </svg>Continue with Google</a>""", unsafe_allow_html=True)
+                st.markdown('<div class="ob-divider"><div class="ob-divider-line"></div>'
+                            'or use email<div class="ob-divider-line"></div></div>',
+                            unsafe_allow_html=True)
+
+            # Login / Signup tabs
+            from auth_page import login_user, register_user
+            import time as _time
+            tab_l, tab_s = st.tabs(["🔑 Login", "📝 Sign Up"])
+
+            with tab_l:
+                with st.form("ob_login", clear_on_submit=False):
+                    _em = st.text_input("Email", placeholder="you@example.com", key="ob_le")
+                    _pw = st.text_input("Password", type="password", key="ob_lp")
+                    if st.form_submit_button("Login →", use_container_width=True, type="primary"):
+                        if not _em or not _pw:
+                            st.error("Fill in both fields.")
+                        else:
+                            _ok, _res = login_user(_em, _pw)
+                            if _ok:
+                                st.session_state.user = _res
+                                _save_ob_to_db(_em.lower().strip())
+                                st.session_state.ob_done = True
+                                _time.sleep(0.4)
+                                st.rerun()
+                            else:
+                                st.error(_res.get("error","Login failed."))
+
+            with tab_s:
+                with st.form("ob_signup", clear_on_submit=True):
+                    _nm  = st.text_input("Full Name", placeholder="Your name", key="ob_nm")
+                    _em2 = st.text_input("Email", placeholder="you@example.com", key="ob_em2")
+                    _pw2 = st.text_input("Password", type="password",
+                                         placeholder="Min 6 characters", key="ob_pw2")
+                    _pc  = st.text_input("Confirm Password", type="password",
+                                         placeholder="Repeat password", key="ob_pc")
+                    if st.form_submit_button("Create Account →",
+                                             use_container_width=True, type="primary"):
+                        if not _nm or not _em2 or not _pw2:
+                            st.error("Fill in all fields.")
+                        elif _pw2 != _pc:
+                            st.error("Passwords do not match.")
+                        else:
+                            _ok2, _msg = register_user(_em2, _pw2, _nm)
+                            if _ok2:
+                                _, _res2 = login_user(_em2, _pw2)
+                                st.session_state.user = _res2
+                                _save_ob_to_db(_em2.lower().strip())
+                                st.session_state.ob_done = True
+                                _time.sleep(0.4)
+                                st.rerun()
+                            else:
+                                st.error(_msg)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.write("")
+
+            # Guest skip
+            _, _cg, _ = st.columns([1,3,1])
+            with _cg:
+                if st.button(_ob_ui("skip"), key="ob_skip", use_container_width=True):
+                    st.session_state.ob_done = True
+                    st.rerun()
+
+            if st.button(_ob_ui("back"), key="ob_back2"):
+                st.session_state.ob_step = "user_type"; st.rerun()
+
+if not st.session_state.get("ob_done"):
     render_onboarding()
-    # After signup completes (user is now logged in) → mark done + save
-    _new_user = get_current_user()
-    if _new_user:
-        st.session_state.onboard_done = True
-        _save_onboard_to_db((_new_user.get("email","")).lower().strip())
-        st.rerun()
     st.stop()
 
 # Ticker refresh handled by @st.fragment(run_every=60) — no manual refresh needed
