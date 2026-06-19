@@ -7,8 +7,9 @@ Three-layer hybrid system:
   Layer 3 — Full AI fallback + auto-save to library
 
 API Keys via Streamlit secrets or env vars:
-  OPENAI_API_KEY   — GPT-4o (teaching / grading / Q&A)
-  GEMINI_API_KEY   — Gemini Flash (chart visual explanations)
+  GROQ_API_KEY   — Groq (llama-3.3-70b) — primary AI engine
+  GROW_API_KEY   — alias (auto-detected, same as GROQ_API_KEY)
+  OPENAI_API_KEY — optional fallback
 """
 
 import streamlit as st
@@ -32,8 +33,11 @@ USER_PROGRESS_PATH  = os.path.join(os.path.dirname(__file__), "user_progress.jso
 PASS_THRESHOLD = 70   # % to unlock next topic
 
 # ══════════════════════════════════════════════════════
-# 1.  API HELPERS
+# 1.  API HELPERS  (Groq as primary — same pattern as rest of FinSage)
 # ══════════════════════════════════════════════════════
+GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.3-70b-versatile"   # same model used across FinSage
+
 def _get_key(name: str) -> str:
     v = os.environ.get(name, "")
     if not v:
@@ -43,12 +47,40 @@ def _get_key(name: str) -> str:
             pass
     return v or ""
 
-def call_openai(prompt: str, system: str = "", model: str = "gpt-4o",
-                max_tokens: int = 2500, temperature: float = 0.7) -> str:
+def _get_groq_key() -> str:
+    """Try GROQ_API_KEY first, then GROW_API_KEY (user's saved secret name)."""
+    return _get_key("GROQ_API_KEY") or _get_key("GROW_API_KEY")
+
+def call_groq(prompt: str, system: str = "", max_tokens: int = 2500,
+              temperature: float = 0.6) -> str:
+    """Primary AI engine — Groq llama-3.3-70b (fast, free tier generous)."""
+    api_key = _get_groq_key()
+    if not api_key:
+        return _call_openai_fallback(prompt, system, max_tokens)
+    msgs = []
+    if system:
+        msgs.append({"role": "system", "content": system})
+    msgs.append({"role": "user", "content": prompt})
+    try:
+        r = requests.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {api_key}",
+                     "Content-Type": "application/json"},
+            json={"model": GROQ_MODEL, "messages": msgs,
+                  "temperature": temperature, "max_tokens": max_tokens},
+            timeout=60
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return _call_openai_fallback(prompt, system, max_tokens)
+
+def _call_openai_fallback(prompt: str, system: str = "", max_tokens: int = 2500) -> str:
+    """Fallback to OpenAI if Groq key not set."""
     api_key = _get_key("OPENAI_API_KEY")
     if not api_key:
-        return call_gemini(prompt, system)          # fallback chain
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        return ("⚠️ No AI key configured. Add GROQ_API_KEY (or GROW_API_KEY) "
+                "to Streamlit secrets to enable AI features.")
     msgs = []
     if system:
         msgs.append({"role": "system", "content": system})
@@ -56,44 +88,25 @@ def call_openai(prompt: str, system: str = "", model: str = "gpt-4o",
     try:
         r = requests.post(
             "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json={"model": model, "messages": msgs,
-                  "temperature": temperature, "max_tokens": max_tokens},
+            headers={"Authorization": f"Bearer {api_key}",
+                     "Content-Type": "application/json"},
+            json={"model": "gpt-4o", "messages": msgs,
+                  "temperature": 0.7, "max_tokens": max_tokens},
             timeout=60
         )
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"]
     except Exception as e:
-        return call_gemini(prompt, system)          # fallback
-
-def call_gemini(prompt: str, system: str = "", max_tokens: int = 2500) -> str:
-    api_key = _get_key("GEMINI_API_KEY")
-    if not api_key:
-        return "⚠️ No AI key configured. Add OPENAI_API_KEY or GEMINI_API_KEY to Streamlit secrets."
-    full_prompt = f"{system}\n\n{prompt}" if system else prompt
-    url = (f"https://generativelanguage.googleapis.com/v1beta/"
-           f"models/gemini-1.5-flash:generateContent?key={api_key}")
-    payload = {
-        "contents": [{"parts": [{"text": full_prompt}]}],
-        "generationConfig": {"temperature": 0.6, "maxOutputTokens": max_tokens}
-    }
-    try:
-        r = requests.post(url, json=payload, timeout=60)
-        r.raise_for_status()
-        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception as e:
         return f"⚠️ AI Error: {e}"
 
-# Route: text tasks → OpenAI; chart/visual → Gemini then OpenAI fallback
+# Route: ALL tasks (text + visual) → Groq.  OpenAI is fallback only.
 def ai_text(prompt: str, system: str = "", max_tokens: int = 2500) -> str:
-    return call_openai(prompt, system, max_tokens=max_tokens)
+    """Teaching, grading, Q&A — Groq primary."""
+    return call_groq(prompt, system, max_tokens=max_tokens)
 
 def ai_visual(prompt: str, system: str = "") -> str:
-    """Chart/visual explanation — Gemini first, OpenAI fallback."""
-    api_key = _get_key("GEMINI_API_KEY")
-    if api_key:
-        return call_gemini(prompt, system)
-    return call_openai(prompt, system)
+    """Chart/visual explanations — Groq primary (fast + capable)."""
+    return call_groq(prompt, system, max_tokens=1800)
 
 # ══════════════════════════════════════════════════════
 # 2.  LANGUAGE SUPPORT
