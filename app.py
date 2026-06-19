@@ -31,6 +31,131 @@ from options_calc import render_options_calc
 from portfolio_tracker import render_portfolio_tracker
 from trading_learning import show_trading_learning
 
+# ── Onboarding helpers ────────────────────────────────────────────────────────
+ONBOARD_LANGUAGES = {
+    "English": "en", "हिंदी": "hi", "తెలుగు": "te", "தமிழ்": "ta",
+    "বাংলা": "bn", "मराठी": "mr", "ਪੰਜਾਬੀ": "pa", "ગુજરાતી": "gu",
+    "Español": "es", "Français": "fr",
+}
+USER_TYPES = {
+    "📈 Trader":     "trader",
+    "💼 Investor":   "investor",
+    "🎓 Student":    "student",
+    "🤔 Other":      "other",
+}
+LANG_UI = {
+    "en": {"title": "Welcome to FinsageAI", "sub": "Choose your language",
+           "step2": "What best describes you?", "continue": "Continue →",
+           "signup": "Create Account", "skip": "Skip for now",
+           "market": "Market language", "user_type": "I am a..."},
+    "hi": {"title": "FinsageAI में आपका स्वागत है", "sub": "अपनी भाषा चुनें",
+           "step2": "आप कौन हैं?", "continue": "आगे बढ़ें →",
+           "signup": "खाता बनाएं", "skip": "अभी छोड़ें",
+           "market": "बाज़ार भाषा", "user_type": "मैं हूँ..."},
+    "te": {"title": "FinsageAI కి స్వాగతం", "sub": "భాష ఎంచుకోండి",
+           "step2": "మీరు ఎవరు?", "continue": "కొనసాగించు →",
+           "signup": "ఖాతా తయారుచేయండి", "skip": "ఇప్పుడు దాటవేయి",
+           "market": "మార్కెట్ భాష", "user_type": "నేను..."},
+    "ta": {"title": "FinsageAI க்கு வரவேற்கிறோம்", "sub": "மொழி தேர்ந்தெடுங்கள்",
+           "step2": "நீங்கள் யார்?", "continue": "தொடர் →",
+           "signup": "கணக்கு உருவாக்கு", "skip": "இப்போது தவிர்",
+           "market": "சந்தை மொழி", "user_type": "நான்..."},
+}
+def _ui(key: str) -> str:
+    lang = st.session_state.get("user_lang", "en")
+    d = LANG_UI.get(lang, LANG_UI["en"])
+    return d.get(key, LANG_UI["en"].get(key, key))
+
+def _save_onboard_to_db(email: str):
+    """Persist language + user_type to users.json after onboarding."""
+    try:
+        from auth_page import load_users, save_users
+        users = load_users()
+        if email in users:
+            users[email]["user_type"] = st.session_state.get("user_type", "")
+            users[email]["language"]  = st.session_state.get("user_lang", "en")
+            save_users(users)
+    except Exception:
+        pass
+
+def render_onboarding():
+    """Full-screen onboarding wizard: language → user type → signup."""
+    ob_step = st.session_state.get("onboard_step", "language")
+
+    # ── Shared header ──────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="text-align:center;padding:2rem 1rem 1rem;">
+        <div style="font-size:2.2rem;font-weight:900;color:#00d4ff;
+        font-family:Orbitron,monospace;letter-spacing:0.06em;">FinsageAI</div>
+        <div style="color:#4a9eff;font-size:0.8rem;letter-spacing:0.15em;margin-top:4px;">
+        STOCK · CRYPTO · FOREX · AI-POWERED</div>
+    </div>""", unsafe_allow_html=True)
+
+    if ob_step == "language":
+        st.markdown(f"""<div style="text-align:center;margin-bottom:1.5rem;">
+        <div style="font-size:1.4rem;font-weight:700;color:#e0e6f0;">🌐 Choose Your Language</div>
+        <div style="color:#8899aa;font-size:0.85rem;margin-top:6px;">
+        You can change this anytime</div></div>""", unsafe_allow_html=True)
+
+        cols = st.columns(5)
+        for i, (name, code) in enumerate(ONBOARD_LANGUAGES.items()):
+            with cols[i % 5]:
+                if st.button(name, key=f"ob_lang_{code}", use_container_width=True):
+                    st.session_state.user_lang = code
+                    st.session_state.onboard_step = "user_type"
+                    st.rerun()
+
+    elif ob_step == "user_type":
+        lang = st.session_state.get("user_lang", "en")
+        ui = LANG_UI.get(lang, LANG_UI["en"])
+        st.markdown(f"""<div style="text-align:center;margin-bottom:1.5rem;">
+        <div style="font-size:1.4rem;font-weight:700;color:#e0e6f0;">{ui['step2']}</div>
+        <div style="color:#8899aa;font-size:0.85rem;margin-top:6px;">
+        This helps us personalise your experience</div></div>""", unsafe_allow_html=True)
+
+        cols = st.columns(4)
+        for i, (label, val) in enumerate(USER_TYPES.items()):
+            with cols[i]:
+                if st.button(label, key=f"ob_type_{val}", use_container_width=True):
+                    st.session_state.user_type = val
+                    st.session_state.onboard_step = "signup"
+                    st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        _, cb, _ = st.columns([2,1,2])
+        with cb:
+            if st.button("← Back", key="ob_back_lang"):
+                st.session_state.onboard_step = "language"; st.rerun()
+
+    elif ob_step == "signup":
+        lang = st.session_state.get("user_lang", "en")
+        ui   = LANG_UI.get(lang, LANG_UI["en"])
+        utype = st.session_state.get("user_type", "")
+
+        st.markdown(f"""<div style="text-align:center;margin-bottom:1rem;">
+        <div style="font-size:1.3rem;font-weight:700;color:#e0e6f0;">
+        {ui.get('signup','Create Account')} / Login</div>
+        <div style="color:#8899aa;font-size:0.83rem;margin-top:5px;">
+        Save your progress, history & preferences</div></div>""", unsafe_allow_html=True)
+
+        from auth_page import render_sidebar_auth as _rsa
+        _rsa()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        _, cs, _ = st.columns([1,2,1])
+        with cs:
+            if st.button(f"⚡ {ui.get('skip','Skip for now')} — Enter as Guest",
+                         key="ob_skip", use_container_width=True):
+                st.session_state.onboard_done = True
+                st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        _, cb2, _ = st.columns([2,1,2])
+        with cb2:
+            if st.button("← Back", key="ob_back_type"):
+                st.session_state.onboard_step = "user_type"; st.rerun()
+
+
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="FinsageAI — Stock, Crypto & Meme Coin Analysis",
@@ -433,9 +558,46 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Public App — Optional Sidebar Login ──────────────────────────────────────
+# ── Onboarding defaults ──────────────────────────────────────────────────────
+_ob_defaults = {
+    "onboard_done":  False,
+    "onboard_step":  "language",
+    "user_lang":     "en",
+    "user_type":     "",
+}
+for _k, _v in _ob_defaults.items():
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
+
+# ── Check if logged-in user already has onboarding data ──────────────────────
 render_sidebar_auth()
 user = get_current_user()
+if user and not st.session_state.get("onboard_done"):
+    # User already has an account → mark onboarding done
+    try:
+        from auth_page import load_users
+        _udb = load_users()
+        _ue  = (user.get("email","")).lower().strip()
+        if _ue in _udb:
+            _ud = _udb[_ue]
+            if _ud.get("user_type"):
+                st.session_state.user_type = _ud["user_type"]
+            if _ud.get("language"):
+                st.session_state.user_lang = _ud["language"]
+    except Exception:
+        pass
+    st.session_state.onboard_done = True
+
+# ── Onboarding gate — show wizard until done ──────────────────────────────────
+if not st.session_state.get("onboard_done"):
+    render_onboarding()
+    # After signup completes (user is now logged in) → mark done + save
+    _new_user = get_current_user()
+    if _new_user:
+        st.session_state.onboard_done = True
+        _save_onboard_to_db((_new_user.get("email","")).lower().strip())
+        st.rerun()
+    st.stop()
 
 # Ticker refresh handled by @st.fragment(run_every=60) — no manual refresh needed
 
@@ -506,7 +668,7 @@ with nb_right:
             ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
             ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
             ("💼 Portfolio",           "💼 Portfolio",            "Live P&L + Price Alerts"),
-            ("📝 Sign Up / Privacy",  "📝 Sign Up",             "Create free account & read Privacy Policy"),
+
         ]
         for label, page_key, desc in all_pages:
             st.caption(desc)

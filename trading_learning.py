@@ -79,8 +79,7 @@ def _call_openai_fallback(prompt: str, system: str = "", max_tokens: int = 2500)
     """Fallback to OpenAI if Groq key not set."""
     api_key = _get_key("OPENAI_API_KEY")
     if not api_key:
-        return ("⚠️ No AI key configured. Add GROQ_API_KEY (or GROW_API_KEY) "
-                "to Streamlit secrets to enable AI features.")
+        return "⚠️ No AI key configured. Add GROQ_API_KEY to Streamlit secrets to enable AI features."
     msgs = []
     if system:
         msgs.append({"role": "system", "content": system})
@@ -635,8 +634,8 @@ TL_CSS = """
 # ══════════════════════════════════════════════════════
 def init_tl_state():
     D = {
-        "tl_step":       "language",   # language|market|style|toc|lesson|exam
-        "tl_lang":       "en",
+        "tl_step":       "market",      # market|style|toc|lesson|exam
+        "tl_lang":       st.session_state.get("user_lang", "en"),  # from onboarding
         "tl_market":     None,
         "tl_style":      None,
         "tl_course":     None,         # full course dict from library
@@ -717,19 +716,6 @@ def _render_toc(course: dict, all_prog: dict, current_idx: int):
 # 11.  PAGE RENDERERS
 # ══════════════════════════════════════════════════════
 
-# ── 11a. Language ──────────────────────────────────────
-def render_language_select():
-    st.markdown('<div class="tl-wiz-hdr">', unsafe_allow_html=True)
-    st.markdown("# 🌐 Choose Your Language")
-    st.markdown("*Select the language you want to learn trading in*")
-    st.markdown("</div>", unsafe_allow_html=True)
-    cols = st.columns(5)
-    for i, (name, code) in enumerate(LANGUAGES.items()):
-        with cols[i % 5]:
-            if st.button(name, key=f"lang_{code}", use_container_width=True):
-                st.session_state.tl_lang = code
-                st.session_state.tl_step = "market"
-                st.rerun()
 
 # ── 11b. Market ────────────────────────────────────────
 def render_market_select():
@@ -1174,9 +1160,7 @@ def show_trading_learning():
 
     step = st.session_state.tl_step
 
-    if step == "language":
-        render_language_select()
-    elif step == "market":
+    if step == "market":
         render_market_select()
     elif step == "style":
         render_style_select()

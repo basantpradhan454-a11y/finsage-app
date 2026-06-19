@@ -39,6 +39,7 @@ def register_user(email: str, password: str, name: str) -> tuple:
         return False, "Email already registered. Please login."
     if len(password) < 6:
         return False, "Password must be at least 6 characters."
+    import streamlit as st
     users[email] = {
         "name": name,
         "email": email,
@@ -46,6 +47,8 @@ def register_user(email: str, password: str, name: str) -> tuple:
         "created_at": datetime.now().isoformat(),
         "provider": "email",
         "last_login": datetime.now().isoformat(),
+        "user_type": st.session_state.get("user_type", ""),
+        "language": st.session_state.get("user_lang", "en"),
     }
     save_users(users)
     return True, "Account created successfully!"
@@ -72,6 +75,7 @@ def save_google_user(email: str, name: str, picture: str = "") -> dict:
     """Save or update a Google-authenticated user."""
     users = load_users()
     email = email.lower().strip()
+    import streamlit as _st_gu
     if email not in users:
         users[email] = {
             "name": name,
@@ -81,11 +85,18 @@ def save_google_user(email: str, name: str, picture: str = "") -> dict:
             "provider": "google",
             "picture": picture,
             "last_login": datetime.now().isoformat(),
+            "user_type": _st_gu.session_state.get("user_type", ""),
+            "language": _st_gu.session_state.get("user_lang", "en"),
         }
     else:
         users[email]["last_login"] = datetime.now().isoformat()
         users[email]["name"] = name
         users[email]["picture"] = picture
+        # Update user_type/language if newly set
+        if _st_gu.session_state.get("user_type"):
+            users[email]["user_type"] = _st_gu.session_state["user_type"]
+        if _st_gu.session_state.get("user_lang"):
+            users[email]["language"] = _st_gu.session_state["user_lang"]
     save_users(users)
     return {"name": name, "email": email, "provider": "google", "picture": picture}
 
