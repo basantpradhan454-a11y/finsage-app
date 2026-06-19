@@ -20,7 +20,7 @@ from advanced_features import render_advanced_features
 from chart_analyzer import render_chart_analyzer
 from tradingview_page import render_tradingview_page
 from ai_chat_assistant import render_ai_chat_assistant
-from privacy_policy import render_privacy_policy, render_signup_page
+from privacy_policy import render_privacy_policy, render_signup_page, render_signup_with_privacy
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
 from risk_engine import render_risk_dashboard
 from finsage_academy import render_finsage_academy
@@ -29,6 +29,7 @@ from screener import render_screener
 from backtester import render_backtester
 from options_calc import render_options_calc
 from portfolio_tracker import render_portfolio_tracker
+from trading_learning import show_trading_learning
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -500,12 +501,12 @@ with nb_right:
             ("🛡️ Risk Engine",         "🛡️ Risk Engine",         "CRO-level capital protection"),
             ("📡 Adv. Analyzer",      "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
             ("🎓 Academy",             "🎓 Academy",             "AI Trading School — Learn, Quiz, Earn Badges"),
+            ("📚 Learn Trading",      "📚 Learn Trading",       "AI-powered beginner→advanced trading course"),
             ("🔍 Screener",            "🔍 Screener",             "Filter NSE + US + Crypto by signals"),
             ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
             ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
             ("💼 Portfolio",           "💼 Portfolio",            "Live P&L + Price Alerts"),
-            ("🔒 Privacy Policy",     "🔒 Privacy Policy",      "Data & privacy info"),
-            ("📝 Sign Up",            "📝 Sign Up",             "Create free account"),
+            ("📝 Sign Up / Privacy",  "📝 Sign Up",             "Create free account & read Privacy Policy"),
         ]
         for label, page_key, desc in all_pages:
             st.caption(desc)
@@ -803,7 +804,9 @@ elif _ap == "🧠 Advanced Intel":
 elif _ap == "🔒 Privacy Policy":
     _back_btn("back_pp"); render_privacy_policy(); st.stop()
 elif _ap == "📝 Sign Up":
-    _back_btn("back_su"); render_signup_page(); st.stop()
+    _back_btn("back_su"); render_signup_with_privacy(); st.stop()
+elif _ap == "📚 Learn Trading":
+    _back_btn("back_lt"); show_trading_learning(); st.stop()
 elif _ap == "🛡️ Risk Engine":
     _back_btn("back_re"); render_risk_dashboard(); st.stop()
 

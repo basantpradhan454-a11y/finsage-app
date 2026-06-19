@@ -196,3 +196,154 @@ def render_signup_page():
     <br>FinsageAI is for educational purposes only. Not financial advice.
     </div>
     """, unsafe_allow_html=True)
+
+
+def render_signup_with_privacy():
+    """
+    New combined Sign Up page — shows signup form on the left and
+    Privacy Policy on the right. Accessible from the 3-dots menu.
+    """
+    from auth_page import render_sidebar_auth
+
+    # ── Page Header ────────────────────────────────────────────────────────
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,rgba(2,6,9,0.97),rgba(0,15,30,0.93));
+    border:1px solid rgba(0,212,255,0.22);border-radius:16px;
+    padding:1.4rem 1.8rem;margin-bottom:1.5rem;
+    box-shadow:0 0 40px rgba(0,212,255,0.07),inset 0 1px 0 rgba(255,255,255,0.04);">
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <img src="{LOGO_URL}" style="height:60px;border-radius:12px;
+            box-shadow:0 0 20px rgba(0,212,255,0.35);">
+            <div>
+                <div style="font-size:1.35rem;font-weight:900;color:#00d4ff;
+                font-family:Orbitron,monospace;letter-spacing:0.06em;">
+                📝 Create Your Free Account
+                </div>
+                <div style="color:#4a9eff;font-size:0.78rem;margin-top:0.2rem;
+                letter-spacing:0.1em;font-family:Orbitron,monospace;">
+                {APP_NAME} — FREE · AI-POWERED · NO CREDIT CARD
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Two-column layout ──────────────────────────────────────────────────
+    col_signup, col_privacy = st.columns([1, 1], gap="large")
+
+    with col_signup:
+        # Signup form card
+        st.markdown("""
+        <div style="background:linear-gradient(160deg,rgba(0,20,45,0.85),rgba(5,12,30,0.9));
+        border:1px solid rgba(0,212,255,0.18);border-radius:14px;padding:1.4rem 1.6rem;
+        box-shadow:0 0 30px rgba(0,212,255,0.06);">
+        <div style="font-size:1rem;font-weight:700;color:#00d4ff;margin-bottom:0.8rem;
+        font-family:Orbitron,monospace;letter-spacing:0.06em;">⚡ SIGN UP / LOGIN</div>
+        </div>""", unsafe_allow_html=True)
+
+        render_sidebar_auth()
+
+        st.markdown("""
+        <div style="background:rgba(0,30,60,0.5);border:1px solid rgba(0,212,255,0.1);
+        border-radius:10px;padding:0.9rem 1.1rem;margin-top:1rem;">
+            <div style="font-size:0.78rem;color:#8b949e;line-height:1.6;">
+            ✅ <strong style="color:#c9d1d9;">100% Free</strong> — No hidden charges<br>
+            ✅ <strong style="color:#c9d1d9;">Save History</strong> — Analysis saved across sessions<br>
+            ✅ <strong style="color:#c9d1d9;">Community</strong> — Share trades &amp; ratings<br>
+            ✅ <strong style="color:#c9d1d9;">AI Features</strong> — Full access to AI assistant<br>
+            <br>
+            <span style="font-size:0.72rem;color:#6e7681;">
+            By signing up you agree to our Privacy Policy shown on the right.
+            FinsageAI is for educational purposes only — not financial advice.
+            </span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_privacy:
+        st.markdown("""
+        <div style="background:linear-gradient(160deg,rgba(0,10,25,0.88),rgba(5,8,20,0.92));
+        border:1px solid rgba(110,64,201,0.2);border-radius:14px;padding:1.4rem 1.6rem;
+        box-shadow:0 0 30px rgba(110,64,201,0.05);max-height:700px;overflow-y:auto;">
+        <div style="font-size:1rem;font-weight:700;color:#a371f7;margin-bottom:0.8rem;
+        font-family:Orbitron,monospace;letter-spacing:0.06em;">🔒 PRIVACY POLICY</div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+<div style="font-size:0.8rem;color:#c9d1d9;line-height:1.7;">
+
+<strong style="color:#00d4ff;">Last Updated:</strong> June 13, 2026 &nbsp;|&nbsp; <strong style="color:#00d4ff;">Version:</strong> 1.0
+
+---
+
+**1. Introduction**
+{APP_NAME} explains how we collect, use, and protect your information.
+By using the platform, you agree to this policy.
+
+---
+
+**2. What We Collect**
+- Email address (for account creation)
+- Google profile name & email (if Google OAuth used)
+- Community reviews & voluntarily shared trade data
+- Anonymous usage analytics & session timestamps
+
+**What we DON'T collect:**
+❌ Passwords in plain text &nbsp; ❌ Financial credentials
+❌ Payment info &nbsp; ❌ Location data &nbsp; ❌ PAN / Aadhaar / SSN
+
+---
+
+**3. How We Use It**
+
+| Purpose | Basis |
+|---------|-------|
+| Authentication | Contractual |
+| Analysis history | Legitimate interest |
+| Community features | Consent |
+| Platform improvements | Legitimate interest |
+
+---
+
+**4. Third-Party Services**
+We do NOT sell your data. We use:
+- Google OAuth (auth) · Yahoo Finance (market data)
+- CoinGecko (crypto data) · TradingView (charts)
+- Streamlit Cloud (hosting)
+
+---
+
+**5. Security**
+- HTTPS/TLS encryption on all data
+- Secure httpOnly session cookies
+- Principle of least privilege applied
+
+---
+
+**6. Your Rights**
+✅ Access · Correct · Delete · Portability · Withdraw consent
+Contact: **basantpradhan454@gmail.com**
+
+---
+
+**7. Financial Disclaimer**
+> ⚠️ {APP_NAME} is for **educational purposes only**.
+> Not SEBI-registered. Not investment advice.
+> Past performance ≠ future results.
+
+---
+
+**8. Children**
+Not intended for users under 18. We don't knowingly collect minor data.
+
+---
+
+**9. Contact**
+📧 basantpradhan454@gmail.com
+
+*Reviewed: June 13, 2026*
+
+</div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
