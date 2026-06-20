@@ -158,67 +158,6 @@ BOUNDARIES: Never reproduce large passages or exact quotes. Always paraphrase. I
 
 TONE: Mentor-like, warm, practical, India-focused."""
 
-MENTOR_SYSTEM = """You are FinSage Trading Mentor — an expert trading and investing educator who teaches through clear explanations, structured lessons, and visual storytelling.
-
-DISCLAIMER (include at start of first message): "⚠️ Yeh sirf educational content hai. Koi bhi investment decision lene se pehle apne financial advisor se consult karein. FinSage koi SEBI-registered advisor nahi hai."
-
-CURRICULUM YOU TEACH:
-LEVEL 1 — BASICS: Stock Market kya hota hai, BSE/NSE, Shares, Broker/Demat, Market Timings, Bull/Bear Market, Index (Nifty/Sensex), Order Types
-LEVEL 2 — FUNDAMENTAL ANALYSIS: Balance Sheet, P&L, Cash Flow, PE/PB/ROE/ROCE ratios, EPS, Sector Analysis, Moat, Management Quality
-LEVEL 3 — TECHNICAL ANALYSIS: Candlestick Patterns, Chart Types, Support/Resistance, Trend Lines, Moving Averages, RSI/MACD/Bollinger Bands, Volume, Chart Patterns, Fibonacci
-LEVEL 4 — TRADING STRATEGIES: Intraday, Swing, Positional, Long-term, Momentum, Breakout, Mean Reversion, CANSLIM
-LEVEL 5 — RISK MANAGEMENT: Position Sizing, Risk-Reward, Stop Loss, Diversification, Capital Allocation, Drawdown, 2% Rule
-LEVEL 6 — DERIVATIVES: Futures, Options, Call/Put, Strike Price/Expiry/Premium, Greeks, Option Strategies, F&O mistakes
-LEVEL 7 — PSYCHOLOGY: Fear/Greed, FOMO, Revenge Trading, Confirmation Bias, Loss Aversion, Trading Journal, Discipline
-LEVEL 8 — ADVANCED: Algo Trading, Quantitative Analysis, IPO Analysis, Mutual Funds vs Stocks, ETFs, Tax (STCG/LTCG/F&O)
-
-TEACHING FORMAT — use this EVERY time you explain a concept:
-
-[ANIMATION_START]
-SCENE: {visual description — background, colors, elements}
-VISUAL_ELEMENTS: {charts, graphs, arrows, icons}
-[ANIMATION_END]
-
-🎬 VISUAL STORY: {Simple relatable story — Indian context: Ramu kirana, Priya portfolio, etc.}
-
-📊 ANIMATION SEQUENCE:
-Step 1 → {what appears on screen}
-Step 2 → {next frame}
-...up to 8 steps
-
-💡 CORE CONCEPT: {Simple explanation, max 5 lines}
-
-🔢 FORMULA / RULE (if applicable): {Formula with Indian example — ₹, Nifty, Indian stocks}
-
-🇮🇳 INDIAN EXAMPLE: {Real: Reliance, TCS, HDFC Bank, Infosys, SBI, Nifty 50}
-
-✅ KEY TAKEAWAY: {One line — most important point}
-
-⚠️ COMMON MISTAKE: {What beginners get wrong}
-
-🔗 NEXT TOPIC: {Connected topic to study next}
-
-Then ALWAYS end with:
-❓ QUICK QUIZ:
-Question: {concept-based}
-A) B) C) D) {options}
-
-INTERACTION RULES:
-- First time: ask experience level → Beginner (Level 1) / Intermediate (Level 3-4) / Advanced (Level 6-8)
-- ONE concept at a time. Ask "Kya samajh aaya? Aage badhein?" after each lesson.
-- Celebrate correct quiz answers 🎉, gently correct wrong ones.
-- Track progress: "Aapne aaj X concepts seekhe!"
-- Always use Indian context, ₹ currency, NSE/BSE examples.
-
-WHAT YOU NEVER DO:
-❌ Specific stock tips ("yeh stock kharido")
-❌ Guaranteed returns
-❌ Complex jargon without explanation
-❌ 5+ concepts at once
-❌ SEBI-regulated advice
-
-LANGUAGE: Match user's language — Hindi, Hinglish, or English."""
-
 # ═══════════════════════════════════════════════════════════════════
 # 3. CSS
 # ═══════════════════════════════════════════════════════════════════
@@ -307,201 +246,100 @@ def show_library_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Top tab selector ──
-    t1, t2 = st.tabs(["📚 Book Library", "🎓 FinSage Trading Mentor"])
+    # ── Book Library + AI Book Assistant ──
+    col_books, col_chat = st.columns([1.1, 0.9], gap="large")
 
-    # ══════════════════════════════════════════════
-    # TAB 1 — BOOK LIBRARY + AI BOOK ASSISTANT
-    # ══════════════════════════════════════════════
-    with t1:
-        col_books, col_chat = st.columns([1.1, 0.9], gap="large")
+    with col_books:
+        st.markdown("#### 🔍 Browse Books")
+        search = st.text_input("", placeholder="📖 Book या topic search करें...",
+                               key="lib_search", label_visibility="collapsed")
+        lvl_f  = st.selectbox("", ["All Levels","Beginner","Intermediate","Advanced"],
+                              key="lvl_filter", label_visibility="collapsed")
 
-        with col_books:
-            st.markdown("#### 🔍 Browse Books")
-            search = st.text_input("", placeholder="📖 Book या topic search करें...",
-                                   key="lib_search", label_visibility="collapsed")
-            lvl_f  = st.selectbox("", ["All Levels","Beginner","Intermediate","Advanced"],
-                                  key="lvl_filter", label_visibility="collapsed")
+        for cat, books in BOOKS.items():
+            filtered = books
+            if search:
+                filtered = [b for b in filtered
+                            if search.lower() in b["title"].lower()
+                            or search.lower() in b["author"].lower()
+                            or any(search.lower() in t.lower() for t in b["tags"])]
+            if lvl_f != "All Levels":
+                filtered = [b for b in filtered if b["level"] == lvl_f]
+            if not filtered: continue
 
-            for cat, books in BOOKS.items():
-                filtered = books
-                if search:
-                    filtered = [b for b in filtered
-                                if search.lower() in b["title"].lower()
-                                or search.lower() in b["author"].lower()
-                                or any(search.lower() in t.lower() for t in b["tags"])]
-                if lvl_f != "All Levels":
-                    filtered = [b for b in filtered if b["level"] == lvl_f]
-                if not filtered: continue
-
-                st.markdown(f'<div class="cat-header">{cat}</div>', unsafe_allow_html=True)
-                for book in filtered:
-                    tags_html = "".join(f'<span class="btag">{t}</span>' for t in book["tags"])
-                    lvl_bg = {"Beginner":"#14532d","Intermediate":"#78350f","Advanced":"#7f1d1d"}.get(book["level"],"#1e293b")
-                    st.markdown(f"""
-                    <div class="book-card">
-                        <div class="book-title">{book['title']}</div>
-                        <div class="book-author">✍️ {book['author']}</div>
-                        <div><span class="level-badge" style="background:{lvl_bg};color:{book['level_color']};">{book['level']}</span></div>
-                        <div class="book-desc">{book['description']}</div>
-                        <div>{tags_html}</div>
-                    </div>""", unsafe_allow_html=True)
-
-                    if st.button(f"🤖 AI Summary", key=f"bk_{book['title'][:25]}"):
-                        st.session_state.lib_selected_book = book["title"]
-                        st.session_state.lib_messages = []
-                        msg = f"Mujhe '{book['title']}' by {book['author']} ke baare mein poori detail do — saare sections mein."
-                        st.session_state.lib_messages.append({"role":"user","content":msg})
-                        st.rerun()
-
-        with col_chat:
-            st.markdown("#### 🤖 AI Book Assistant")
-
-            if not st.session_state.lib_selected_book:
-                st.markdown("""
-                <div style="background:#0d1b2e;border:1px dashed #1e3a5f;border-radius:12px;
-                    padding:40px 20px;text-align:center;color:#4a5568;margin-top:10px;">
-                    <div style="font-size:42px;margin-bottom:10px;">📖</div>
-                    <div style="font-size:14px;font-weight:600;color:#64748b;margin-bottom:6px;">
-                        कोई भी book select करें</div>
-                    <div style="font-size:12px;color:#4a5568;">
-                        "AI Summary" button दबाएं और उस book की<br>पूरी AI-powered analysis पाएं</div>
+            st.markdown(f'<div class="cat-header">{cat}</div>', unsafe_allow_html=True)
+            for book in filtered:
+                tags_html = "".join(f'<span class="btag">{t}</span>' for t in book["tags"])
+                lvl_bg = {"Beginner":"#14532d","Intermediate":"#78350f","Advanced":"#7f1d1d"}.get(book["level"],"#1e293b")
+                st.markdown(f"""
+                <div class="book-card">
+                    <div class="book-title">{book['title']}</div>
+                    <div class="book-author">✍️ {book['author']}</div>
+                    <div><span class="level-badge" style="background:{lvl_bg};color:{book['level_color']};">{book['level']}</span></div>
+                    <div class="book-desc">{book['description']}</div>
+                    <div>{tags_html}</div>
                 </div>""", unsafe_allow_html=True)
-            else:
-                # Selected book badge
-                st.markdown(f"""<div style="background:linear-gradient(90deg,#1e3a5f,#0f2442);
-                    border-radius:10px;padding:10px 14px;margin-bottom:10px;
-                    font-size:12px;color:#7dd3fc;font-weight:600;">
-                    📚 Selected: {st.session_state.lib_selected_book}</div>""",
-                    unsafe_allow_html=True)
 
-                # Auto-fetch AI response for pending user msg
-                msgs = st.session_state.lib_messages
-                if msgs and msgs[-1]["role"] == "user":
-                    with st.spinner("🤖 FinSage Library AI analysing..."):
-                        reply = _call_groq(
-                            [{"role":"system","content":BOOK_ASSISTANT_SYSTEM}] + msgs,
-                            max_tokens=1800
-                        )
-                        st.session_state.lib_messages.append({"role":"assistant","content":reply})
-                        st.rerun()
-
-                # Render conversation
-                for m in st.session_state.lib_messages:
-                    if m["role"] == "user":
-                        st.markdown(f'<div class="chat-msg-user">👤 {m["content"]}</div>',
-                                    unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<div class="chat-msg-ai">🤖 {m["content"]}</div>',
-                                    unsafe_allow_html=True)
-
-                # Follow-up input
-                st.write("")
-                with st.form("lib_followup", clear_on_submit=True):
-                    fu = st.text_input("", placeholder="इस book के बारे में कोई सवाल पूछें...",
-                                       label_visibility="collapsed", key="lib_fu_inp")
-                    if st.form_submit_button("Ask →", use_container_width=True):
-                        if fu.strip():
-                            st.session_state.lib_messages.append({"role":"user","content":fu.strip()})
-                            st.rerun()
-
-                if st.button("🔄 New Book Select करें", key="lib_clear"):
-                    st.session_state.lib_selected_book = None
+                if st.button(f"🤖 AI Summary", key=f"bk_{book['title'][:25]}"):
+                    st.session_state.lib_selected_book = book["title"]
                     st.session_state.lib_messages = []
+                    msg = f"Mujhe '{book['title']}' by {book['author']} ke baare mein poori detail do — saare sections mein."
+                    st.session_state.lib_messages.append({"role":"user","content":msg})
                     st.rerun()
 
-    # ══════════════════════════════════════════════
-    # TAB 2 — FINSAGE TRADING MENTOR
-    # ══════════════════════════════════════════════
-    with t2:
-        st.markdown("""
-        <div style="background:linear-gradient(135deg,#0a1628,#0f2442);border-radius:14px;
-            padding:20px 24px;margin-bottom:18px;border:1px solid #1e3a5f;">
-            <div style="font-size:17px;font-weight:800;color:#60a5fa;margin-bottom:4px;">
-            🎓 FinSage Trading Mentor</div>
-            <div style="font-size:12px;color:#64748b;">
-            Beginner से Advanced तक — structured lessons, visual explanations,
-            quizzes aur Indian market examples के साथ</div>
-        </div>""", unsafe_allow_html=True)
+    with col_chat:
+        st.markdown("#### 🤖 AI Book Assistant")
 
-        # Quick start chips
-        if not st.session_state.mentor_started:
-            st.markdown("**📌 Quick Start — इन topics से शुरू करें:**")
-            chips = [
-                "मुझे Stock Market basics सिखाओ",
-                "Candlestick patterns explain karo",
-                "RSI aur MACD kya hote hain?",
-                "Intraday trading kaise karein?",
-                "Risk management sikhao",
-                "Options trading basics",
-                "Trading psychology",
-                "Nifty 50 kya hota hai?",
-            ]
-            rows = [chips[:4], chips[4:]]
-            for row in rows:
-                cs = st.columns(4)
-                for i, chip in enumerate(row):
-                    with cs[i]:
-                        if st.button(chip, key=f"mc_{chip[:20]}", use_container_width=True):
-                            st.session_state.mentor_messages.append({"role":"user","content":chip})
-                            st.session_state.mentor_started = True
-                            st.rerun()
-            st.markdown("---")
+        if not st.session_state.lib_selected_book:
+            st.markdown("""
+            <div style="background:#0d1b2e;border:1px dashed #1e3a5f;border-radius:12px;
+                padding:40px 20px;text-align:center;color:#4a5568;margin-top:10px;">
+                <div style="font-size:42px;margin-bottom:10px;">📖</div>
+                <div style="font-size:14px;font-weight:600;color:#64748b;margin-bottom:6px;">
+                    कोई भी book select करें</div>
+                <div style="font-size:12px;color:#4a5568;">
+                    "AI Summary" button दबाएं और उस book की<br>पूरी AI-powered analysis पाएं</div>
+            </div>""", unsafe_allow_html=True)
+        else:
+            # Selected book badge
+            st.markdown(f"""<div style="background:linear-gradient(90deg,#1e3a5f,#0f2442);
+                border-radius:10px;padding:10px 14px;margin-bottom:10px;
+                font-size:12px;color:#7dd3fc;font-weight:600;">
+                📚 Selected: {st.session_state.lib_selected_book}</div>""",
+                unsafe_allow_html=True)
 
-        # Chat container
-        chat_area = st.container()
+            # Auto-fetch AI response for pending user msg
+            msgs = st.session_state.lib_messages
+            if msgs and msgs[-1]["role"] == "user":
+                with st.spinner("🤖 FinSage Library AI analysing..."):
+                    reply = _call_groq(
+                        [{"role":"system","content":BOOK_ASSISTANT_SYSTEM}] + msgs,
+                        max_tokens=1800
+                    )
+                    st.session_state.lib_messages.append({"role":"assistant","content":reply})
+                    st.rerun()
 
-        # Auto-respond to pending message
-        mentor_msgs = st.session_state.mentor_messages
-        if mentor_msgs and mentor_msgs[-1]["role"] == "user":
-            with st.spinner("🎓 FinSage Mentor सोच रहा है..."):
-                reply = _call_groq(
-                    [{"role":"system","content":MENTOR_SYSTEM}] + mentor_msgs,
-                    max_tokens=2000
-                )
-                st.session_state.mentor_messages.append({"role":"assistant","content":reply})
-                st.session_state.mentor_started = True
-                st.rerun()
+            # Render conversation
+            for m in st.session_state.lib_messages:
+                if m["role"] == "user":
+                    st.markdown(f'<div class="chat-msg-user">👤 {m["content"]}</div>',
+                                unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="chat-msg-ai">🤖 {m["content"]}</div>',
+                                unsafe_allow_html=True)
 
-        # Render messages
-        with chat_area:
-            if not st.session_state.mentor_messages:
-                st.markdown("""
-                <div style="background:#0d1b2e;border:1px dashed #1e3a5f;border-radius:12px;
-                    padding:30px 20px;text-align:center;color:#4a5568;">
-                    <div style="font-size:36px;margin-bottom:8px;">🎓</div>
-                    <div style="font-size:14px;font-weight:600;color:#64748b;margin-bottom:5px;">
-                    FinSage Trading Mentor तैयार है</div>
-                    <div style="font-size:12px;color:#4a5568;">
-                    ऊपर कोई chip select करें या नीचे type करें</div>
-                </div>""", unsafe_allow_html=True)
-            else:
-                for m in st.session_state.mentor_messages:
-                    if m["role"] == "user":
-                        st.markdown(f'<div class="chat-msg-user">👤 {m["content"]}</div>',
-                                    unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<div class="chat-msg-ai">🎓 {m["content"]}</div>',
-                                    unsafe_allow_html=True)
-
-        # Input
-        st.write("")
-        col_inp, col_btn = st.columns([5, 1])
-        with col_inp:
-            user_input = st.text_input("", placeholder="अपना सवाल यहाँ लिखें...",
-                                       label_visibility="collapsed", key="mentor_inp")
-        with col_btn:
-            send = st.button("Send", key="mentor_send", use_container_width=True, type="primary")
-
-        if send and user_input.strip():
-            st.session_state.mentor_messages.append({"role":"user","content":user_input.strip()})
-            st.session_state.mentor_started = True
-            st.rerun()
-
-        # Clear
-        if st.session_state.mentor_messages:
+            # Follow-up input
             st.write("")
-            if st.button("🔄 New Session", key="mentor_clear"):
-                st.session_state.mentor_messages = []
-                st.session_state.mentor_started = False
+            with st.form("lib_followup", clear_on_submit=True):
+                fu = st.text_input("", placeholder="इस book के बारे में कोई सवाल पूछें...",
+                                   label_visibility="collapsed", key="lib_fu_inp")
+                if st.form_submit_button("Ask →", use_container_width=True):
+                    if fu.strip():
+                        st.session_state.lib_messages.append({"role":"user","content":fu.strip()})
+                        st.rerun()
+
+            if st.button("🔄 New Book Select करें", key="lib_clear"):
+                st.session_state.lib_selected_book = None
+                st.session_state.lib_messages = []
                 st.rerun()
+

@@ -146,28 +146,22 @@ MARKET_CATALOG = {
     "📈 Stock Market": {
         "desc": "NSE, BSE, NYSE, NASDAQ — India & global equities",
         "styles": {
-            "⚡ Intraday Trading":   "Buy and sell within the same day. Fast-paced, chart-driven.",
-            "🔄 Swing Trading":      "Hold 2–14 days. Capture medium-term price swings.",
-            "📊 Options Trading":    "Trade contracts for leverage, hedging & income strategies.",
-            "🏦 Long-term Investing": "Hold months–years. Fundamental analysis & wealth building.",
+            "📊 Options Trading":     "Trade contracts for leverage, hedging & income strategies.",
+            "🏦 Long-term Investing":  "Hold months–years. Fundamental analysis & wealth building.",
         }
     },
     "₿ Crypto Market": {
         "desc": "Bitcoin, Ethereum, Altcoins — 24/7 global markets",
         "styles": {
-            "🪙 Spot Trading":           "Buy/sell actual crypto. No leverage. Best for beginners.",
-            "📉 Futures/Margin Trading": "Trade with leverage. High risk, high reward.",
-            "🔄 Swing Trading":          "Ride crypto trends over days/weeks with TA + sentiment.",
-            "🌐 DeFi & Long-term":       "Stake, earn yield, hold through market cycles.",
+            "🔄 Swing Trading":   "Ride crypto trends over days/weeks with TA + sentiment.",
+            "🌐 DeFi & Long-term": "Stake, earn yield, hold through market cycles.",
         }
     },
     "💱 Forex Market": {
         "desc": "EUR/USD, GBP/INR — world's largest $7T/day market",
         "styles": {
-            "⚡ Scalping":       "Dozens of trades/day. Tiny profits, high volume.",
-            "☀️ Day Trading":    "All positions opened and closed within one session.",
-            "🔄 Swing Trading":  "Multi-day trades following currency macro trends.",
-            "📌 Position Trading":"Long-term holds driven by macroeconomics.",
+            "🔄 Swing Trading":   "Multi-day trades following currency macro trends.",
+            "📌 Position Trading": "Long-term holds driven by macroeconomics.",
         }
     }
 }
@@ -289,39 +283,80 @@ def _tutor_system(market, style) -> str:
 
 def generate_lesson_content(market: str, style: str, topic_title: str,
                              topic_idx: int, total: int, mode: str = "standard") -> str:
-    """Generate fixed lesson content. mode: standard | simpler | deeper"""
-    depth = {
-        "standard": f"Write a complete lesson for Topic {topic_idx+1}/{total}.",
-        "simpler":  "Re-explain this topic in MUCH simpler language. Use analogies, avoid jargon. More step-by-step examples.",
-        "deeper":   "Go DEEPER on this topic. Include advanced nuances, professional techniques, edge cases.",
+    """Generate ebook-style lesson content. mode: standard | simpler | deeper"""
+    level_label = "Beginner" if topic_idx < 4 else "Intermediate" if topic_idx < 9 else "Advanced"
+    depth_instr = {
+        "standard": f"Chapter {topic_idx+1} of {total} — {level_label} level.",
+        "simpler":  "Re-explain in MUCH simpler language. Use everyday analogies, avoid all jargon. Extra Indian examples.",
+        "deeper":   "Advanced deep-dive. Include professional techniques, edge cases, quantitative insights.",
     }[mode]
 
-    prompt = f"""{depth}
+    prompt = f"""You are FinSage AI — expert trading educator creating a PREMIUM EBOOK CHAPTER.
+{depth_instr}
 
-Topic: **{topic_title}**
-Market: {market} | Style: {style}
-Position in course: {topic_idx+1} of {total} ({"beginner" if topic_idx < 4 else "intermediate" if topic_idx < 9 else "advanced"} level)
+Market: {market} | Trading Style: {style}
+Topic: {topic_title}
+{lang_instr()}
 
-Structure your response as:
-## 📌 Core Concept
-(2-3 paragraph explanation)
+Write a RICH, EBOOK-STYLE chapter with this exact structure:
 
-## 💡 Real-World Example
-(Specific example with numbers)
+# 📖 {topic_title}
 
-## 🔑 Key Takeaways
-- Bullet 1
-- Bullet 2
-- Bullet 3
-- Bullet 4
+## 🎯 What You Will Learn
+- (learning objective 1)
+- (learning objective 2)
+- (learning objective 3)
 
-## ⚠️ Common Mistakes to Avoid
-(2-3 specific mistakes beginners make)
+## 📌 Chapter Overview
+(2-3 sentence intro — why this topic matters for {style} traders)
 
-## 🧪 Quick Check
-(One concept-check question for self-testing — no answer provided)
+---
+
+## 💡 Core Concept
+(Main explanation with simple language. Start with a relatable analogy like kirana shop, chai, cricket etc.)
+
+### Key Points:
+(5-6 bullet points, **bold** the key terms)
+
+---
+
+## ⚙️ Step-by-Step Walkthrough
+(5-7 numbered practical steps)
+
+---
+
+## 🇮🇳 Indian Market Example
+(Realistic example using NSE/BSE: Reliance, TCS, HDFC Bank, Infosys, Nifty 50.
+Use ₹ amounts, realistic scenarios, specific numbers.)
+
+---
+
+## 📊 Quick Reference Table or Visual
+(Create a clear text table with headers — e.g. | Signal | Meaning | Action |
+OR a mini ASCII chart to illustrate the concept visually)
+
+---
+
+## 🔢 Formula / Rule
+(If applicable: formula + worked example with ₹ and Indian stocks)
+
+---
+
+## ⚠️ Common Mistakes
+(4 mistakes with ❌ Wrong vs ✅ Right format)
+
+---
+
+## ✅ Chapter Summary
+(2-3 bullet points — the most important takeaways to remember)
+
+## 🔗 Up Next
+(One-line teaser for the next chapter)
+
+---
+Total: 700-1000 words. Premium course quality. India-focused. Use ₹ throughout.
 """
-    return ai_text(prompt, _tutor_system(market, style), max_tokens=2000)
+    return ai_text(prompt, _tutor_system(market, style), max_tokens=2800)
 
 def generate_full_course_structure(market: str, style: str) -> dict:
     """Layer 3 fallback: generate and save a full course."""
@@ -626,6 +661,139 @@ TL_CSS = """
     border: 1px solid rgba(123,47,247,0.3);
     border-radius: 10px; padding: 12px 16px; margin: 14px 0;
 }
+/* ── Whiteboard Teacher Chat ── */
+.wb-container {
+    background: linear-gradient(135deg,#040d1a,#071525);
+    border: 2px solid rgba(0,212,255,0.25);
+    border-radius: 16px;
+    padding: 0;
+    margin: 20px 0;
+    overflow: hidden;
+}
+.wb-header {
+    background: linear-gradient(90deg, rgba(0,212,255,0.12), rgba(74,158,255,0.08));
+    border-bottom: 1px solid rgba(0,212,255,0.2);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.wb-header-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #00d4ff;
+    letter-spacing: 0.03em;
+}
+.wb-header-sub {
+    font-size: 11px;
+    color: #4a9eff;
+    margin-top: 1px;
+}
+.wb-live-dot {
+    width: 8px; height: 8px;
+    background: #00ff88;
+    border-radius: 50%;
+    animation: wb-pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes wb-pulse {
+    0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(0,255,136,0.4); }
+    50% { opacity:0.8; box-shadow:0 0 0 5px rgba(0,255,136,0); }
+}
+.wb-messages {
+    padding: 16px 18px;
+    max-height: 400px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.wb-messages::-webkit-scrollbar { width: 3px; }
+.wb-messages::-webkit-scrollbar-thumb { background: #1a3a5c; border-radius: 3px; }
+.wb-msg-teacher {
+    background: linear-gradient(135deg,#071f3a,#0a2848);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 4px 14px 14px 14px;
+    padding: 13px 16px;
+    color: #c9d8ea;
+    font-size: 13px;
+    line-height: 1.7;
+    position: relative;
+}
+.wb-msg-teacher::before {
+    content: "🎓 AI Teacher";
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #00d4ff;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.wb-msg-student {
+    background: linear-gradient(135deg,#0f1e35,#142540);
+    border: 1px solid rgba(74,158,255,0.2);
+    border-radius: 14px 14px 4px 14px;
+    padding: 11px 14px;
+    color: #a5c8f0;
+    font-size: 13px;
+    align-self: flex-end;
+    max-width: 85%;
+    text-align: right;
+}
+.wb-msg-student::before {
+    content: "👤 You";
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #4a9eff;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.wb-board {
+    background: #071525;
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 10px;
+    padding: 14px;
+    margin: 10px 0;
+    font-family: monospace;
+    font-size: 12px;
+    color: #7dd3fc;
+    white-space: pre-wrap;
+    line-height: 1.8;
+}
+.wb-thinking {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #4a9eff;
+    font-size: 12px;
+    padding: 8px 4px;
+}
+.wb-dot-1, .wb-dot-2, .wb-dot-3 {
+    width: 6px; height: 6px;
+    background: #00d4ff;
+    border-radius: 50%;
+    animation: wb-bounce 1.2s ease-in-out infinite;
+}
+.wb-dot-2 { animation-delay: 0.2s; }
+.wb-dot-3 { animation-delay: 0.4s; }
+@keyframes wb-bounce {
+    0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+.wb-quick-asks {
+    padding: 10px 18px;
+    border-top: 1px solid rgba(0,212,255,0.1);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.wb-input-area {
+    padding: 12px 18px 16px;
+    border-top: 1px solid rgba(0,212,255,0.1);
+}
 </style>
 """
 
@@ -634,20 +802,22 @@ TL_CSS = """
 # ══════════════════════════════════════════════════════
 def init_tl_state():
     D = {
-        "tl_step":       "market",      # market|style|toc|lesson|exam
-        "tl_lang":       st.session_state.get("user_lang", "en"),  # from onboarding
-        "tl_market":     None,
-        "tl_style":      None,
-        "tl_course":     None,         # full course dict from library
-        "tl_topic_idx":  0,
-        "tl_phase":      "lesson",     # lesson|exam|result
-        "tl_exam_qs":    {},           # topic_id -> list[question]
-        "tl_exam_ans":   {},           # topic_id -> {q_idx: str}
-        "tl_exam_fb":    {},           # topic_id -> {q_idx: feedback}
-        "tl_submitted":  set(),        # set of topic_ids already submitted
-        "tl_live_chats": {},           # q_key -> list[msg]
-        "tl_active_live":"",           # currently open live-chat key
-        "tl_reteach_content": {},      # topic_id -> reteach text (mode)
+        "tl_step":              "market",
+        "tl_lang":              st.session_state.get("user_lang", "en"),
+        "tl_market":            None,
+        "tl_style":             None,
+        "tl_course":            None,
+        "tl_topic_idx":         0,
+        "tl_phase":             "lesson",
+        "tl_exam_qs":           {},
+        "tl_exam_ans":          {},
+        "tl_exam_fb":           {},
+        "tl_submitted":         set(),
+        "tl_live_chats":        {},
+        "tl_active_live":       "",
+        "tl_reteach_content":   {},
+        "tl_whiteboard_chats":  {},   # {tid: [{"role":"teacher"|"student","content":str}]}
+        "tl_wb_open":           {},   # {tid: bool}
     }
     for k, v in D.items():
         if k not in st.session_state:
@@ -876,6 +1046,11 @@ def render_lesson():
                 st.rerun()
 
     st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── AI Whiteboard Teacher Chat ─────────────────────
+    _render_whiteboard_chat(tid, topic["title"], market, style)
+
+    st.markdown("<br>", unsafe_allow_html=True)
     # ── CTA ───────────────────────────────────────────
     _, c_cta, _ = st.columns([2, 3, 2])
     with c_cta:
@@ -1082,6 +1257,217 @@ def _render_exam_result(tid: str, idx: int, course: dict):
                 st.session_state.tl_step  = "exam"
                 st.session_state.tl_phase = "exam"
                 st.rerun()
+
+# ── 11f-2. AI Whiteboard Teacher Chat ─────────────────
+WHITEBOARD_TEACHER_SYSTEM = """You are FinSage AI Teacher — a warm, engaging trading educator who teaches like a real classroom teacher at a whiteboard.
+
+PERSONA & STYLE:
+- You are like a brilliant professor who draws on a whiteboard while explaining
+- Use step-by-step explanations, like writing things out one point at a time
+- Use "📋 Writing on board:" to show what you'd write on whiteboard
+- Use "🎙️ Explaining:" for your verbal explanation
+- Use "💡 Key Insight:" for the main point
+- Use "✏️ Example:" for worked examples
+- Use "❓ Check:" to ask the student a question to verify understanding
+- Be warm, encouraging, patient — never condescending
+
+LANGUAGE: Match user's language — Hindi, Hinglish, or English automatically.
+
+TEACHING RULES:
+- Teach ONE thing at a time, then ask if they understood
+- Use Indian examples: NSE/BSE, ₹ amounts, Indian company names
+- After explaining, ALWAYS ask: "Kya samajh aaya? Koi doubt?" or "Got it? Any questions?"
+- Celebrate when student gets something right: "Bilkul sahi! 🎉" or "Perfect! 👏"
+- Never give investment advice — educational only
+
+FORMAT each response like a whiteboard session:
+---
+📋 [WHITEBOARD]
+(What you'd write/draw — use ASCII, tables, arrows like → ↑ ↓)
+
+🎙️ [TEACHER SAYS]
+(Your verbal explanation — conversational, warm)
+
+💡 [KEY POINT]
+(The one thing to remember)
+
+❓ [CHECK]
+(A simple question to verify understanding)
+---
+
+Keep responses focused and not too long — this is interactive teaching, not a lecture."""
+
+def _whiteboard_greeting(topic_title: str, market: str, style: str) -> str:
+    """Generate the opening teacher message for a topic."""
+    lang = st.session_state.get("user_lang", "en")
+    lang_note = {
+        "hi": "Respond in Hindi/Hinglish.",
+        "te": "Respond in Telugu mixed with English.",
+        "ta": "Respond in Tamil mixed with English.",
+    }.get(lang, "Respond in English.")
+
+    prompt = f"""You are starting a whiteboard teaching session for: **{topic_title}**
+Market: {market} | Style: {style}
+{lang_note}
+
+Open the session like a real teacher:
+1. Greet the student warmly (1-2 lines)
+2. Write the topic title on the whiteboard: 📋 [WHITEBOARD]: {topic_title}
+3. Ask them ONE question to gauge their current knowledge before teaching
+   Example: "Pehle mujhe batao — {topic_title} ke baare mein aapne pehle kuch suna hai?"
+
+Keep it short (4-6 lines total). Be warm and inviting.
+End with a question to start the dialogue."""
+
+    return ai_text(prompt, WHITEBOARD_TEACHER_SYSTEM, max_tokens=350)
+
+def _whiteboard_respond(history: list, student_msg: str,
+                        topic_title: str, market: str, style: str) -> str:
+    """Generate teacher response to student input."""
+    lang = st.session_state.get("user_lang", "en")
+    lang_note = {
+        "hi": "Respond in Hindi/Hinglish.",
+        "te": "Respond in Telugu mixed with English.",
+        "ta": "Respond in Tamil mixed with English.",
+    }.get(lang, "Respond in English.")
+
+    # Build conversation context
+    ctx = []
+    for m in history[-6:]:  # last 6 messages for context
+        role = "assistant" if m["role"] == "teacher" else "user"
+        ctx.append({"role": role, "content": m["content"]})
+    ctx.append({"role": "user", "content": student_msg})
+
+    system = (WHITEBOARD_TEACHER_SYSTEM +
+              f"\n\nCurrent topic: {topic_title} | Market: {market} | Style: {style} | {lang_note}")
+
+    msgs = [{"role": "system", "content": system}] + ctx
+
+    k = os.environ.get("GROQ_API_KEY","") or os.environ.get("GROW_API_KEY","")
+    try:
+        import requests as _req
+        r = _req.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {k}", "Content-Type": "application/json"},
+            json={"model": GROQ_MODEL, "messages": msgs,
+                  "temperature": 0.7, "max_tokens": 600},
+            timeout=60,
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"⚠️ Teacher error: {e}"
+
+def _render_whiteboard_chat(tid: str, topic_title: str, market: str, style: str):
+    """Render the AI Whiteboard Teacher chat section below a lesson."""
+    # Init state for this topic
+    if tid not in st.session_state.tl_whiteboard_chats:
+        st.session_state.tl_whiteboard_chats[tid] = []
+    if tid not in st.session_state.tl_wb_open:
+        st.session_state.tl_wb_open[tid] = False
+
+    history = st.session_state.tl_whiteboard_chats[tid]
+    is_open = st.session_state.tl_wb_open.get(tid, False)
+
+    # ── Toggle button ──────────────────────────────────
+    toggle_label = ("🎓 Chat with AI Teacher — Ask anything about this chapter ▼"
+                    if not is_open else
+                    "🎓 AI Whiteboard Teacher (Active) ▲")
+
+    st.markdown("""<div style="margin: 24px 0 8px;">
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,0.3),transparent);
+    margin-bottom:14px;"></div></div>""", unsafe_allow_html=True)
+
+    if st.button(toggle_label, key=f"wb_toggle_{tid}", use_container_width=True, type="secondary"):
+        st.session_state.tl_wb_open[tid] = not is_open
+        # Auto-open: generate greeting if first time
+        if not st.session_state.tl_wb_open[tid] is False and not history:
+            pass  # greeting generated below
+        st.rerun()
+
+    if not st.session_state.tl_wb_open.get(tid, False):
+        return
+
+    # ── Whiteboard container ───────────────────────────
+    st.markdown("""<div class="wb-container">
+    <div class="wb-header">
+        <div class="wb-live-dot"></div>
+        <div>
+            <div class="wb-header-title">🎓 AI Whiteboard Teacher</div>
+            <div class="wb-header-sub">Interactive teaching session — ask anything, learn step by step</div>
+        </div>
+    </div>
+    </div>""", unsafe_allow_html=True)
+
+    # ── Auto-greeting (first open) ─────────────────────
+    if not history:
+        with st.spinner("🎓 Teacher preparing the whiteboard..."):
+            greeting = _whiteboard_greeting(topic_title, market, style)
+        history.append({"role": "teacher", "content": greeting})
+        st.session_state.tl_whiteboard_chats[tid] = history
+        st.rerun()
+
+    # ── Message history ────────────────────────────────
+    for msg in history:
+        if msg["role"] == "teacher":
+            st.markdown(f'<div class="wb-msg-teacher">{msg["content"]}</div>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="wb-msg-student">{msg["content"]}</div>',
+                        unsafe_allow_html=True)
+
+    st.write("")
+
+    # ── Quick ask chips ────────────────────────────────
+    quick_asks = [
+        f"Explain {topic_title} in very simple words",
+        "Ek aur example do",
+        "Yeh concept practically kaise use karein?",
+        "Indian market mein kaise apply hota hai?",
+        "Main confused hoon — phir se samjhao",
+        "Quiz me — ek question poocho",
+    ]
+    st.markdown("**💬 Quick questions:**")
+    qa_cols = st.columns(3)
+    for i, qa in enumerate(quick_asks):
+        with qa_cols[i % 3]:
+            if st.button(qa[:38], key=f"wbqa_{tid}_{i}", use_container_width=True):
+                history.append({"role": "student", "content": qa})
+                st.session_state.tl_whiteboard_chats[tid] = history
+                with st.spinner("🎓 Teacher thinking..."):
+                    reply = _whiteboard_respond(history, qa, topic_title, market, style)
+                history.append({"role": "teacher", "content": reply})
+                st.session_state.tl_whiteboard_chats[tid] = history
+                st.rerun()
+
+    # ── Free text input ────────────────────────────────
+    st.write("")
+    col_inp, col_send = st.columns([5, 1])
+    with col_inp:
+        student_q = st.text_input(
+            "", key=f"wb_inp_{tid}",
+            placeholder="Type your question or response to the teacher...",
+            label_visibility="collapsed"
+        )
+    with col_send:
+        if st.button("Send 📤", key=f"wb_send_{tid}", use_container_width=True, type="primary"):
+            if student_q.strip():
+                history.append({"role": "student", "content": student_q.strip()})
+                st.session_state.tl_whiteboard_chats[tid] = history
+                with st.spinner("🎓 Teacher responding..."):
+                    reply = _whiteboard_respond(history, student_q.strip(),
+                                                topic_title, market, style)
+                history.append({"role": "teacher", "content": reply})
+                st.session_state.tl_whiteboard_chats[tid] = history
+                st.rerun()
+
+    # ── Clear session ──────────────────────────────────
+    if len(history) > 2:
+        if st.button("🔄 Reset Chat", key=f"wb_clear_{tid}"):
+            st.session_state.tl_whiteboard_chats[tid] = []
+            st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
 # ── 11g. Live demo panel ───────────────────────────────
 def _render_live_panel(live_key: str, concept: str, q_text: str,
