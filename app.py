@@ -30,6 +30,7 @@ from backtester import render_backtester
 from options_calc import render_options_calc
 from portfolio_tracker import render_portfolio_tracker
 from trading_learning import show_trading_learning
+from library import show_library_page
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -705,13 +706,6 @@ def render_onboarding():
             st.markdown("</div>", unsafe_allow_html=True)
             st.write("")
 
-            # Guest skip
-            _, _cg, _ = st.columns([1,3,1])
-            with _cg:
-                if st.button(_ob_ui("skip"), key="ob_skip", use_container_width=True):
-                    st.session_state.ob_done = True
-                    st.rerun()
-
             if st.button(_ob_ui("back"), key="ob_back2"):
                 st.session_state.ob_step = "user_type"; st.rerun()
 
@@ -784,6 +778,7 @@ with nb_right:
             ("📡 Adv. Analyzer",      "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
             ("🎓 Academy",             "🎓 Academy",             "AI Trading School — Learn, Quiz, Earn Badges"),
             ("📚 Learn Trading",      "📚 Learn Trading",       "AI-powered beginner→advanced trading course"),
+            ("📖 Library",             "📖 Library",             "Book Library + AI Book Assistant + Trading Mentor"),
             ("🔍 Screener",            "🔍 Screener",             "Filter NSE + US + Crypto by signals"),
             ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
             ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
@@ -1089,6 +1084,8 @@ elif _ap == "📝 Sign Up":
     _back_btn("back_su"); render_signup_with_privacy(); st.stop()
 elif _ap == "📚 Learn Trading":
     _back_btn("back_lt"); show_trading_learning(); st.stop()
+elif _ap == "📖 Library":
+    _back_btn("back_lib"); show_library_page(); st.stop()
 elif _ap == "🛡️ Risk Engine":
     _back_btn("back_re"); render_risk_dashboard(); st.stop()
 
