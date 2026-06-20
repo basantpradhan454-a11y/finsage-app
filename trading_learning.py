@@ -946,34 +946,8 @@ def render_style_select():
                 st.session_state.tl_course    = course
                 st.session_state.tl_topic_idx = 0
                 st.session_state.tl_phase     = "lesson"
-                st.session_state.tl_step      = "toc"
+                st.session_state.tl_step      = "lesson"
                 st.rerun()
-
-# ── 11d. TOC / Course overview ─────────────────────────
-def render_toc():
-    market = st.session_state.tl_market
-    style  = st.session_state.tl_style
-    course = st.session_state.tl_course
-    all_p  = get_all_user_progress_for_course(course)
-
-    st.markdown(f"""<div class="tl-wiz-hdr">
-    <h2>📚 {style}</h2>
-    <div style="color:#4a9eff;font-size:0.85rem;">{market}</div>
-    </div>""", unsafe_allow_html=True)
-
-    col_back, col_start = st.columns([1, 2])
-    with col_back:
-        if st.button("← Change Style", key="toc_back"):
-            st.session_state.tl_step = "style"; st.rerun()
-    with col_start:
-        if st.button("▶️ Continue Learning →", key="toc_continue",
-                     type="primary", use_container_width=True):
-            st.session_state.tl_step  = "lesson"
-            st.rerun()
-
-    st.markdown("---")
-    st.markdown("### 📋 Course Contents")
-    _render_toc(course, all_p, st.session_state.tl_topic_idx)
 
 # ── 11e. Lesson ────────────────────────────────────────
 def render_lesson():
@@ -986,11 +960,11 @@ def render_lesson():
     all_p  = get_all_user_progress_for_course(course)
 
     # ── top bar ───────────────────────────────────────
-    c_back, c_toc, c_prog = st.columns([1, 1, 4])
-    with c_back:
-        if st.button("← TOC", key="lesson_toc"):
-            st.session_state.tl_step = "toc"; st.rerun()
-    with c_toc:
+    c_market, c_topic_lbl, c_prog = st.columns([1, 1, 4])
+    with c_market:
+        if st.button("← Markets", key="lesson_back_market"):
+            st.session_state.tl_step = "market"; st.rerun()
+    with c_topic_lbl:
         st.markdown(f"<div style='font-size:0.78rem;color:#556;padding-top:8px;'>"
                     f"Topic {idx+1} of {len(course['topics'])}</div>", unsafe_allow_html=True)
     with c_prog:
@@ -1072,7 +1046,7 @@ def render_exam():
     # back to lesson
     c_back, c_hdr = st.columns([1, 5])
     with c_back:
-        if st.button("← Lesson", key="exam_back_lesson"):
+        if st.button("← Back to Lesson", key="exam_back_lesson"):
             st.session_state.tl_step  = "lesson"
             st.session_state.tl_phase = "lesson"
             st.rerun()
@@ -1233,8 +1207,8 @@ def _render_exam_result(tid: str, idx: int, course: dict):
                     st.rerun()
             else:
                 st.success("🏆 Congratulations! You've completed the entire course!")
-                if st.button("🎓 View Course Summary", key="done_summary", use_container_width=True):
-                    st.session_state.tl_step = "toc"; st.rerun()
+                if st.button("🎓 Course Complete! Start Over", key="done_summary", use_container_width=True):
+                    st.session_state.tl_step = "market"; st.rerun()
     else:
         st.markdown(f"""<div style="background:#ff446611;border:1px solid #ff446633;
         border-radius:14px;padding:22px;text-align:center;">
@@ -1550,17 +1524,8 @@ def show_trading_learning():
         render_market_select()
     elif step == "style":
         render_style_select()
-    elif step == "toc":
-        render_toc()
-    elif step in ("lesson", "exam"):
-        # Sidebar-style TOC toggle at top
-        with st.expander("📋 Course Contents", expanded=False):
-            if st.session_state.tl_course:
-                all_p = get_all_user_progress_for_course(st.session_state.tl_course)
-                _render_toc(st.session_state.tl_course, all_p,
-                            st.session_state.tl_topic_idx)
-
-        # Weak topic warning
+    elif step in ("toc", "lesson", "exam"):
+        # Weak topic warning only
         weak = st.session_state.get("tl_weak_topics", [])
         course = st.session_state.tl_course
         if weak and course:

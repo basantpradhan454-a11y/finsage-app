@@ -422,6 +422,65 @@ h3, h2 {
 if "active_page" not in st.session_state:
     st.session_state.active_page = "main"
 
+# ══════════════════════════════════════════════════════════════
+# SESSION PERSISTENCE — Cookie-based auto-login
+# ══════════════════════════════════════════════════════════════
+def _set_login_cookie(token: str):
+    """Inject JS to set a 30-day cookie with the session token."""
+    import streamlit.components.v1 as _comp
+    _comp.html(f"""
+    <script>
+    (function() {{
+        var d = new Date();
+        d.setTime(d.getTime() + (30*24*60*60*1000));
+        document.cookie = "fs_token={token}; expires=" + d.toUTCString() + "; path=/; SameSite=Strict";
+        // Also save to localStorage as fallback
+        try {{ localStorage.setItem('fs_token', '{token}'); }} catch(e) {{}}
+    }})();
+    </script>
+    """, height=0)
+
+def _get_cookie_token() -> str:
+    """Read fs_token from query params (injected by JS below)."""
+    return st.query_params.get("fs_token", "")
+
+def _clear_login_cookie():
+    """Clear cookie on logout."""
+    import streamlit.components.v1 as _comp
+    _comp.html("""
+    <script>
+    document.cookie = "fs_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    try { localStorage.removeItem('fs_token'); } catch(e) {}
+    </script>
+    """, height=0)
+
+def _inject_cookie_reader():
+    """JS that reads cookie/localStorage and appends fs_token to URL so Streamlit can read it."""
+    import streamlit.components.v1 as _comp
+    _comp.html("""
+    <script>
+    (function() {
+        var token = '';
+        // Try localStorage first
+        try { token = localStorage.getItem('fs_token') || ''; } catch(e) {}
+        // Try cookie fallback
+        if (!token) {
+            var match = document.cookie.match(/(?:^|; )fs_token=([^;]*)/);
+            if (match) token = decodeURIComponent(match[1]);
+        }
+        if (token) {
+            var url = new URL(window.location.href);
+            if (url.searchParams.get('fs_token') !== token) {
+                url.searchParams.set('fs_token', token);
+                window.history.replaceState({}, '', url.toString());
+                // Trigger Streamlit re-read
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: token}, '*');
+            }
+        }
+    })();
+    </script>
+    """, height=0)
+
 _all_defaults = {
     "user":              None,
     "stock_data":        None,  "stock_report":  None,
@@ -439,6 +498,29 @@ for _k, _v in _all_defaults.items():
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
+# ── Auto-login via session token (cookie/localStorage) ────────────────────
+if not st.session_state.get("user"):
+    _inject_cookie_reader()   # inject JS to read cookie → query param
+    _fs_tok = st.query_params.get("fs_token", "")
+    if _fs_tok:
+        try:
+            from auth_page import resolve_session_token as _rst
+            _restored = _rst(_fs_tok)
+            if _restored:
+                st.session_state.user   = _restored
+                st.session_state.ob_done = True
+                # restore language/user_type
+                try:
+                    from auth_page import _read_user as _ru2
+                    _ud2 = _ru2(_restored.get("email",""))
+                    if _ud2:
+                        if _ud2.get("user_type"): st.session_state.user_type = _ud2["user_type"]
+                        if _ud2.get("language"):  st.session_state.user_lang = _ud2["language"]
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
 # ── Google OAuth callback (must run before onboarding gate) ─────────────────
 _qp = st.query_params
 if "code" in _qp and not st.session_state.get("user"):
@@ -449,7 +531,17 @@ if "code" in _qp and not st.session_state.get("user"):
         if "error" not in _gu:
             st.session_state.user = _gu
             st.session_state.ob_done = True
+            _g_tok = _gu.get("_session_token", "")
+            if _g_tok:
+                st.query_params["fs_token"] = _g_tok
             st.rerun()
+
+# ── If fs_token in query params (fresh login) — set the cookie ──────────────
+_fresh_tok = st.query_params.get("fs_token", "")
+if _fresh_tok and not st.query_params.get("code"):
+    _set_login_cookie(_fresh_tok)
+    # Remove from visible URL to keep it clean
+    st.session_state["_active_token"] = _fresh_tok
 
 # ── If already logged in → skip onboarding, restore lang/type from DB ────────
 render_sidebar_auth()

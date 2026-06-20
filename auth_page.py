@@ -136,6 +136,97 @@ def _all_users() -> dict:
             pass
     return load_users()
 
+# ══════════════════════════════════════════════════════════════
+# SESSION TOKEN  (persistent auto-login)
+# ══════════════════════════════════════════════════════════════
+SESSION_TOKENS_FILE = "session_tokens.json"
+
+def _load_tokens() -> dict:
+    if os.path.exists(SESSION_TOKENS_FILE):
+        try:
+            with open(SESSION_TOKENS_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def _save_tokens(tokens: dict):
+    with open(SESSION_TOKENS_FILE, "w") as f:
+        json.dump(tokens, f, indent=2)
+
+def _read_token(token: str) -> dict | None:
+    """Firebase-first, JSON fallback."""
+    col = _users_col()
+    if col is not None:
+        try:
+            doc = col.parent.collection("finsage_session_tokens").document(token).get()
+            if doc.exists:
+                return doc.to_dict()
+            return None
+        except Exception:
+            pass
+    tokens = _load_tokens()
+    return tokens.get(token)
+
+def _write_token(token: str, data: dict):
+    col = _users_col()
+    if col is not None:
+        try:
+            col.parent.collection("finsage_session_tokens").document(token).set(data)
+            return
+        except Exception:
+            pass
+    tokens = _load_tokens()
+    tokens[token] = data
+    _save_tokens(tokens)
+
+def _delete_token(token: str):
+    col = _users_col()
+    if col is not None:
+        try:
+            col.parent.collection("finsage_session_tokens").document(token).delete()
+        except Exception:
+            pass
+    tokens = _load_tokens()
+    tokens.pop(token, None)
+    _save_tokens(tokens)
+
+def create_session_token(email: str) -> str:
+    """Create a persistent session token for the user. Returns token string."""
+    import secrets as _sec
+    from datetime import datetime, timedelta
+    token = _sec.token_urlsafe(32)
+    _write_token(token, {
+        "email": email.lower().strip(),
+        "created_at": datetime.now().isoformat(),
+        "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
+    })
+    return token
+
+def resolve_session_token(token: str) -> dict | None:
+    """Given a token string, return user dict if valid, else None."""
+    from datetime import datetime
+    data = _read_token(token)
+    if not data:
+        return None
+    # Check expiry
+    try:
+        expires = datetime.fromisoformat(data["expires_at"])
+        if datetime.now() > expires:
+            _delete_token(token)
+            return None
+    except Exception:
+        pass
+    email = data.get("email", "")
+    user = _read_user(email)
+    if not user:
+        return None
+    return {"name": user.get("name",""), "email": email,
+            "provider": user.get("provider","email"), "picture": user.get("picture")}
+
+def delete_session_token(token: str):
+    _delete_token(token)
+
 # ── Public API ────────────────────────────────────────────────
 def register_user(email: str, password: str, name: str) -> tuple:
     email = email.lower().strip()
@@ -156,6 +247,10 @@ def register_user(email: str, password: str, name: str) -> tuple:
     _write_user(email, data)
     return True, "Account created successfully!"
 
+def create_token_for_user(email: str) -> str:
+    """Helper: create session token after signup."""
+    return create_session_token(email.lower().strip())
+
 def login_user(email: str, password: str) -> tuple:
     email = email.lower().strip()
     user = _read_user(email)
@@ -164,11 +259,13 @@ def login_user(email: str, password: str) -> tuple:
     if user.get("password_hash") != hash_password(password):
         return False, {"error": "Incorrect password. Please try again."}
     _update_user(email, {"last_login": datetime.now().isoformat()})
+    token = create_session_token(email)
     return True, {
         "name": user["name"],
         "email": user["email"],
         "provider": "email",
         "picture": None,
+        "_session_token": token,
     }
 
 def save_google_user(email: str, name: str, picture: str = "") -> dict:
@@ -194,7 +291,9 @@ def save_google_user(email: str, name: str, picture: str = "") -> dict:
         if st.session_state.get("user_lang"):
             upd["language"] = st.session_state["user_lang"]
         _update_user(email, upd)
-    return {"name": name, "email": email, "provider": "google", "picture": picture}
+    token = create_session_token(email)
+    return {"name": name, "email": email, "provider": "google",
+            "picture": picture, "_session_token": token}
 
 # ══════════════════════════════════════════════════════════════
 # 1.  GOOGLE OAUTH
@@ -570,6 +669,10 @@ def _render_auth_card(key_prefix: str = "main"):
                     if ok:
                         st.session_state.user = res
                         st.session_state.ob_done = True
+                        # Store session token in query params so app.py can set cookie
+                        _st_tok = res.get("_session_token", "")
+                        if _st_tok:
+                            st.query_params["fs_token"] = _st_tok
                         time.sleep(0.3)
                         st.rerun()
                     else:
@@ -600,6 +703,10 @@ def _render_auth_card(key_prefix: str = "main"):
                         _, res2 = login_user(em2, pw2)
                         st.session_state.user = res2
                         st.session_state.ob_done = True
+                        # Store session token in query params so app.py can set cookie
+                        _st_tok2 = res2.get("_session_token", "") if res2 else ""
+                        if _st_tok2:
+                            st.query_params["fs_token"] = _st_tok2
                         time.sleep(0.3)
                         st.rerun()
                     else:
