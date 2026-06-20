@@ -630,82 +630,12 @@ def render_onboarding():
                         f'<div class="ob-step-sub">{_ob_ui("signup_sub")}</div>',
                         unsafe_allow_html=True)
 
-            st.markdown('<div class="ob-card">', unsafe_allow_html=True)
+            # Use the unified auth card from auth_page (includes Privacy Policy tab)
+            from auth_page import _render_auth_card, AUTH_CSS
+            st.markdown(AUTH_CSS, unsafe_allow_html=True)
+            _render_auth_card(key_prefix="ob")
 
-            # Google button
-            import os as _os
-            _cid = _os.environ.get("GOOGLE_CLIENT_ID","")
-            _cs  = _os.environ.get("GOOGLE_CLIENT_SECRET","")
-            if _cid and _cs:
-                from auth_page import get_google_login_url
-                _gurl = get_google_login_url()
-                st.markdown(f"""<a href="{_gurl}" style="
-                display:flex;align-items:center;justify-content:center;gap:10px;
-                background:#fff;color:#1f1f1f;text-decoration:none;border-radius:10px;
-                padding:0.65rem 1.2rem;font-size:0.9rem;font-weight:600;
-                box-shadow:0 2px 8px rgba(0,0,0,0.35);margin-bottom:1rem;">
-                <svg width="18" height="18" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84L38.34 6.1C34.52 2.31 29.53 0 24 0 14.62 0 6.63 5.47 2.63 13.4l7.08 5.5C11.63 13.15 17.35 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.52 24.5c0-1.6-.14-3.14-.4-4.64H24v9.27h12.67c-.55 2.93-2.2 5.41-4.68 7.09l7.27 5.65C43.52 37.96 46.52 31.7 46.52 24.5z"/>
-                <path fill="#FBBC05" d="M9.71 28.62A14.83 14.83 0 0 1 9.5 24c0-1.6.28-3.15.71-4.62L3.13 13.9A23.93 23.93 0 0 0 0 24c0 3.87.92 7.53 2.54 10.77l7.17-6.15z"/>
-                <path fill="#34A853" d="M24 48c5.53 0 10.17-1.82 13.56-4.95l-7.27-5.65c-1.95 1.3-4.45 2.1-6.29 2.1-6.62 0-12.23-4.47-14.25-10.5l7.17-6.15C6.6 42.58 14.62 48 24 48z"/>
-                </svg>Continue with Google</a>""", unsafe_allow_html=True)
-                st.markdown('<div class="ob-divider"><div class="ob-divider-line"></div>'
-                            'or use email<div class="ob-divider-line"></div></div>',
-                            unsafe_allow_html=True)
-
-            # Login / Signup tabs
-            from auth_page import login_user, register_user
-            import time as _time
-            tab_l, tab_s = st.tabs(["🔑 Login", "📝 Sign Up"])
-
-            with tab_l:
-                with st.form("ob_login", clear_on_submit=False):
-                    _em = st.text_input("Email", placeholder="you@example.com", key="ob_le")
-                    _pw = st.text_input("Password", type="password", key="ob_lp")
-                    if st.form_submit_button("Login →", use_container_width=True, type="primary"):
-                        if not _em or not _pw:
-                            st.error("Fill in both fields.")
-                        else:
-                            _ok, _res = login_user(_em, _pw)
-                            if _ok:
-                                st.session_state.user = _res
-                                _save_ob_to_db(_em.lower().strip())
-                                st.session_state.ob_done = True
-                                _time.sleep(0.4)
-                                st.rerun()
-                            else:
-                                st.error(_res.get("error","Login failed."))
-
-            with tab_s:
-                with st.form("ob_signup", clear_on_submit=True):
-                    _nm  = st.text_input("Full Name", placeholder="Your name", key="ob_nm")
-                    _em2 = st.text_input("Email", placeholder="you@example.com", key="ob_em2")
-                    _pw2 = st.text_input("Password", type="password",
-                                         placeholder="Min 6 characters", key="ob_pw2")
-                    _pc  = st.text_input("Confirm Password", type="password",
-                                         placeholder="Repeat password", key="ob_pc")
-                    if st.form_submit_button("Create Account →",
-                                             use_container_width=True, type="primary"):
-                        if not _nm or not _em2 or not _pw2:
-                            st.error("Fill in all fields.")
-                        elif _pw2 != _pc:
-                            st.error("Passwords do not match.")
-                        else:
-                            _ok2, _msg = register_user(_em2, _pw2, _nm)
-                            if _ok2:
-                                _, _res2 = login_user(_em2, _pw2)
-                                st.session_state.user = _res2
-                                _save_ob_to_db(_em2.lower().strip())
-                                st.session_state.ob_done = True
-                                _time.sleep(0.4)
-                                st.rerun()
-                            else:
-                                st.error(_msg)
-
-            st.markdown("</div>", unsafe_allow_html=True)
             st.write("")
-
             if st.button(_ob_ui("back"), key="ob_back2"):
                 st.session_state.ob_step = "user_type"; st.rerun()
 
