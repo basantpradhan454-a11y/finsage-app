@@ -800,7 +800,7 @@ with nb_right:
             ("📡 Adv. Analyzer",      "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
             ("🎓 Academy",             "🎓 Academy",             "AI Trading School — Learn, Quiz, Earn Badges"),
             ("📚 Learn Trading",      "📚 Learn Trading",       "AI-powered beginner→advanced trading course"),
-            ("📖 Library",             "📖 Library",             "Book Library + AI Book Assistant + Trading Mentor"),
+            ("📖 Marketplace",         "📖 Marketplace",         "Ebooks, Courses & Video Series — Buy/Sell with 0% commission"),
             ("🔍 Screener",            "🔍 Screener",             "Filter NSE + US + Crypto by signals"),
             ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
             ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
@@ -1106,7 +1106,7 @@ elif _ap == "📝 Sign Up":
     _back_btn("back_su"); render_signup_with_privacy(); st.stop()
 elif _ap == "📚 Learn Trading":
     _back_btn("back_lt"); show_trading_learning(); st.stop()
-elif _ap == "📖 Library":
+elif _ap in ("📖 Library", "📖 Marketplace"):
     _back_btn("back_lib"); show_library_page(); st.stop()
 elif _ap == "🛡️ Risk Engine":
     _back_btn("back_re"); render_risk_dashboard(); st.stop()

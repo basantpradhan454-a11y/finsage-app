@@ -1317,12 +1317,10 @@ def _whiteboard_respond(history: list, student_msg: str,
 
     msgs = [{"role": "system", "content": system}] + ctx
 
-    k = os.environ.get("GROQ_API_KEY","") or os.environ.get("GROW_API_KEY","")
     try:
-        import requests as _req
-        r = _req.post(
+        r = requests.post(
             GROQ_URL,
-            headers={"Authorization": f"Bearer {k}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {_get_groq_key()}", "Content-Type": "application/json"},
             json={"model": GROQ_MODEL, "messages": msgs,
                   "temperature": 0.7, "max_tokens": 600},
             timeout=60,
