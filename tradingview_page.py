@@ -92,6 +92,27 @@ def _fmt_price(p: float) -> str:
 def render_tradingview_page():
     is_fullscreen = st.session_state.get("tv_fullscreen", False)
 
+    # ── FULLSCREEN CSS — hides Streamlit chrome for true full-screen experience ──
+    if is_fullscreen:
+        st.markdown("""<style>
+        /* Hide Streamlit header, footer, sidebar, deploy button */
+        header[data-testid="stHeader"]          { display:none !important; }
+        footer                                   { display:none !important; }
+        section[data-testid="stSidebar"]         { display:none !important; }
+        div[data-testid="stSidebarNav"]          { display:none !important; }
+        #MainMenu                                { display:none !important; }
+        div[data-testid="stDecoration"]          { display:none !important; }
+        div[data-testid="stToolbar"]             { display:none !important; }
+        .block-container {
+            padding-top: 0.5rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            max-width: 100% !important;
+        }
+        /* Make iframe expand to near full window */
+        iframe { width:100% !important; }
+        </style>""", unsafe_allow_html=True)
+
     # ── PAGE HEADER (hide in fullscreen) ──────────────────────────────────────
     if not is_fullscreen:
         st.markdown("""
@@ -153,7 +174,7 @@ def render_tradingview_page():
         theme = st.selectbox("Theme", ["Dark", "Light"],
                              key="tv_th", label_visibility="collapsed")
     with cc5:
-        fs_label = "🗗 Exit FS" if is_fullscreen else "⛶ Fullscreen"
+        fs_label = "🗗 Exit Fullscreen" if is_fullscreen else "⛶ Fullscreen"
         if st.button(fs_label, key="tv_fs_btn", use_container_width=True, type="primary"):
             st.session_state.tv_fullscreen = not is_fullscreen
             st.rerun()
@@ -193,8 +214,8 @@ def render_tradingview_page():
     }
     studies_json = "[" + ",".join(studies_map[s] for s in selected_inds if s in studies_map) + "]"
 
-    # Fullscreen = 92vh height for true full-screen feel
-    chart_height = 820 if is_fullscreen else 580
+    # Fullscreen = almost full window height
+    chart_height = 920 if is_fullscreen else 580
 
     tv_html = f"""
     <style>
@@ -236,7 +257,7 @@ def render_tradingview_page():
     </div>
     </div>
     """
-    components.html(tv_html, height=chart_height + 24, scrolling=False)
+    components.html(tv_html, height=chart_height + 30, scrolling=False)
 
     # ── FULLSCREEN: show minimal price strip only ──────────────────────────────
     if is_fullscreen:

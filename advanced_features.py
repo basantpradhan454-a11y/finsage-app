@@ -671,13 +671,28 @@ def render_advanced_features():
         "📈 Pattern AI"
     ])
     with adv_tab1:
-        render_sentiment_panel()
+        try:
+            render_sentiment_panel()
+        except Exception as e:
+            st.error(f"Fear & Greed load error: {e}")
     with adv_tab2:
-        render_volume_anomaly()
+        try:
+            render_volume_anomaly()
+        except Exception as e:
+            st.error(f"Volume Anomaly error: {e}")
     with adv_tab3:
-        render_smart_contract_audit()
+        try:
+            render_smart_contract_audit()
+        except Exception as e:
+            st.error(f"Contract Audit error: {e}")
     with adv_tab4:
-        render_technical_analysis()
+        try:
+            render_technical_analysis()
+        except Exception as e:
+            st.error(f"Pattern AI error: {e}")
 
     st.markdown("---")
-    render_whale_alerts()
+    try:
+        render_whale_alerts()
+    except Exception as e:
+        st.error(f"Whale Alerts error: {e}")

@@ -17,11 +17,18 @@ from datetime import datetime, timedelta
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 def get_groq_key() -> str:
-    try:
-        return st.secrets["GROQ_API_KEY"]
-    except Exception:
-        import os
-        return os.environ.get("GROQ_API_KEY", "")
+    """Try GROW_API_KEY first (user-saved name), then GROQ_API_KEY."""
+    import os
+    # Try st.secrets first (Streamlit Cloud)
+    for key_name in ("GROW_API_KEY", "GROQ_API_KEY"):
+        try:
+            v = st.secrets.get(key_name, "")
+            if v: return v
+        except Exception:
+            pass
+        v = os.environ.get(key_name, "")
+        if v: return v
+    return ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -416,12 +423,12 @@ def _rule_based_fallback(tech: dict, symbol: str) -> dict:
             f"Rule-based score: {score}/100. RSI at {tech.get('rsi','N/A')}, "
             f"ADX trend strength {tech.get('adx','N/A')}, "
             f"Volume ratio {tech.get('vol_ratio','N/A')}x average. "
-            f"Add GROQ_API_KEY in Streamlit Cloud Secrets for full AI analysis."
+            f"Add GROW_API_KEY in Streamlit Secrets for full AI analysis."
         ),
         "key_risks":        "Macro events, earnings surprise, low liquidity",
         "key_catalysts":    "Volume breakout, sector momentum, technical breakout",
         "pattern_detected": "None",
-        "source":           "Rule-based engine (Add GROQ_API_KEY for Groq AI)",
+        "source":           "Rule-based engine (Add GROW_API_KEY to Streamlit Secrets for Groq AI)",
     }
 
 
@@ -515,7 +522,7 @@ def render_advanced_analyzer():
         analyze = st.button("🔍 Analyze", type="primary", use_container_width=True, key="adv_go")
 
     # Quick picks
-    quick = ["AAPL","TSLA","NVDA","RELIANCE.NS","TCS.NS","BTC-USD","ETH-USD","DOGE-USD"]
+    quick = ["AAPL","TSLA","NVDA","RELIANCE.NS","TCS.NS","BTC-USD","ETH-USD","NIFTY50.NS"]
     cols  = st.columns(len(quick))
     for i, sym in enumerate(quick):
         with cols[i]:
@@ -577,17 +584,17 @@ def render_advanced_analyzer():
                     <div style="background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);
                     border-radius:8px;padding:0.5rem 0.7rem;text-align:center;">
                         <div style="color:#8b949e;font-size:0.62rem;">ENTRY</div>
-                        <div style="color:#00ff88;font-weight:700;font-size:0.88rem;">{ai.get('entry_price','N/A')}</div>
+                        <div style="color:#00ff88;font-weight:700;font-size:0.88rem;">{"₹" if sym.endswith(".NS") or sym.endswith(".BO") else "$"}{ai.get('entry_price','N/A')}</div>
                     </div>
                     <div style="background:rgba(255,68,102,0.08);border:1px solid rgba(255,68,102,0.2);
                     border-radius:8px;padding:0.5rem 0.7rem;text-align:center;">
                         <div style="color:#8b949e;font-size:0.62rem;">STOP LOSS</div>
-                        <div style="color:#ff4466;font-weight:700;font-size:0.88rem;">{ai.get('stop_loss','N/A')}</div>
+                        <div style="color:#ff4466;font-weight:700;font-size:0.88rem;">{"₹" if sym.endswith(".NS") or sym.endswith(".BO") else "$"}{ai.get('stop_loss','N/A')}</div>
                     </div>
                     <div style="background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.2);
                     border-radius:8px;padding:0.5rem 0.7rem;text-align:center;">
                         <div style="color:#8b949e;font-size:0.62rem;">TARGET 1</div>
-                        <div style="color:#4a9eff;font-weight:700;font-size:0.88rem;">{ai.get('target_1','N/A')}</div>
+                        <div style="color:#4a9eff;font-weight:700;font-size:0.88rem;">{"₹" if sym.endswith(".NS") or sym.endswith(".BO") else "$"}{ai.get('target_1','N/A')}</div>
                     </div>
                 </div>
             </div>
@@ -608,7 +615,11 @@ def render_advanced_analyzer():
         score = tech.get("score", 0)
         sc_color = "#00ff88" if score > 0 else ("#ff4466" if score < 0 else "#f0c040")
 
-        m1.metric("💰 Price",    f"${tech.get('latest_price',0):,.4f}")
+        _is_indian = sym.endswith(".NS") or sym.endswith(".BO")
+        _curr_sym  = "₹" if _is_indian else "$"
+        _price_val = tech.get('latest_price', 0)
+        _price_fmt = f"{_curr_sym}{_price_val:,.2f}" if _price_val > 1 else f"{_curr_sym}{_price_val:,.4f}"
+        m1.metric("💰 Price", _price_fmt)
         m2.metric("📊 RSI",      f"{tech.get('rsi',0):.1f}",
                   delta="Oversold" if tech.get('rsi',50) < 30 else ("Overbought" if tech.get('rsi',50) > 70 else "Neutral"))
         m3.metric("📈 ADX",      f"{tech.get('adx',0):.1f}",
