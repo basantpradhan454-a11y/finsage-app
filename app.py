@@ -28,7 +28,6 @@ from advanced_analyzer import render_advanced_analyzer
 from screener import render_screener
 from backtester import render_backtester
 from options_calc import render_options_calc
-from portfolio_tracker import render_portfolio_tracker
 from trading_learning import show_trading_learning
 from library import show_library_page
 
@@ -804,7 +803,7 @@ with nb_right:
             ("🔍 Screener",            "🔍 Screener",             "Filter NSE + US + Crypto by signals"),
             ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
             ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
-            ("💼 Portfolio",           "💼 Portfolio",            "Live P&L + Price Alerts"),
+
 
         ]
         for label, page_key, desc in all_pages:
@@ -1121,8 +1120,7 @@ elif _ap == "📊 Backtester":
     _back_btn("back_bt"); render_backtester(); st.stop()
 elif _ap == "⚙️ Options Greeks":
     _back_btn("back_oc"); render_options_calc(); st.stop()
-elif _ap == "💼 Portfolio":
-    _back_btn("back_pf"); render_portfolio_tracker(); st.stop()
+
 elif _ap == "📊 Ticker Chart":
     _back_btn("back_tc")
     _render_ticker_chart()

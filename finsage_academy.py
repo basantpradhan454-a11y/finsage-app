@@ -348,80 +348,12 @@ def render_finsage_academy():
     """, unsafe_allow_html=True)
 
     # ── TABS ──────────────────────────────────────────────────────────────────
-    tab_curriculum, tab_ai_teacher, tab_scenarios, tab_vision = st.tabs([
-        "📚 Curriculum",
+    tab_ai_teacher, tab_scenarios, tab_vision = st.tabs([
         "🤖 AI Teacher",
         "🎯 Scenario Challenges",
         "🔬 Vision-to-Strategy Lab",
     ])
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 1: CURRICULUM
-    # ══════════════════════════════════════════════════════════════════════════
-    with tab_curriculum:
-        for level_name, level_data in CURRICULUM.items():
-            color    = level_data["color"]
-            chapters = level_data["chapters"]
-            badge    = level_data["badge"]
-            completed_in_level = sum(1 for c in chapters if c["id"] in st.session_state["academy_completed"])
-
-            with st.expander(
-                f"{level_name} — {completed_in_level}/{len(chapters)} completed",
-                expanded=(level_name == st.session_state.get("academy_current_level"))
-            ):
-                st.markdown(
-                    f'<span style="background:rgba(0,0,0,0.3);border:1px solid {color}44;'
-                    f'border-radius:20px;padding:3px 12px;font-size:11px;color:{color};'
-                    f'font-weight:700;">{badge}</span>',
-                    unsafe_allow_html=True
-                )
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                for chap in chapters:
-                    c_id   = chap["id"]
-                    done   = c_id in st.session_state["academy_completed"]
-                    status = "✅" if done else "📖"
-
-                    col_l, col_r = st.columns([4, 1])
-                    with col_l:
-                        st.markdown(
-                            f'<div style="background:rgba(13,17,23,0.8);border:1px solid '
-                            f'{"rgba(63,185,80,0.3)" if done else "#21262d"};'
-                            f'border-radius:10px;padding:12px 16px;margin-bottom:8px;">'
-                            f'<div style="font-weight:700;color:#e6edf3;">'
-                            f'{chap["emoji"]} {status} {chap["title"]}</div>'
-                            f'<div style="font-size:12px;color:#8b949e;margin-top:4px;">'
-                            f'{chap["summary"]}</div>'
-                            f'<div style="margin-top:8px;">'
-                            + "".join(
-                                f'<span style="background:rgba(88,166,255,0.08);'
-                                f'border:1px solid rgba(88,166,255,0.2);'
-                                f'border-radius:10px;padding:2px 8px;font-size:10px;'
-                                f'color:#58a6ff;margin:2px;display:inline-block;">{kc}</span>'
-                                for kc in chap["key_concepts"]
-                            )
-                            + "</div></div>",
-                            unsafe_allow_html=True,
-                        )
-                    with col_r:
-                        if st.button(
-                            "▶ Start" if not done else "🔁 Review",
-                            key=f"chap_{c_id}",
-                            use_container_width=True,
-                            type="primary" if not done else "secondary",
-                        ):
-                            st.session_state["academy_active_chapter"] = chap
-                            st.session_state["academy_active_level_color"] = color
-                            st.rerun()
-
-                # Show chapter content if active
-                active = st.session_state.get("academy_active_chapter")
-                if active and active.get("id") == c_id:
-                    _render_chapter(active, color)
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 2: AI TEACHER CHAT
-    # ══════════════════════════════════════════════════════════════════════════
     with tab_ai_teacher:
         st.markdown("#### 🤖 Ask the AI Teacher Anything")
         st.markdown(
