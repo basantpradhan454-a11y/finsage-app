@@ -21,6 +21,7 @@ from chart_analyzer import render_chart_analyzer
 from sage_analyst import render_sage_analyst
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
+from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
 from ai_chat_assistant import render_ai_chat_assistant
 from privacy_policy import render_privacy_policy, render_signup_page, render_signup_with_privacy
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
@@ -647,9 +648,8 @@ _OB_USER_TYPES = [
 ]
 
 def _ob_ui(key):
-    lang = st.session_state.get("user_lang","en")
-    d = _OB_TITLES.get(lang, _OB_TITLES["en"])
-    return d.get(key, _OB_TITLES["en"].get(key,key))
+    """Use i18n translation system for onboarding UI."""
+    return t(key)
 
 def _ob_dots(current_step):
     steps = ["language","user_type","signup"]
@@ -759,7 +759,8 @@ if _is_main_page:
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 nb_left, nb_right = st.columns([6, 1])
 with nb_left:
-    st.markdown("""
+    _tagline = t("tagline")
+    st.markdown(f"""
     <div class="stox-navbar" style="display:flex;align-items:center;gap:1rem;">
         <div style="position:relative;">
             <img src="https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg"
@@ -772,7 +773,7 @@ with nb_left:
         </div>
         <div>
             <!-- logo already contains brand text -->
-            <div class="stox-tagline">STOCK &middot; CRYPTO &middot; MEME COIN ANALYSIS</div>
+            <div class="stox-tagline">{_tagline}</div>
         </div>
         <div style="margin-left:0.5rem;display:flex;flex-direction:column;gap:0.25rem;">
             <span style="background:linear-gradient(135deg,rgba(0,255,136,0.1),rgba(0,255,136,0.05));
@@ -789,39 +790,40 @@ with nb_left:
 with nb_right:
     st.markdown("<div style='padding-top:0.4rem;'>", unsafe_allow_html=True)
     with st.popover("⋮  ▾", use_container_width=True):
-        st.markdown("""
+        _menu_label = t("menu")
+        st.markdown(f"""
         <div style="font-size:0.82rem;font-weight:700;color:#00d4ff;margin-bottom:0.6rem;
         letter-spacing:0.08em;font-family:Orbitron,monospace;
         text-shadow:0 0 8px rgba(0,212,255,0.5);border-bottom:1px solid rgba(0,212,255,0.15);
         padding-bottom:0.4rem;">
-        ⚡ MENU
+        {_menu_label}
         </div>""", unsafe_allow_html=True)
 
         # ── GROUPED NAVIGATION ────────────────────────────────────────────────
         nav_groups = [
-            ("📊 CHARTS & ANALYSIS", [
-                ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        "AI Analysis + Voice + Drawing"),
-                ("📈 TradingView",          "📈 TradingView",         "Live candlestick charts"),
-                ("🔬 Pro Analyser",        "🔬 Pro Analyser",        "10 deep analysis modules"),
-                ("🧠 Advanced Intel",      "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
+            ("📊 " + t("nav_charts"), [
+                ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        t("desc_sage")),
+                ("📈 TradingView",          "📈 TradingView",         t("desc_tv")),
+                ("🔬 Pro Analyser",        "🔬 Pro Analyser",        t("desc_pro")),
+                ("🧠 Advanced Intel",      "🧠 Advanced Intel",      t("desc_adv_intel")),
             ]),
-            ("🤖 AI TOOLS", [
-                ("🤖 AI Strategy Bot",     "🤖 AI Strategy Bot",     "Describe strategy -> AI backtests + voice"),
-                ("🤖 AI Assistant",        "🤖 AI Assistant",        "Ask any trading question"),
-                ("📸 Chart Analyzer",      "📸 Chart Analyzer",      "Upload & analyze screenshots"),
-                ("📡 Adv. Analyzer",       "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
-                ("🛡️ Risk Engine",          "🛡️ Risk Engine",         "Capital protection"),
+            ("🤖 " + t("nav_ai_tools"), [
+                ("🤖 AI Strategy Bot",     "🤖 AI Strategy Bot",     t("desc_strat_bot")),
+                ("🤖 AI Assistant",        "🤖 AI Assistant",        t("desc_ai_assist")),
+                ("📸 Chart Analyzer",      "📸 Chart Analyzer",      t("desc_chart_analyzer")),
+                ("📡 Adv. Analyzer",       "📡 Adv. Analyzer",       t("desc_adv_analyzer")),
+                ("🛡️ Risk Engine",          "🛡️ Risk Engine",         t("desc_risk")),
             ]),
-            ("📚 LEARN & EARN", [
-                ("🎓 Academy",             "🎓 Academy",             "AI Trading School"),
-                ("📚 Learn Trading",       "📚 Learn Trading",       "Course: Beginner → Advanced"),
-                ("📖 Marketplace",         "📖 Marketplace",         "Ebooks, Courses — 0% commission"),
+            ("📚 " + t("nav_learn"), [
+                ("🎓 Academy",             "🎓 Academy",             t("desc_academy")),
+                ("📚 Learn Trading",       "📚 Learn Trading",       t("desc_learn")),
+                ("📖 Marketplace",         "📖 Marketplace",         t("desc_marketplace")),
             ]),
-            ("🛠️ TOOLS", [
-                ("🔍 Screener",            "🔍 Screener",             "Filter NSE + Crypto by signals"),
-                ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on history"),
-                ("⚙️ Options Greeks",      "⚙️ Options Greeks",       "Delta Gamma Theta Vega"),
-                ("⭐ Community",           "⭐ Community",            "Rate & share real trades"),
+            ("🛠️ " + t("nav_tools"), [
+                ("🔍 Screener",            "🔍 Screener",             t("desc_screener")),
+                ("📊 Backtester",          "📊 Backtester",           t("desc_backtester")),
+                ("⚙️ Options Greeks",      "⚙️ Options Greeks",       t("desc_options")),
+                ("⭐ Community",           "⭐ Community",            t("desc_community")),
             ]),
         ]
         for group_label, pages in nav_groups:
@@ -839,7 +841,7 @@ with nb_right:
 
         if user:
             st.markdown("---")
-            if st.button("🚪 Logout", key="logout_dot_menu", use_container_width=True):
+            if st.button(f"🚪 {t('logout')}", key="logout_dot_menu", use_container_width=True):
                 logout()
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -938,11 +940,11 @@ def render_results(data, report):
     elif price < 0.01:   price_str = f"${price:.6f}"
     else:                price_str = f"{currency} {price:,.2f}"
 
-    with k1: st.metric("💰 Price", price_str)
-    with k2: st.metric("📈 24H", f"{change:+.2f}%")
-    with k3: st.metric("🏦 Mkt Cap", format_number(market_cap))
-    with k4: st.metric("⚡ Volatility", f"{vol:.1f}%")
-    with k5: st.metric("🎯 Risk", f"{risk}/10")
+    with k1: st.metric(f"💰 {t('price')}", price_str)
+    with k2: st.metric(f"📈 {t('change_24h')}", f"{change:+.2f}%")
+    with k3: st.metric(f"🏦 {t('mkt_cap')}", format_number(market_cap))
+    with k4: st.metric(f"⚡ {t('volatility')}", f"{vol:.1f}%")
+    with k5: st.metric(f"🎯 {t('risk')}", f"{risk}/10")
 
     st.markdown("---")
     col_chart, col_info = st.columns([3, 2])
@@ -950,7 +952,7 @@ def render_results(data, report):
     with col_chart:
         history = data.get("history")
         if history is not None and isinstance(history, pd.DataFrame) and not history.empty:
-            st.markdown("#### 📈 30-Day Price Chart")
+            st.markdown(f"#### \U0001f4c8 {t('price_chart')}")
             close_col = "Close" if "Close" in history.columns else history.columns[0]
             y_data = history[close_col]
             if len(y_data) > 1:
@@ -975,7 +977,7 @@ def render_results(data, report):
                 st.plotly_chart(fig, use_container_width=True)
 
     with col_info:
-        st.markdown("#### 📋 Key Metrics")
+        st.markdown(f"#### \U0001f4cb {t('key_metrics')}")
         if data.get("asset_type") == "Stock":
             metrics = [
                 ("Sector", data.get("sector", "N/A")),
@@ -1002,10 +1004,10 @@ def render_results(data, report):
             cb.markdown(f"<span style='color:#c9d1d9;font-size:0.82rem;font-weight:600;'>{val}</span>", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("#### 📄 Full Analysis Report")
+    st.markdown(f"#### \U0001f4c4 {t('full_report')}")
     st.markdown(report)
     st.download_button(
-        label="📥 Download Report (.md)",
+        label=f"\U0001f4e5 {t('download_report')}",
         data=report,
         file_name=f"FinSage_{ticker}_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
         mime="text/markdown",
@@ -1056,14 +1058,14 @@ def _render_ticker_chart():
     # Interval selector
     iv_col1, iv_col2, iv_col3 = st.columns([3,2,2])
     with iv_col1:
-        interval = st.selectbox("Timeframe",
+        interval = st.selectbox(t("timeframe"),
             ["1 Min","5 Min","15 Min","30 Min","1 Hour","4 Hour","1 Day","1 Week"],
             index=6, key="tc_interval")
     with iv_col2:
-        chart_style = st.selectbox("Type",
+        chart_style = st.selectbox(t("chart_type"),
             ["Candlestick","Line","Area","Heikin Ashi"], key="tc_style")
     with iv_col3:
-        show_vol = st.checkbox("Volume", value=True, key="tc_vol")
+        show_vol = st.checkbox(t("volume"), value=True, key="tc_vol")
 
     iv_map = {"1 Min":"1","5 Min":"5","15 Min":"15","30 Min":"30",
               "1 Hour":"60","4 Hour":"240","1 Day":"D","1 Week":"W"}
@@ -1107,7 +1109,7 @@ def _render_ticker_chart():
 def _back_btn(key):
     col_b, col_t = st.columns([1, 6])
     with col_b:
-        if st.button("◀ Dashboard", key=key, use_container_width=True):
+        if st.button(f"◀ {t('back_dashboard')}", key=key, use_container_width=True):
             st.session_state.active_page = "main"
             st.rerun()
 
@@ -1155,24 +1157,24 @@ elif _ap == "📊 Ticker Chart":
     _render_ticker_chart()
     st.stop()
 
-tab1, tab2, tab3 = st.tabs(["🌍  Global Stocks", "₿  Cryptocurrency", "🎭  Meme Coins"])
+tab1, tab2, tab3 = st.tabs([f"🌍  {t('tab_stocks')}", f"₿  {t('tab_crypto')}", f"🎭  {t('tab_meme')}"])
 
 # ─── TAB 1: STOCKS ────────────────────────────────────────────────────────────
 with tab1:
-    st.markdown("### 🌍 Global Stock Analysis")
-    st.markdown("Real-time data from NSE India, US, UK, Germany, Japan & more.")
+    st.markdown(f"### 🌍 {t('stock_title')}")
+    st.markdown(t("stock_sub"))
 
     s1, s2 = st.columns([2, 1])
     with s1:
-        stock_ticker = st.text_input("Enter Stock Ticker Symbol",
-            placeholder="e.g. AAPL, RELIANCE.NS, TCS.NS, TSLA", key="stock_input")
+        stock_ticker = st.text_input(t("stock_input"),
+            placeholder=t("stock_placeholder"), key="stock_input")
     with s2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.caption("🇮🇳 NSE: RELIANCE.NS · TCS.NS · INFY.NS")
         st.caption("🇺🇸 US: AAPL · TSLA · NVDA · MSFT")
         st.caption("🌐 Others: .L (London) · .DE (Germany)")
 
-    st.markdown("**⚡ Quick Pick:**")
+    st.markdown(f"**⚡ {t('quick_pick')}**")
     sc = st.columns(8)
     for i, s in enumerate(["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "RELIANCE.NS", "TCS.NS", "INFY.NS"]):
         with sc[i]:
@@ -1182,9 +1184,9 @@ with tab1:
 
     sym = (st.session_state.stock_selected or stock_ticker).strip().upper()
 
-    if st.button("🔍 Analyze Stock", key="btn_stock", type="primary", use_container_width=True):
+    if st.button(f"🔍 {t('analyze_stock')}", key="btn_stock", type="primary", use_container_width=True):
         if sym:
-            with st.spinner(f"Fetching data for **{sym}**..."):
+            with st.spinner(f"{t('fetching')} **{sym}**..."):
                 d = fetch_stock_data(sym)
                 if "error" not in d:
                     st.session_state.stock_data = d
@@ -1193,32 +1195,34 @@ with tab1:
                 else:
                     st.error(f"❌ {d['error']}")
         else:
-            st.warning("⚠️ Please enter or select a stock ticker.")
+            st.warning(f"⚠️ {t('please_enter')}")
 
     st.markdown("---")
     if st.session_state.stock_data:
         render_results(st.session_state.stock_data, st.session_state.stock_report)
     else:
-        st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🌍</div><p>Enter a ticker symbol above and click <b>Analyze Stock</b>.</p></div>', unsafe_allow_html=True)
+        _et = t("enter_ticker")
+        st.markdown(f'<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🌍</div><p>{_et}</p></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Data from Yahoo Finance (yfinance). For educational purposes only. Not SEBI-registered investment advice.</div>', unsafe_allow_html=True)
+    _disc = t("disclaimer")
+    st.markdown(f'<div class="disclaimer">⚖️ <b>Disclaimer:</b> {_disc}</div>', unsafe_allow_html=True)
 
 
 # ─── TAB 2: CRYPTO ────────────────────────────────────────────────────────────
 with tab2:
-    st.markdown("### ₿ Cryptocurrency Analysis")
-    st.markdown("Real-time data from CoinGecko — 100+ coins supported.")
+    st.markdown(f"### ₿ {t('crypto_title')}")
+    st.markdown(t("crypto_sub"))
 
     c1, c2 = st.columns([2, 1])
     with c1:
-        crypto_ticker = st.text_input("Enter Crypto Symbol",
-            placeholder="e.g. BTC, ETH, SOL, BNB, ADA, XRP", key="crypto_input")
+        crypto_ticker = st.text_input(t("crypto_input"),
+            placeholder=t("crypto_placeholder"), key="crypto_input")
     with c2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.caption("Large Cap: BTC · ETH · BNB · SOL")
         st.caption("Mid Cap: ADA · AVAX · DOT · MATIC")
 
-    st.markdown("**⚡ Quick Pick:**")
+    st.markdown(f"**⚡ {t('quick_pick')}**")
     cc = st.columns(8)
     for i, c in enumerate(["BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "AVAX", "DOT"]):
         with cc[i]:
@@ -1228,9 +1232,9 @@ with tab2:
 
     csym = (st.session_state.crypto_selected or crypto_ticker).strip().upper()
 
-    if st.button("🔍 Analyze Crypto", key="btn_crypto", type="primary", use_container_width=True):
+    if st.button(f"🔍 {t('analyze_crypto')}", key="btn_crypto", type="primary", use_container_width=True):
         if csym:
-            with st.spinner(f"Fetching data for **{csym}**..."):
+            with st.spinner(f"{t('fetching')} **{csym}**..."):
                 d = fetch_crypto_data(csym)
                 if "error" not in d:
                     st.session_state.crypto_data = d
@@ -1239,32 +1243,34 @@ with tab2:
                 else:
                     st.error(f"❌ {d['error']}")
         else:
-            st.warning("⚠️ Please enter or select a crypto symbol.")
+            st.warning(f"⚠️ {t('please_enter')}")
 
     st.markdown("---")
     if st.session_state.crypto_data:
         render_results(st.session_state.crypto_data, st.session_state.crypto_report)
     else:
-        st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">₿</div><p>Enter a crypto symbol and click <b>Analyze Crypto</b>.</p></div>', unsafe_allow_html=True)
+        _ec = t("enter_crypto")
+        st.markdown(f'<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">₿</div><p>{_ec}</p></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Data from CoinGecko. Crypto is highly volatile & unregulated by SEBI. Educational purposes only.</div>', unsafe_allow_html=True)
+    _disc_c = t("disclaimer_crypto")
+    st.markdown(f'<div class="disclaimer">⚖️ <b>Disclaimer:</b> {_disc_c}</div>', unsafe_allow_html=True)
 
 
 # ─── TAB 3: MEME COINS ────────────────────────────────────────────────────────
 with tab3:
-    st.markdown("### 🎭 Meme Coin Analysis")
+    st.markdown(f"### 🎭 {t('meme_title')}")
     st.markdown('<div class="meme-warning">⚠️ <b>HIGH RISK:</b> Meme coins are purely speculative. Prices can crash 80-90% overnight. Only use money you can afford to lose completely.</div>', unsafe_allow_html=True)
 
     m1, m2 = st.columns([2, 1])
     with m1:
-        meme_ticker = st.text_input("Enter Meme Coin Symbol",
-            placeholder="e.g. DOGE, SHIB, PEPE, FLOKI, BONK", key="meme_input")
+        meme_ticker = st.text_input(t("meme_input"),
+            placeholder=t("meme_placeholder"), key="meme_input")
     with m2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.caption("Popular: DOGE · SHIB · PEPE · FLOKI")
         st.caption("Trending: BONK · WIF · MEME · TURBO")
 
-    st.markdown("**⚡ Quick Pick:**")
+    st.markdown(f"**⚡ {t('quick_pick')}**")
     mc = st.columns(8)
     for i, m in enumerate(["DOGE", "SHIB", "PEPE", "FLOKI", "BONK", "WIF", "MEME", "TURBO"]):
         with mc[i]:
@@ -1274,9 +1280,9 @@ with tab3:
 
     msym = (st.session_state.meme_selected or meme_ticker).strip().upper()
 
-    if st.button("🔍 Analyze Meme Coin", key="btn_meme", type="primary", use_container_width=True):
+    if st.button(f"🔍 {t('analyze_meme')}", key="btn_meme", type="primary", use_container_width=True):
         if msym:
-            with st.spinner(f"Fetching data for **{msym}**..."):
+            with st.spinner(f"{t('fetching')} **{msym}**..."):
                 d = fetch_crypto_data(msym)
                 if "error" not in d:
                     d["asset_type"] = "Meme Coin"
@@ -1286,15 +1292,17 @@ with tab3:
                 else:
                     st.error(f"❌ {d['error']}")
         else:
-            st.warning("⚠️ Please enter or select a meme coin symbol.")
+            st.warning(f"⚠️ {t('please_enter')}")
 
     st.markdown("---")
     if st.session_state.meme_data:
         render_results(st.session_state.meme_data, st.session_state.meme_report)
     else:
-        st.markdown('<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🎭</div><p>Enter a meme coin symbol and click <b>Analyze Meme Coin</b>.</p></div>', unsafe_allow_html=True)
+        _em = t("enter_meme")
+        st.markdown(f'<div style="text-align:center;padding:2rem;color:#8b949e;"><div style="font-size:2.5rem;">🎭</div><p>{_em}</p></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="disclaimer">⚖️ <b>Disclaimer:</b> Meme coins are unregulated & highly speculative. Not SEBI advice. Never invest borrowed money in meme coins.</div>', unsafe_allow_html=True)
+    _disc_m = t("disclaimer_meme")
+    st.markdown(f'<div class="disclaimer">⚖️ <b>Disclaimer:</b> {_disc_m}</div>', unsafe_allow_html=True)
 
 
 
@@ -1302,6 +1310,8 @@ with tab3:
 st.markdown("<hr style='border-color:#30363d;margin-top:1.5rem;'>", unsafe_allow_html=True)
 f1, f2 = st.columns(2)
 with f1:
-    st.markdown("<span style='color:#8b949e;font-size:0.75rem;'>📊 <b>FinSage</b> — Global Financial Intelligence Platform</span>", unsafe_allow_html=True)
+    _fl = t('footer_left')
+    st.markdown(f"<span style='color:#8b949e;font-size:0.75rem;'>{_fl}</span>", unsafe_allow_html=True)
 with f2:
-    st.markdown("<span style='color:#6e7681;font-size:0.75rem;display:block;text-align:right;'>Data: Yahoo Finance · CoinGecko &nbsp;|&nbsp; For educational purposes only</span>", unsafe_allow_html=True)
+    _fr = t('footer_right')
+    st.markdown(f"<span style='color:#6e7681;font-size:0.75rem;display:block;text-align:right;'>{_fr}</span>", unsafe_allow_html=True)

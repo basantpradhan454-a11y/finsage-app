@@ -446,7 +446,7 @@ def compute_confidence_score(data: dict, inds: dict = None) -> dict:
             try:
                 v = s.dropna()
                 return float(v.iloc[-1]) if len(v) else None
-            except: return None
+            except Exception: return None
 
         rsi_v   = last(rsi)   or 50
         macd_v  = last(macd)  or 0
@@ -591,7 +591,7 @@ def dynamic_stop_loss(data: dict, inds: dict = None) -> dict:
                     # Volatility contracting — slightly wider
                     base_sl = round(base_sl * 1.10, 1)
                     note = f"Volatility contracting — slightly wider stop"
-        except: pass
+        except Exception: pass
 
     sl_pct    = round(base_sl, 1)
     stop_loss = round(price * (1 - sl_pct/100), 6)

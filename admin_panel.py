@@ -16,7 +16,7 @@ def load_users() -> dict:
         try:
             with open(USER_DB_FILE, "r") as f:
                 return json.load(f)
-        except:
+        except Exception:
             return {}
     return {}
 

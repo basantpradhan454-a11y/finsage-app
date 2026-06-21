@@ -16,7 +16,7 @@ def load_history():
         try:
             with open(HISTORY_FILE) as f:
                 return json.load(f)
-        except:
+        except Exception:
             return []
     return []
 
@@ -145,7 +145,7 @@ def render_history_page(user: dict):
         try:
             dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
             time_str = dt.strftime("%d %b %Y · %I:%M %p")
-        except:
+        except Exception:
             time_str = ts
 
         st.markdown(f"""

@@ -82,10 +82,10 @@ def fetch_stock_data(ticker: str) -> dict:
 
         # Ensure numeric
         try: current_price = float(current_price)
-        except: current_price = last_close
+        except Exception: current_price = last_close
 
         try: prev_close = float(prev_close)
-        except: prev_close = prev_close_hist
+        except Exception: prev_close = prev_close_hist
 
         change_pct = 0.0
         if prev_close and prev_close > 0:

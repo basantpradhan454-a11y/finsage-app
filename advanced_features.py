@@ -35,7 +35,7 @@ def fetch_fear_greed() -> dict:
             history = [{"value": int(d["value"]), "label": d["value_classification"],
                         "date": datetime.fromtimestamp(int(d["timestamp"])).strftime("%b %d")} for d in data]
             return {"value": int(current["value"]), "label": current["value_classification"], "history": history}
-    except:
+    except Exception:
         pass
     return {"value": 62, "label": "Greed", "history": []}
 

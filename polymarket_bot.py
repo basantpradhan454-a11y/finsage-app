@@ -136,7 +136,7 @@ def _get_yes_price(market: dict) -> float:
                         return float(arr[0])
                 except Exception:
                     try: return float(v)
-                    except: pass
+                    except Exception: pass
             if isinstance(v, list) and len(v) > 0:
                 first = v[0]
                 if isinstance(first, dict):
