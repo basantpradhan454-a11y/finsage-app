@@ -18,8 +18,23 @@ import re
 import time
 from datetime import datetime, date
 
-# --- Import shared helpers ---
-from config import GROQ_API_KEY, GROQ_MODEL, GROQ_URL
+# --- Groq API config (reads from st.secrets / os.environ, same as library.py) ---
+GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+
+def _get_key(name: str) -> str:
+    """Read a secret from os.environ first, then st.secrets."""
+    v = os.environ.get(name, "")
+    if not v:
+        try:
+            v = st.secrets.get(name, "")
+        except Exception:
+            pass
+    return v or ""
+
+def GROQ_API_KEY() -> str:
+    """Try GROQ_API_KEY first, then GROW_API_KEY (user's saved secret name)."""
+    return _get_key("GROQ_API_KEY") or _get_key("GROW_API_KEY")
 
 # --- Indicator helpers (same as backtester) ---
 def _ema(s, n):
@@ -87,7 +102,8 @@ Rules:
 def _call_groq(messages, max_tokens=2000, temperature=0.3):
     """Call Groq API."""
     import urllib.request
-    if not GROQ_API_KEY:
+    _api_key = GROQ_API_KEY()
+    if not _api_key:
         return None
     payload = json.dumps({
         "model": GROQ_MODEL,
@@ -96,7 +112,7 @@ def _call_groq(messages, max_tokens=2000, temperature=0.3):
         "max_tokens": max_tokens,
     }).encode()
     req = urllib.request.Request(GROQ_URL, data=payload, method="POST")
-    req.add_header("Authorization", f"Bearer {GROQ_API_KEY}")
+    req.add_header("Authorization", f"Bearer {_api_key}")
     req.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -109,7 +125,7 @@ def _call_groq(messages, max_tokens=2000, temperature=0.3):
 
 def parse_strategy_text(text):
     """Parse plain language strategy via Groq AI."""
-    if not GROQ_API_KEY:
+    if not GROQ_API_KEY():
         return _rule_parse_strategy(text)
 
     messages = [
@@ -518,7 +534,7 @@ def generate_narration(strategy, results, symbol):
     stats = results.get("stats", {})
     trades = results.get("trades", [])
 
-    if not GROQ_API_KEY:
+    if not GROQ_API_KEY():
         return _rule_narration(strategy, results, symbol)
 
     context = f"""
