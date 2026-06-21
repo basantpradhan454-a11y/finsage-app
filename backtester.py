@@ -5,6 +5,7 @@ Pure pandas — no external libraries needed
 """
 
 import streamlit as st
+from ticker_resolver import resolve_ticker
 import yfinance as yf
 import pandas as pd
 import numpy as np

@@ -362,6 +362,56 @@ I'm your personal AI trading guide. Ask me anything about:
 
 # ─── Main render function ──────────────────────────────────────────────────────
 def render_ai_chat_assistant():
+    # Fullscreen mode
+    is_fs = st.session_state.get("ai_chat_fullscreen", False)
+
+    if is_fs:
+        st.markdown("""<style>
+        header[data-testid="stHeader"], footer,
+        section[data-testid="stSidebar"],
+        div[data-testid="stSidebarNav"],
+        div[data-testid="stSidebarCollapseButton"],
+        #MainMenu, div[data-testid="stDecoration"],
+        div[data-testid="stToolbar"], div[data-testid="stBottom"],
+        div[data-testid="stStatusWidget"], .stDeployButton,
+        button[kind="header"], [data-testid="collapsedControl"],
+        [data-testid="expandedControl"], .stSidebar,
+        [data-testid="stSidebarContent"] {
+            display:none !important; visibility:hidden !important;
+        }
+        .block-container, .main .block-container {
+            padding-top:0.3rem !important; padding-left:0.5rem !important;
+            padding-right:0.5rem !important; max-width:100vw !important; margin:0 !important;
+        }
+        </style>""", unsafe_allow_html=True)
+
+    # Fullscreen toggle button
+    _fs_col, _ = st.columns([1, 6])
+    with _fs_col:
+        _fs_label = "🗗 Exit Fullscreen" if is_fs else "⛶ Fullscreen Chat"
+        if st.button(_fs_label, key="ai_chat_fs_toggle", type="primary",
+                     use_container_width=True):
+            st.session_state.ai_chat_fullscreen = not is_fs
+            st.rerun()
+
+    # Chat CSS with scrollable container
+    st.markdown("""<style>
+    .chat-scroll-container {
+        max-height: """ + ("75vh" if is_fs else "500px") + """;
+        overflow-y: auto;
+        padding: 0.5rem;
+        border: 1px solid rgba(0,212,255,0.1);
+        border-radius: 12px;
+        background: rgba(2,6,9,0.5);
+        margin-bottom: 0.8rem;
+    }
+    .chat-scroll-container::-webkit-scrollbar { width: 6px; }
+    .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
+    .chat-scroll-container::-webkit-scrollbar-thumb {
+        background: rgba(0,212,255,0.2); border-radius: 3px;
+    }
+    </style>""", unsafe_allow_html=True)
+
     st.markdown(f"""
     <div style="background:linear-gradient(135deg,rgba(2,6,9,0.95),rgba(0,15,30,0.9));
     border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:1.2rem 1.5rem;
@@ -404,10 +454,11 @@ def render_ai_chat_assistant():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Chat display
+    # Chat display — scrollable container
+    st.markdown('<div class="chat-scroll-container">', unsafe_allow_html=True)
     chat_container = st.container()
     with chat_container:
-        for msg in st.session_state.chat_messages[-20:]:  # show last 20
+        for msg in st.session_state.chat_messages[-50:]:  # show last 50
             role = msg["role"]
             content = msg["content"]
             time_str = msg.get("time","")
@@ -438,6 +489,8 @@ def render_ai_chat_assistant():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Handle pending question from chips
     if "pending_question" in st.session_state:

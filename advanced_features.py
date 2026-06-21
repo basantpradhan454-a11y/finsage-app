@@ -4,6 +4,7 @@ Sentiment, Volume Anomaly, Pattern Detection, Smart Contract Audit, Whale Alerts
 """
 
 import streamlit as st
+from ticker_resolver import resolve_ticker
 import requests
 import pandas as pd
 import plotly.graph_objects as go
@@ -180,14 +181,15 @@ def render_volume_anomaly():
 
     col1, col2 = st.columns([2, 1])
     with col1:
-        sym = st.text_input("Stock Ticker", placeholder="e.g. AAPL, TSLA, RELIANCE.NS", key="vol_sym")
+        sym = st.text_input("Stock Ticker", placeholder="e.g. apple, TSLA, reliance, NVDA...", key="vol_sym")
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         check_btn = st.button("🔍 Check Volume", type="primary", use_container_width=True, key="vol_btn")
 
     if check_btn and sym:
-        with st.spinner(f"Analysing {sym} volume..."):
-            result = detect_volume_anomaly(sym.upper().strip())
+        _resolved_vol = resolve_ticker(sym)
+        with st.spinner(f"Analysing {_resolved_vol} volume..."):
+            result = detect_volume_anomaly(_resolved_vol)
 
         if "error" in result:
             st.error(f"❌ {result['error']}")
@@ -514,14 +516,15 @@ def render_technical_analysis():
 
     sym_col, btn_col = st.columns([3, 1])
     with sym_col:
-        ta_sym = st.text_input("Stock Ticker", placeholder="e.g. AAPL, TSLA, RELIANCE.NS, NVDA", key="ta_sym")
+        ta_sym = st.text_input("Stock Ticker", placeholder="e.g. apple, TSLA, reliance, NVDA...", key="ta_sym")
     with btn_col:
         st.markdown("<br>", unsafe_allow_html=True)
         ta_btn = st.button("🔍 Detect Patterns", type="primary", use_container_width=True, key="ta_btn")
 
     if ta_btn and ta_sym:
-        with st.spinner(f"Analysing {ta_sym} patterns..."):
-            result = detect_patterns(ta_sym.upper().strip())
+        _resolved_ta = resolve_ticker(ta_sym)
+        with st.spinner(f"Analysing {_resolved_ta} patterns..."):
+            result = detect_patterns(_resolved_ta)
 
         if "error" in result:
             st.error(f"❌ {result['error']}")

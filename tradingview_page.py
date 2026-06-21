@@ -10,8 +10,9 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
+from ticker_resolver import resolve_ticker
 
-LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/646bd9660_stox_ai_logo.png"
+LOGO_URL = "https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg"
 
 POPULAR_SYMBOLS = [
     ("BTC",      "BINANCE:BTCUSDT",  "BTC-USD"),
@@ -87,6 +88,42 @@ def _fmt_price(p: float) -> str:
     if p < 1:       return f"${p:.4f}"
     if p < 100:     return f"${p:,.4f}"
     return f"${p:,.2f}"
+
+
+def _to_tv_symbol(ticker: str) -> str:
+    """Convert a resolved ticker to TradingView format."""
+    # Crypto: BTC -> BINANCE:BTCUSDT
+    crypto_map = {
+        "BTC":"BINANCE:BTCUSDT","ETH":"BINANCE:ETHUSDT","SOL":"BINANCE:SOLUSDT",
+        "BNB":"BINANCE:BNBUSDT","XRP":"BINANCE:XRPUSDT","ADA":"BINANCE:ADAUSDT",
+        "DOGE":"BINANCE:DOGEUSDT","SHIB":"BINANCE:SHIBUSDT","AVAX":"BINANCE:AVAXUSDT",
+        "DOT":"BINANCE:DOTUSDT","LINK":"BINANCE:LINKUSDT","MATIC":"BINANCE:MATICUSDT",
+        "UNI":"BINANCE:UNIUSDT","LTC":"BINANCE:LTCUSDT","APT":"BINANCE:APTUSDT",
+        "NEAR":"BINANCE:NEARUSDT","PEPE":"BINANCE:PEPEUSDT","FLOKI":"BINANCE:FLOKIUSDT",
+        "BONK":"BINANCE:BONKUSDT","WIF":"BINANCE:WIFUSDT",
+    }
+    base = ticker.replace(".NS","").replace(".BO","").replace("-USD","").replace("^","")
+    if base in crypto_map:
+        return crypto_map[base]
+    # Indian stocks: RELIANCE.NS -> NSE:RELIANCE
+    if ".NS" in ticker:
+        return f"NSE:{ticker.replace('.NS','')}"
+    if ".BO" in ticker:
+        return f"BSE:{ticker.replace('.BO','')}"
+    if "^NSEI" in ticker:
+        return "NSE:NIFTY"
+    if "^NSEBANK" in ticker:
+        return "NSE:NIFTYBANK"
+    if "^BSESN" in ticker:
+        return "BSE:SENSEX"
+    # US stocks: AAPL -> NASDAQ:AAPL (or NYSE)
+    nyse_stocks = {"JPM","GS","WMT","DIS","KO","PEP","XOM","PFE","JNJ","V","MA","CSCO","BA","F","GM","ORCL"}
+    if base in nyse_stocks:
+        return f"NYSE:{base}"
+    # Default: NASDAQ for US
+    if not ":" in ticker and "." not in ticker:
+        return f"NASDAQ:{base}"
+    return ticker
 
 
 def render_tradingview_page():
@@ -179,11 +216,17 @@ def render_tradingview_page():
         cur_sym = st.session_state.get("tv_symbol", "BINANCE:BTCUSDT")
         custom_sym = st.text_input(
             "Symbol", value=cur_sym,
-            placeholder="BINANCE:BTCUSDT / NASDAQ:AAPL / NSE:RELIANCE",
+            placeholder="e.g. apple, TSLA, bitcoin, reliance, AAPL...",
             key="tv_csym", label_visibility="collapsed"
         )
-        if custom_sym != cur_sym:
-            st.session_state.tv_symbol = custom_sym
+        if custom_sym and custom_sym != cur_sym:
+            _resolved = resolve_ticker(custom_sym)
+            # Convert resolved ticker to TradingView format if needed
+            if _resolved != custom_sym:
+                _tv_format = _to_tv_symbol(_resolved)
+                st.session_state.tv_symbol = _tv_format
+            else:
+                st.session_state.tv_symbol = custom_sym
     with cc2:
         interval = st.selectbox("Interval", list(INTERVALS.keys()), index=7,
                                 key="tv_iv", label_visibility="collapsed")
@@ -195,12 +238,18 @@ def render_tradingview_page():
         theme = st.selectbox("Theme", ["Dark", "Light"],
                              key="tv_th", label_visibility="collapsed")
     with cc5:
-        fs_label = "🗗 Exit Fullscreen" if is_fullscreen else "⛶ Fullscreen"
+        fs_label = "🗗 Exit" if is_fullscreen else "⛶ Full"
         if st.button(fs_label, key="tv_fs_btn", use_container_width=True, type="primary"):
             st.session_state.tv_fullscreen = not is_fullscreen
             st.rerun()
+        if st.button("💬", key="tv_chat_toggle", use_container_width=True,
+                     help="Open AI Chat"):
+            st.session_state.tv_chat_open = not st.session_state.get("tv_chat_open", False)
+            st.rerun()
         # Open in real TradingView as fallback (native fullscreen works there)
-        tv_link = f"https://www.tradingview.com/chart/?symbol={symbol}&interval={iv_val}&theme=dark&style=1"
+        _tv_sym_now = st.session_state.get("tv_symbol", "BINANCE:BTCUSDT")
+        _tv_iv_now  = INTERVALS.get(interval, "D")
+        tv_link = f"https://www.tradingview.com/chart/?symbol={_tv_sym_now}&interval={_tv_iv_now}&theme=dark&style=1"
         st.markdown(
             f'<a href="{tv_link}" target="_blank" style="display:block;text-align:center;'
             f'background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);'
@@ -304,6 +353,22 @@ def render_tradingview_page():
     </div>
     """
     components.html(tv_html, height=chart_height + 40, scrolling=False)
+
+    # ── FULLSCREEN CHAT OVERLAY ────────────────────────────────────────────────
+    _show_tv_chat = st.session_state.get("tv_chat_open", False)
+    # Floating chat toggle button
+    st.markdown(f"""
+    <div style="position:fixed;bottom:20px;right:20px;z-index:99999;">
+        <button onclick="window.parent.postMessage({{type:'streamlit:toggle_chat'}}, '*')"
+            style="background:linear-gradient(135deg,#00d4ff,#0066cc);
+            border:none;border-radius:50%;width:56px;height:56px;
+            cursor:pointer;box-shadow:0 4px 20px rgba(0,212,255,0.4);
+            font-size:24px;color:white;">{'✕' if _show_tv_chat else '💬'}</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if _show_tv_chat:
+        _render_tv_chat_overlay()
 
     # ── FULLSCREEN: show minimal price strip only ──────────────────────────────
     if is_fullscreen:

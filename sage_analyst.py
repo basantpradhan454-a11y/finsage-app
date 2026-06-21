@@ -11,6 +11,7 @@ import os
 import re
 import time
 import requests
+from ticker_resolver import resolve_ticker
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -127,14 +128,33 @@ def parse_user_input(text: str):
             tv_sym, yf_sym, display_name = tv, yf, key.title()
             break
 
-    # If not found, try to extract a ticker-like word
+    # If not found, try to extract a ticker-like word or resolve company name
     if not tv_sym:
-        tokens = re.findall(r'\b[A-Z]{2,6}(?:\.NS|\.BO)?\b', text)
-        if tokens:
-            sym = tokens[0]
-            yf_sym = sym
-            tv_sym = f"NSE:{sym.replace('.NS','')}" if ".NS" in sym else sym
-            display_name = sym
+        # First try ticker resolver for company names (apple -> AAPL)
+        _resolved = resolve_ticker(text)
+        if _resolved and _resolved.upper() != text.upper().strip():
+            # Check if resolved ticker is in SYMBOL_MAP
+            for key, (tv, yf) in SYMBOL_MAP.items():
+                if key.upper() == _resolved.upper() or yf.upper() == _resolved.upper():
+                    tv_sym, yf_sym, display_name = tv, yf, key.title()
+                    break
+            if not tv_sym:
+                sym = _resolved
+                yf_sym = sym
+                if ".NS" in sym:
+                    tv_sym = f"NSE:{sym.replace('.NS','')}"
+                elif sym in ("BTC","ETH","SOL","DOGE","ADA","XRP","BNB","AVAX","DOT","LINK","MATIC"):
+                    tv_sym = f"BINANCE:{sym}USDT"
+                else:
+                    tv_sym = sym
+                display_name = sym
+        else:
+            tokens = re.findall(r'\b[A-Z]{2,6}(?:\.NS|\.BO)?\b', text)
+            if tokens:
+                sym = tokens[0]
+                yf_sym = sym
+                tv_sym = f"NSE:{sym.replace('.NS','')}" if ".NS" in sym else sym
+                display_name = sym
 
     # Detect timeframe
     tf = "D"
@@ -2001,6 +2021,21 @@ def render_sage_analyst():
 
     # ── SAGE CHAT — FULL WIDTH FOLLOW-UP SECTION ──────
     st.markdown("---")
+
+    # Chat scroll CSS
+    st.markdown("""<style>
+    .sage-chat-scroll {
+        max-height: 400px; overflow-y: auto; padding: 0.5rem;
+        border: 1px solid rgba(0,212,255,0.1); border-radius: 12px;
+        background: rgba(2,6,9,0.5); margin-bottom: 0.8rem;
+    }
+    .sage-chat-scroll::-webkit-scrollbar { width: 6px; }
+    .sage-chat-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sage-chat-scroll::-webkit-scrollbar-thumb {
+        background: rgba(0,212,255,0.2); border-radius: 3px;
+    }
+    </style>""", unsafe_allow_html=True)
+
     st.markdown("""<div class="sage-section-title" style="margin-top:20px;">
     Ask SAGE - Follow-up Questions</div>""", unsafe_allow_html=True)
 
@@ -2019,7 +2054,8 @@ def render_sage_analyst():
                     st.session_state.sage_chat_hist.append({"role":"ai","content":reply})
                     st.rerun()
 
-    # Chat history display
+    # Chat history display — scrollable
+    st.markdown('<div class="sage-chat-scroll">', unsafe_allow_html=True)
     for msg in st.session_state.sage_chat_hist:
         if msg["role"] == "user":
             st.markdown(f'<div class="sage-msg-user">{msg["content"]}</div>',
@@ -2027,6 +2063,8 @@ def render_sage_analyst():
         else:
             st.markdown(f'<div class="sage-msg-ai">{msg["content"]}</div>',
                        unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Chat input - full width
     chat_col, chat_btn = st.columns([6, 1])

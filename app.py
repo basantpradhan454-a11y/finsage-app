@@ -22,6 +22,7 @@ from sage_analyst import render_sage_analyst
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
+from ticker_resolver import resolve_ticker
 from ai_chat_assistant import render_ai_chat_assistant
 from privacy_policy import render_privacy_policy, render_signup_page, render_signup_with_privacy
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
@@ -1186,8 +1187,11 @@ with tab1:
 
     if st.button(f"🔍 {t('analyze_stock')}", key="btn_stock", type="primary", use_container_width=True):
         if sym:
-            with st.spinner(f"{t('fetching')} **{sym}**..."):
-                d = fetch_stock_data(sym)
+            _resolved_sym = resolve_ticker(sym)
+            if _resolved_sym != sym:
+                st.info(f"💡 Did you mean **{_resolved_sym}**? Showing results for {_resolved_sym}")
+            with st.spinner(f"{t('fetching')} **{_resolved_sym}**..."):
+                d = fetch_stock_data(_resolved_sym)
                 if "error" not in d:
                     st.session_state.stock_data = d
                     st.session_state.stock_report = analyze_stock(d)
@@ -1234,8 +1238,11 @@ with tab2:
 
     if st.button(f"🔍 {t('analyze_crypto')}", key="btn_crypto", type="primary", use_container_width=True):
         if csym:
-            with st.spinner(f"{t('fetching')} **{csym}**..."):
-                d = fetch_crypto_data(csym)
+            _resolved_csym = resolve_ticker(csym)
+            if _resolved_csym != csym:
+                st.info(f"💡 Did you mean **{_resolved_csym}**? Showing results for {_resolved_csym}")
+            with st.spinner(f"{t('fetching')} **{_resolved_csym}**..."):
+                d = fetch_crypto_data(_resolved_csym)
                 if "error" not in d:
                     st.session_state.crypto_data = d
                     st.session_state.crypto_report = analyze_crypto(d)
@@ -1282,8 +1289,11 @@ with tab3:
 
     if st.button(f"🔍 {t('analyze_meme')}", key="btn_meme", type="primary", use_container_width=True):
         if msym:
-            with st.spinner(f"{t('fetching')} **{msym}**..."):
-                d = fetch_crypto_data(msym)
+            _resolved_msym = resolve_ticker(msym)
+            if _resolved_msym != msym:
+                st.info(f"💡 Did you mean **{_resolved_msym}**? Showing results for {_resolved_msym}")
+            with st.spinner(f"{t('fetching')} **{_resolved_msym}**..."):
+                d = fetch_crypto_data(_resolved_msym)
                 if "error" not in d:
                     d["asset_type"] = "Meme Coin"
                     st.session_state.meme_data = d
