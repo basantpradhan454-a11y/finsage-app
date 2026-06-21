@@ -20,6 +20,7 @@ from advanced_features import render_advanced_features
 from chart_analyzer import render_chart_analyzer
 from sage_analyst import render_sage_analyst
 from tradingview_page import render_tradingview_page
+from strategy_bot import render_strategy_bot
 from ai_chat_assistant import render_ai_chat_assistant
 from privacy_policy import render_privacy_policy, render_signup_page, render_signup_with_privacy
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
@@ -805,6 +806,7 @@ with nb_right:
                 ("🧠 Advanced Intel",      "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
             ]),
             ("🤖 AI TOOLS", [
+                ("🤖 AI Strategy Bot",     "🤖 AI Strategy Bot",     "Describe strategy -> AI backtests + voice"),
                 ("🤖 AI Assistant",        "🤖 AI Assistant",        "Ask any trading question"),
                 ("📸 Chart Analyzer",      "📸 Chart Analyzer",      "Upload & analyze screenshots"),
                 ("📡 Adv. Analyzer",       "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
@@ -1112,6 +1114,8 @@ def _back_btn(key):
 _ap = st.session_state.get("active_page", "main")
 if _ap == "🤖 AI Assistant":
     _back_btn("back_ai"); render_ai_chat_assistant(); st.stop()
+elif _ap == "🤖 AI Strategy Bot":
+    _back_btn("back_strat"); render_strategy_bot(); st.stop()
 elif _ap == "🧠 SAGE Analyst":
     _back_btn("back_sage"); render_sage_analyst(); st.stop()
 elif _ap == "🔬 Pro Analyser":

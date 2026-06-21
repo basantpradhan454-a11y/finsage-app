@@ -1675,107 +1675,102 @@ def render_sage_analyst():
     chat_exp  = analysis.get("chat_explanation",{})
     voice_seg = analysis.get("voice_script",{}).get("segments",[])
 
-    # ── CHART + VOICE ──────────────────────────────────
-    col_chart, col_info = st.columns([3, 2])
+    # ── FULL-WIDTH BIG CHART ───────────────────────────
+    # Chart is now full width — no sidebar. Info goes below.
 
-    with col_chart:
-        if ohlcv is not None and not (ohlcv.empty if hasattr(ohlcv,'empty') else True):
-            chart_html = build_chart_html(parsed, analysis, ohlcv,
-                candlestick_patterns=analysis.get("detected_candlestick_patterns",[]),
-                vwap=analysis.get("vwap"))
-            components.html(chart_html, height=540, scrolling=False)
-        else:
-            # Fallback to TradingView embed
-            tv_sym = parsed.get("tv_sym","NSE:RELIANCE")
-            tf_tv  = {"5":"5","15":"15","60":"60","240":"240","D":"D","W":"W","M":"M"}.get(
-                      parsed.get("timeframe","D"),"D")
-            tv_html = f"""<div style="background:#020609;border-radius:10px;overflow:hidden;height:480px;">
-            <iframe src="https://www.tradingview.com/widgetbar-chart-only/?symbol={tv_sym}&interval={tf_tv}&theme=dark&style=1&locale=en&toolbar_bg=020609&hide_side_toolbar=false&allow_symbol_change=false&saveimage=false&calendar=false&hotlist=false&details=false&news=false"
-            width="100%" height="480" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>"""
-            components.html(tv_html, height=500, scrolling=False)
+    if ohlcv is not None and not (ohlcv.empty if hasattr(ohlcv,'empty') else True):
+        chart_html = build_chart_html(parsed, analysis, ohlcv,
+            candlestick_patterns=analysis.get("detected_candlestick_patterns",[]),
+            vwap=analysis.get("vwap"))
+        components.html(chart_html, height=680, scrolling=False)
+    else:
+        tv_sym = parsed.get("tv_sym","NSE:RELIANCE")
+        tf_tv  = {"5":"5","15":"15","60":"60","240":"240","D":"D","W":"W","M":"M"}.get(
+                  parsed.get("timeframe","D"),"D")
+        tv_html = f"""<div style="background:#020609;border-radius:10px;overflow:hidden;height:620px;">
+        <iframe src="https://www.tradingview.com/widgetbar-chart-only/?symbol={tv_sym}&interval={tf_tv}&theme=dark&style=1&locale=en&toolbar_bg=020609&hide_side_toolbar=false&allow_symbol_change=false&saveimage=false&calendar=false&hotlist=false&details=false&news=false"
+        width="100%" height="620" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>"""
+        components.html(tv_html, height=640, scrolling=False)
 
-        # Voice panel
-        if voice_seg:
-            voice_html = build_voice_html(voice_seg)
-            components.html(voice_html, height=260, scrolling=False)
+    # Voice panel (full width below chart)
+    if voice_seg:
+        voice_html = build_voice_html(voice_seg)
+        components.html(voice_html, height=260, scrolling=False)
 
-    with col_info:
-        # Bias + Summary
-        bias       = chat_exp.get("bias","NEUTRAL")
-        bias_color = chat_exp.get("bias_color","#f59e0b")
-        summary    = chat_exp.get("summary","Analysis")
+    # ── INFO STRIP (horizontal cards below chart) ──────
+    bias       = chat_exp.get("bias","NEUTRAL")
+    bias_color = chat_exp.get("bias_color","#f59e0b")
+    summary    = chat_exp.get("summary","Analysis")
 
-        st.markdown(f"""<div class="sage-card">
-        <div style="font-size:0.72rem;color:#8b949e;text-transform:uppercase;
-        letter-spacing:0.5px;">SAGE Analysis — {analysis.get('timeframe','Daily')}</div>
-        <div style="font-size:1.1rem;font-weight:800;color:#e8f4fd;margin:4px 0;">{summary}</div>
-        <div class="sage-bias-box" style="background:{bias_color}1a;
-        color:{bias_color};border:1px solid {bias_color}44;">{bias}</div>
-        </div>""", unsafe_allow_html=True)
+    # Top summary bar
+    st.markdown(f"""<div class="sage-card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div>
+        <div style="font-size:0.68rem;color:#4a7a99;text-transform:uppercase;letter-spacing:0.08em;">
+        SAGE Analysis — {analysis.get('timeframe','Daily')}</div>
+        <div style="font-size:1.05rem;font-weight:800;color:#e8f4fd;margin:3px 0;">{summary}</div>
+    </div>
+    <div class="sage-bias-box" style="background:{bias_color}1a;
+    color:{bias_color};border:1px solid {bias_color}44;margin-left:auto;">{bias}</div>
+    </div>""", unsafe_allow_html=True)
 
-        # Key Levels
-        levels = chat_exp.get("key_levels",{})
-        if levels:
-            st.markdown("**📐 Key Levels**")
-            for key, val in levels.items():
-                if "support" in key.lower():
-                    st.markdown(f"""<div class="sage-level-row">
-                    <span style="color:#10b981;">🟢 {key.replace('_',' ').title()}</span>
-                    <span style="color:#10b981;font-weight:700;">{val}</span>
-                    </div>""", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""<div class="sage-level-row">
-                    <span style="color:#ef4444;">🔴 {key.replace('_',' ').title()}</span>
-                    <span style="color:#ef4444;font-weight:700;">{val}</span>
-                    </div>""", unsafe_allow_html=True)
+    # Key Levels in 2 columns
+    # ── KEY LEVELS + INDICATORS (2-column strip) ──────
+    levels = chat_exp.get("key_levels",{})
+    ind_sum = chat_exp.get("indicators_summary",{})
+    if levels or ind_sum:
+        kl_cols = st.columns(2)
+        with kl_cols[0]:
+            if levels:
+                st.markdown("**📐 Key Levels**")
+                for key, val in levels.items():
+                    if "support" in key.lower():
+                        st.markdown(f"""<div class="sage-level-row">
+                        <span style="color:#10b981;">🟢 {key.replace('_',' ').title()}</span>
+                        <span style="color:#10b981;font-weight:700;">{val}</span>
+                        </div>""", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""<div class="sage-level-row">
+                        <span style="color:#ef4444;">🔴 {key.replace('_',' ').title()}</span>
+                        <span style="color:#ef4444;font-weight:700;">{val}</span>
+                        </div>""", unsafe_allow_html=True)
+        with kl_cols[1]:
+            if ind_sum:
+                st.markdown("**📊 Indicators**")
+                for key, val in ind_sum.items():
+                    color = "#10b981" if "bull" in str(val).lower() else ("#ef4444" if "bear" in str(val).lower() else "#7fa8c9")
+                    st.markdown(f"""<span class="sage-indicator-chip"
+                    style="background:{color}1a;color:{color};
+                    border:1px solid {color}33;">{key.upper()}: {str(val)[:40]}</span>""",
+                    unsafe_allow_html=True)
 
-        # Indicators
+    # Candlestick chips
+    detected_cs = analysis.get("detected_candlestick_patterns", [])
+    if detected_cs:
         st.write("")
-        ind_sum = chat_exp.get("indicators_summary",{})
-        if ind_sum:
-            st.markdown("**📊 Indicators**")
-            for key, val in ind_sum.items():
-                color = "#10b981" if "bull" in str(val).lower() else ("#ef4444" if "bear" in str(val).lower() else "#7fa8c9")
-                st.markdown(f"""<span class="sage-indicator-chip"
-                style="background:{color}1a;color:{color};
-                border:1px solid {color}33;">{key.upper()}: {str(val)[:40]}</span>""",
-                unsafe_allow_html=True)
+        st.markdown("**🕯️ Candlestick Patterns**")
+        cs_chips = ""
+        for p in detected_cs[:6]:
+            ptype = p.get("type","NEUTRAL")
+            pcolor = {"BULLISH":"#10b981","BEARISH":"#ef4444","NEUTRAL":"#f0c040"}.get(ptype,"#8b949e")
+            cs_chips += f"""<span class="sage-indicator-chip"
+            style="background:{pcolor}1a;color:{pcolor};border:1px solid {pcolor}33;
+            display:inline-block;margin:2px;">{p['name']} ({ptype})</span>"""
+        st.markdown(cs_chips, unsafe_allow_html=True)
 
-        # Candlestick Summary
-        cs_sum = chat_exp.get("candlestick_summary", "")
-        detected_cs = analysis.get("detected_candlestick_patterns", [])
-        if detected_cs:
-            st.write("")
-            st.markdown("**🕯️ Candlestick Patterns**")
-            for p in detected_cs[:4]:
-                ptype = p.get("type","NEUTRAL")
-                pcolor = {"BULLISH":"#10b981","BEARISH":"#ef4444","NEUTRAL":"#f0c040"}.get(ptype,"#8b949e")
-                st.markdown(f"""<span class="sage-indicator-chip"
-                style="background:{pcolor}1a;color:{pcolor};border:1px solid {pcolor}33;">
-                {p['name']} ({ptype})</span>""", unsafe_allow_html=True)
-
-        # Fundamental Summary
-        fund_sum = chat_exp.get("fundamental_summary", "")
-        if fund_sum and fund_sum != "Fundamental data not available for this symbol.":
-            st.write("")
-            st.markdown("**📊 Fundamentals**")
-            st.markdown(f'<div class="sage-insight" style="font-size:0.75rem;">{fund_sum}</div>',
+    # Educational Insight
+    insight = chat_exp.get("educational_insight",{})
+    if insight:
+        st.write("")
+        st.markdown("**💡 Educational Insight**")
+        for key, val in insight.items():
+            st.markdown(f'<div class="sage-insight"><b>{key.replace("_"," ").title()}:</b> {val}</div>',
                        unsafe_allow_html=True)
 
-        # Educational Insight
-        insight = chat_exp.get("educational_insight",{})
-        if insight:
-            st.write("")
-            st.markdown("**💡 Educational Insight**")
-            for key, val in insight.items():
-                st.markdown(f'<div class="sage-insight"><b>{key.replace("_"," ").title()}:</b> {val}</div>',
-                           unsafe_allow_html=True)
-
-        # Disclaimer
-        disc = chat_exp.get("risk_disclaimer","")
-        if disc:
-            st.markdown(f'<div class="sage-disclaimer">{disc}</div>',
-                       unsafe_allow_html=True)
+    # Disclaimer
+    disc = chat_exp.get("risk_disclaimer","")
+    if disc:
+        st.markdown(f'<div class="sage-disclaimer">{disc}</div>',
+                   unsafe_allow_html=True)
 
     # ── CANDLESTICK PATTERNS SECTION ───────────────────
     detected_patterns = analysis.get("detected_candlestick_patterns", [])
@@ -1799,7 +1794,7 @@ def render_sage_analyst():
                 → {p.get('action','')}</div>
                 </div>""", unsafe_allow_html=True)
 
-    # ── FUNDAMENTAL ANALYSIS SECTION ─────────────────────
+    # ── FUNDAMENTAL ANALYSIS — PROFESSIONAL SUMMARY ────
     fund_data = analysis.get("fundamentals", {})
     if fund_data and fund_data.get("available"):
         st.markdown("---")
@@ -1814,124 +1809,237 @@ def render_sage_analyst():
         is_indian = ".NS" in (parsed.get("yf_sym","") or "") or ".BO" in (parsed.get("yf_sym","") or "")
         curr_sym = "Rs" if is_indian else "$"
 
-        # Company info
-        if mg.get("full_name") and mg.get("full_name") != "N/A":
-            st.markdown(f"""<div class="sage-card">
-            <div style="font-weight:700;color:#00d4ff;font-size:0.9rem;">{mg.get('full_name','')}</div>
-            <div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">
-            {mg.get('sector','N/A')} · {mg.get('industry','N/A')} · {mg.get('country','N/A')}
-            </div>
-            <div style="font-size:0.76rem;color:#b0cce0;margin-top:6px;line-height:1.6;">
-            {mg.get('description','N/A')[:300]}
-            </div></div>""", unsafe_allow_html=True)
+        # ── Company Header Card ──
+        company_name = mg.get('full_name', 'N/A')
+        sector = mg.get('sector', 'N/A')
+        industry = mg.get('industry', 'N/A')
+        country = mg.get('country', 'N/A')
+        mcap = ratios.get('market_cap')
+        mcap_str = _fmt_inr(mcap) if mcap else 'N/A'
 
-        # Valuation Ratios
+        st.markdown(f"""<div class="sage-card" style="padding:18px 20px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:1.1rem;font-weight:800;color:#00d4ff;">
+            {company_name}</div>
+            <span class="sage-badge">{sector}</span>
+            <span class="sage-badge sage-badge-gold">MCap: {curr_sym}{mcap_str}</span>
+        </div>
+        <div style="font-size:0.76rem;color:#4a7a99;margin:6px 0;">
+        {industry} · {country}
+        </div>
+        <div style="font-size:0.78rem;color:#b0cce0;margin-top:8px;line-height:1.7;
+        padding-top:8px;border-top:1px solid rgba(0,212,255,0.08);">
+        {mg.get('description','N/A')[:350]}
+        </div>
+        </div>""", unsafe_allow_html=True)
+
+        # ── Valuation Ratios Grid ──
         if ratios:
-            st.markdown("**🔑 Valuation Ratios**")
-            r_cols = st.columns(4)
-            ratio_items = [
-                ("P/E Ratio", ratios.get("pe_ratio"), "Lower = cheaper"),
-                ("Forward P/E", ratios.get("forward_pe"), "Future earnings P/E"),
-                ("P/B Ratio", ratios.get("pb_ratio"), "Price to Book"),
-                ("Dividend Yield", ratios.get("dividend_yield"), "Annual dividend %"),
-                ("ROE", ratios.get("roe"), "Return on Equity"),
-                ("ROA", ratios.get("roa"), "Return on Assets"),
-                ("Debt/Equity", ratios.get("debt_to_equity"), "Lower = safer"),
-                ("Profit Margin", ratios.get("profit_margin"), "Net profit %"),
-                ("Revenue Growth", ratios.get("revenue_growth"), "YoY growth"),
-                ("PEG Ratio", ratios.get("peg_ratio"), "P/E adjusted for growth"),
-                ("Beta", ratios.get("beta"), "Volatility vs market"),
-                ("Market Cap", ratios.get("market_cap"), "Company size"),
+            st.markdown("")
+            st.markdown("""<div class="sage-section-title">Valuation & Profitability Ratios</div>""",
+                       unsafe_allow_html=True)
+
+            # Build ratio cards in 6-column grid
+            ratio_defs = [
+                ("P/E Ratio", "pe_ratio", "ratio", "Price-to-Earnings — lower = cheaper"),
+                ("Fwd P/E", "forward_pe", "ratio", "Forward P/E based on expected earnings"),
+                ("P/B Ratio", "pb_ratio", "ratio", "Price-to-Book — asset valuation"),
+                ("Div Yield", "dividend_yield", "pct", "Annual dividend as % of price"),
+                ("ROE", "roe", "pct", "Return on Equity — profitability"),
+                ("ROA", "roa", "pct", "Return on Assets — efficiency"),
+                ("D/E Ratio", "debt_to_equity", "ratio", "Debt to Equity — leverage risk"),
+                ("Profit Margin", "profit_margin", "pct", "Net profit margin"),
+                ("Rev Growth", "revenue_growth", "pct", "Year-over-year revenue growth"),
+                ("PEG Ratio", "peg_ratio", "ratio", "P/E adjusted for growth rate"),
+                ("Beta", "beta", "ratio", "Volatility vs market (1.0 = market)"),
+                ("EV/EBITDA", "ev_to_ebitda", "ratio", "Enterprise value to EBITDA"),
             ]
-            for i, (label, val, hint) in enumerate(ratio_items):
-                with r_cols[i % 4]:
-                    if val is not None:
-                        if "yield" in label.lower() or "margin" in label.lower() or "growth" in label.lower() or "roe" in label.lower() or "roa" in label.lower():
-                            display = f"{val*100:.1f}%" if abs(val) < 100 else f"{val:.2f}"
-                        elif "cap" in label.lower() or "market" in label.lower():
-                            display = _fmt_inr(val)
+
+            r_cols = st.columns(6)
+            for i, (label, key, fmt, hint) in enumerate(ratio_defs):
+                val = ratios.get(key)
+                if val is not None:
+                    with r_cols[i % 6]:
+                        if fmt == "pct" and abs(val) < 10:
+                            display = f"{val*100:.1f}%"
+                        elif fmt == "pct":
+                            display = f"{val:.2f}"
                         else:
                             display = f"{val:.2f}"
-                        st.metric(label, display, help=hint)
+                        # Color: green for good, red for bad, neutral
+                        good_keys = ["roe", "roa", "profit_margin", "revenue_growth", "dividend_yield"]
+                        bad_keys = ["debt_to_equity"]
+                        if key in good_keys and val > 0:
+                            val_color = "#10b981"
+                        elif key in bad_keys and val > 2:
+                            val_color = "#ef4444"
+                        else:
+                            val_color = "#e8f4fd"
+                        st.markdown(f"""<div style="background:linear-gradient(145deg,#050d1f,#071a30);
+                        border:1px solid rgba(0,212,255,0.1);border-radius:8px;
+                        padding:8px 6px;text-align:center;margin:3px 0;">
+                        <div style="font-size:0.6rem;color:#4a7a99;text-transform:uppercase;
+                        letter-spacing:0.05em;">{label}</div>
+                        <div style="font-size:0.95rem;font-weight:800;color:{val_color};
+                        font-family:JetBrains Mono,monospace;margin:2px 0;">{display}</div>
+                        </div>""", unsafe_allow_html=True)
 
-        # Financial Statements in expanders
+        # ── Financial Statements (3-column professional cards) ──
+        st.markdown("")
+        st.markdown("""<div class="sage-section-title">Financial Statements (Latest Quarter)</div>""",
+                   unsafe_allow_html=True)
+
         col_fs1, col_fs2, col_fs3 = st.columns(3)
-        with col_fs1:
-            with st.expander("📋 P&L Statement"):
-                if inc:
-                    for k, v in inc.items():
-                        if v is not None:
-                            st.markdown(f"**{k.replace('_',' ').title()}:** {curr_sym}{_fmt_inr(v)}")
-                else:
-                    st.info("P&L data not available")
-        with col_fs2:
-            with st.expander("🏛️ Balance Sheet"):
-                if bs:
-                    for k, v in bs.items():
-                        if v is not None:
-                            st.markdown(f"**{k.replace('_',' ').title()}:** {curr_sym}{_fmt_inr(v)}")
-                else:
-                    st.info("Balance sheet not available")
-        with col_fs3:
-            with st.expander("💵 Cash Flow"):
-                if cf:
-                    for k, v in cf.items():
-                        if v is not None:
-                            st.markdown(f"**{k.replace('_',' ').title()}:** {curr_sym}{_fmt_inr(v)}")
-                else:
-                    st.info("Cash flow data not available")
 
-        # Industry Analysis
-        if mg.get("sector") and mg.get("sector") != "N/A":
-            st.markdown(f"""<div class="sage-insight">
-            <b>🏢 Industry Analysis:</b> {mg.get('sector','N/A')} — {mg.get('industry','N/A')}.
+        with col_fs1:
+            st.markdown("""<div style="background:linear-gradient(145deg,#050d1f,#071a30);
+            border:1px solid rgba(0,212,255,0.12);border-radius:10px;padding:14px;">
+            <div style="font-size:0.8rem;font-weight:800;color:#00d4ff;margin-bottom:10px;
+            display:flex;align-items:center;gap:6px;">📋 Income Statement</div>""",
+            unsafe_allow_html=True)
+            if inc:
+                for k, v in inc.items():
+                    if v is not None:
+                        label = k.replace('_',' ').title()
+                        st.markdown(f"""<div style="display:flex;justify-content:space-between;
+                        padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);
+                        font-size:0.75rem;">
+                        <span style="color:#8b949e;">{label}</span>
+                        <span style="color:#e8f4fd;font-weight:700;font-family:monospace;">
+                        {curr_sym}{_fmt_inr(v)}</span></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="font-size:0.72rem;color:#556;">Data not available</div>',
+                           unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_fs2:
+            st.markdown("""<div style="background:linear-gradient(145deg,#050d1f,#071a30);
+            border:1px solid rgba(0,212,255,0.12);border-radius:10px;padding:14px;">
+            <div style="font-size:0.8rem;font-weight:800;color:#00d4ff;margin-bottom:10px;
+            display:flex;align-items:center;gap:6px;">🏛️ Balance Sheet</div>""",
+            unsafe_allow_html=True)
+            if bs:
+                for k, v in bs.items():
+                    if v is not None:
+                        label = k.replace('_',' ').title()
+                        st.markdown(f"""<div style="display:flex;justify-content:space-between;
+                        padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);
+                        font-size:0.75rem;">
+                        <span style="color:#8b949e;">{label}</span>
+                        <span style="color:#e8f4fd;font-weight:700;font-family:monospace;">
+                        {curr_sym}{_fmt_inr(v)}</span></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="font-size:0.72rem;color:#556;">Data not available</div>',
+                           unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_fs3:
+            st.markdown("""<div style="background:linear-gradient(145deg,#050d1f,#071a30);
+            border:1px solid rgba(0,212,255,0.12);border-radius:10px;padding:14px;">
+            <div style="font-size:0.8rem;font-weight:800;color:#00d4ff;margin-bottom:10px;
+            display:flex;align-items:center;gap:6px;">💵 Cash Flow</div>""",
+            unsafe_allow_html=True)
+            if cf:
+                for k, v in cf.items():
+                    if v is not None:
+                        label = k.replace('_',' ').title()
+                        # Color: green for positive CF, red for negative
+                        cf_color = "#10b981" if v >= 0 else "#ef4444"
+                        st.markdown(f"""<div style="display:flex;justify-content:space-between;
+                        padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);
+                        font-size:0.75rem;">
+                        <span style="color:#8b949e;">{label}</span>
+                        <span style="color:{cf_color};font-weight:700;font-family:monospace;">
+                        {curr_sym}{_fmt_inr(v)}</span></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="font-size:0.72rem;color:#556;">Data not available</div>',
+                           unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Industry + Economic Analysis ──
+        st.markdown("")
+        st.markdown("""<div class="sage-section-title">Industry & Economic Context</div>""",
+                   unsafe_allow_html=True)
+
+        ie_cols = st.columns(2)
+        with ie_cols[0]:
+            st.markdown(f"""<div class="sage-insight" style="height:100%;">
+            <b>🏢 Sector:</b> {sector}<br>
+            <b>Industry:</b> {industry}<br><br>
             Sector performance aur industry trends company ke growth ko directly affect karte hain.
-            India mein {mg.get('sector','')} sector ka growth rate aur government policies monitor karo.
+            India mein {sector} sector ka growth rate aur government policies (PLI, FDI) monitor karo.
+            Competition aur market share bhi check karo.
             </div>""", unsafe_allow_html=True)
+        with ie_cols[1]:
+            st.markdown(f"""<div class="sage-insight" style="height:100%;border-left-color:#ffd700;">
+            <b>📈 Economic Factors:</b><br>
+            • <b>GDP Growth:</b> India 6-7% — positive for equity<br>
+            • <b>Inflation:</b> High inflation → RBI rate hikes → stock pressure<br>
+            • <b>RBI Rates:</b> High rates = higher borrowing cost = lower profits<br>
+            • <b>Global:</b> US Fed rates, crude oil, geo tensions affect {sector}<br><br>
+            {sector} sector ke liye economic cycle aur policy environment critical hai.
+            </div>""", unsafe_allow_html=True)
+
+        # ── Management Quality ──
+        officers = mg.get("officers", [])
+        if officers:
+            st.markdown("")
+            st.markdown("""<div class="sage-section-title">Key Management</div>""",
+                       unsafe_allow_html=True)
+            for off in officers[:3]:
+                title = off.get("title", "N/A")
+                name = off.get("name", "N/A")
+                st.markdown(f"""<div style="display:inline-block;background:rgba(0,212,255,0.06);
+                border:1px solid rgba(0,212,255,0.15);border-radius:8px;
+                padding:6px 12px;margin:3px;font-size:0.78rem;">
+                <b style="color:#00d4ff;">{title}</b> — <span style="color:#b0cce0;">{name}</span>
+                </div>""", unsafe_allow_html=True)
 
     # ── Raw JSON Expander ──────────────────────────────
     with st.expander("View Raw Analysis JSON (for developers)"):
         st.json(analysis)
 
-    # ── SAGE CHAT ──────────────────────────────────────
+    # ── SAGE CHAT — FULL WIDTH FOLLOW-UP SECTION ──────
     st.markdown("---")
-    st.markdown("### 💬 Ask SAGE — Follow-up Questions")
+    st.markdown("""<div class="sage-section-title" style="margin-top:20px;">
+    Ask SAGE - Follow-up Questions</div>""", unsafe_allow_html=True)
 
-    # Follow-up prompts
+    # Follow-up quick prompts as full-width buttons
     follow_ups = chat_exp.get("follow_up_prompts",[])
     if follow_ups:
         fu_cols = st.columns(min(3, len(follow_ups)))
         for i, prompt in enumerate(follow_ups[:6]):
-            with fu_cols[i]:
-                if st.button(prompt[:30]+"..." if len(prompt)>30 else prompt,
-                             key=f"sage_fu_{i}", use_container_width=True):
+            with fu_cols[i % 3]:
+                btn_label = prompt[:35] + "..." if len(prompt) > 35 else prompt
+                if st.button(btn_label, key=f"sage_fu_{i}",
+                             use_container_width=True, help=prompt):
                     st.session_state.sage_chat_hist.append({"role":"user","content":prompt})
                     with st.spinner("SAGE is thinking..."):
                         reply = sage_chat_response(prompt, analysis, parsed)
                     st.session_state.sage_chat_hist.append({"role":"ai","content":reply})
                     st.rerun()
 
-    # Chat history
+    # Chat history display
     for msg in st.session_state.sage_chat_hist:
         if msg["role"] == "user":
-            st.markdown(f'<div class="sage-msg-user">👤 {msg["content"]}</div>',
+            st.markdown(f'<div class="sage-msg-user">{msg["content"]}</div>',
                        unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="sage-msg-ai">🧠 {msg["content"]}</div>',
+            st.markdown(f'<div class="sage-msg-ai">{msg["content"]}</div>',
                        unsafe_allow_html=True)
 
-    # Chat input
-    chat_col, chat_btn = st.columns([5, 1])
+    # Chat input - full width
+    chat_col, chat_btn = st.columns([6, 1])
     with chat_col:
-        chat_q = st.text_input("",
-            placeholder="Yeh support kyun important hai? / Entry kahan milegi? / MACD samjhao...",
+        chat_q = st.text_input("Ask about patterns, fundamentals, entry points...",
+            placeholder="e.g. Candlestick patterns samjhao / P/E ratio kya bata raha hai?",
             key="sage_chat_q", label_visibility="collapsed")
     with chat_btn:
-        if st.button("Ask", key="sage_chat_send", type="primary",
+        if st.button("Ask SAGE", key="sage_chat_send", type="primary",
                      use_container_width=True):
             if chat_q.strip():
                 st.session_state.sage_chat_hist.append({"role":"user","content":chat_q})
-                with st.spinner("🧠 SAGE thinking..."):
+                with st.spinner("SAGE thinking..."):
                     reply = sage_chat_response(chat_q, analysis, parsed)
                 st.session_state.sage_chat_hist.append({"role":"ai","content":reply})
                 st.rerun()
