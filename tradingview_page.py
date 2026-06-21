@@ -92,7 +92,6 @@ def _fmt_price(p: float) -> str:
 
 def _to_tv_symbol(ticker: str) -> str:
     """Convert a resolved ticker to TradingView format."""
-    # Crypto: BTC -> BINANCE:BTCUSDT
     crypto_map = {
         "BTC":"BINANCE:BTCUSDT","ETH":"BINANCE:ETHUSDT","SOL":"BINANCE:SOLUSDT",
         "BNB":"BINANCE:BNBUSDT","XRP":"BINANCE:XRPUSDT","ADA":"BINANCE:ADAUSDT",
@@ -105,7 +104,6 @@ def _to_tv_symbol(ticker: str) -> str:
     base = ticker.replace(".NS","").replace(".BO","").replace("-USD","").replace("^","")
     if base in crypto_map:
         return crypto_map[base]
-    # Indian stocks: RELIANCE.NS -> NSE:RELIANCE
     if ".NS" in ticker:
         return f"NSE:{ticker.replace('.NS','')}"
     if ".BO" in ticker:
@@ -116,11 +114,9 @@ def _to_tv_symbol(ticker: str) -> str:
         return "NSE:NIFTYBANK"
     if "^BSESN" in ticker:
         return "BSE:SENSEX"
-    # US stocks: AAPL -> NASDAQ:AAPL (or NYSE)
     nyse_stocks = {"JPM","GS","WMT","DIS","KO","PEP","XOM","PFE","JNJ","V","MA","CSCO","BA","F","GM","ORCL"}
     if base in nyse_stocks:
         return f"NYSE:{base}"
-    # Default: NASDAQ for US
     if not ":" in ticker and "." not in ticker:
         return f"NASDAQ:{base}"
     return ticker
@@ -129,14 +125,12 @@ def _to_tv_symbol(ticker: str) -> str:
 def render_tradingview_page():
     is_fullscreen = st.session_state.get("tv_fullscreen", False)
 
-    # ── FULLSCREEN CSS — inject into parent via postMessage trick ──
+    # ── FULLSCREEN CSS ─────────────────────────────────────────────────────────
     if is_fullscreen:
         st.markdown("""<style>
-        /* NUCLEAR FULLSCREEN - hide EVERYTHING except chart */
         header[data-testid="stHeader"],
         footer,
         section[data-testid="stSidebar"],
-        section[data-testid="stSidebar"][aria-label="sidebar"],
         div[data-testid="stSidebarNav"],
         div[data-testid="stSidebarCollapseButton"],
         #MainMenu,
@@ -162,16 +156,9 @@ def render_tradingview_page():
             margin: 0 !important;
         }
         .stHorizontalBlock, .stVerticalBlock { gap:0 !important; }
-        iframe[title*="streamlit"],
-        iframe[title*="component"],
-        div[data-testid="stCustomComponentV1"] {
-            min-height: 95vh !important;
-            width: 100% !important;
-        }
-        .stButton > button { margin-bottom: 0 !important; }
         </style>""", unsafe_allow_html=True)
 
-    # ── PAGE HEADER (hide in fullscreen) ──────────────────────────────────────
+    # ── PAGE HEADER (hide in fullscreen) ─────────────────────────────────────
     if not is_fullscreen:
         st.markdown("""
         <div style="background:linear-gradient(135deg,#020609,#0a1628);
@@ -194,7 +181,7 @@ def render_tradingview_page():
         </div>
         """, unsafe_allow_html=True)
 
-    # ── QUICK SYMBOL BUTTONS ──────────────────────────────────────────────────
+    # ── QUICK SYMBOL BUTTONS ─────────────────────────────────────────────────
     if not is_fullscreen:
         st.markdown("**⚡ Quick Select:**")
         q_cols = st.columns(8)
@@ -210,7 +197,7 @@ def render_tradingview_page():
                     st.session_state.tv_symbol = tv_sym
                     st.rerun()
 
-    # ── CONTROLS ROW ──────────────────────────────────────────────────────────
+    # ── CONTROLS ROW ─────────────────────────────────────────────────────────
     cc1, cc2, cc3, cc4, cc5 = st.columns([3, 2, 2, 1, 1])
     with cc1:
         cur_sym = st.session_state.get("tv_symbol", "BINANCE:BTCUSDT")
@@ -221,7 +208,6 @@ def render_tradingview_page():
         )
         if custom_sym and custom_sym != cur_sym:
             _resolved = resolve_ticker(custom_sym)
-            # Convert resolved ticker to TradingView format if needed
             if _resolved != custom_sym:
                 _tv_format = _to_tv_symbol(_resolved)
                 st.session_state.tv_symbol = _tv_format
@@ -246,19 +232,8 @@ def render_tradingview_page():
                      help="Open AI Chat"):
             st.session_state.tv_chat_open = not st.session_state.get("tv_chat_open", False)
             st.rerun()
-        # Open in real TradingView as fallback (native fullscreen works there)
-        _tv_sym_now = st.session_state.get("tv_symbol", "BINANCE:BTCUSDT")
-        _tv_iv_now  = INTERVALS.get(interval, "D")
-        tv_link = f"https://www.tradingview.com/chart/?symbol={_tv_sym_now}&interval={_tv_iv_now}&theme=dark&style=1"
-        st.markdown(
-            f'<a href="{tv_link}" target="_blank" style="display:block;text-align:center;'
-            f'background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);'
-            f'border-radius:6px;padding:4px;color:#00d4ff;font-size:10px;font-weight:600;'
-            f'text-decoration:none;margin-top:3px;">Open in TradingView</a>',
-            unsafe_allow_html=True
-        )
 
-    # ── INDICATORS ROW ────────────────────────────────────────────────────────
+    # ── INDICATORS ROW ───────────────────────────────────────────────────────
     if not is_fullscreen:
         ind_list = ["MA", "EMA", "RSI", "MACD", "BB", "Volume", "VWAP", "ATR", "StochRSI", "CCI"]
         ind_defaults = {"MA", "Volume", "EMA"}
@@ -271,7 +246,7 @@ def render_tradingview_page():
     else:
         selected_inds = ["Volume"]
 
-    # ── BUILD TRADINGVIEW WIDGET ───────────────────────────────────────────────
+    # ── BUILD TRADINGVIEW WIDGET ──────────────────────────────────────────────
     symbol   = st.session_state.get("tv_symbol", "BINANCE:BTCUSDT")
     iv_val   = INTERVALS.get(interval, "D")
     tv_theme = "dark" if theme == "Dark" else "light"
@@ -293,84 +268,94 @@ def render_tradingview_page():
     }
     studies_json = "[" + ",".join(studies_map[s] for s in selected_inds if s in studies_map) + "]"
 
-    # Fullscreen = maximum viewport height
-    chart_height = 1000 if is_fullscreen else 600
+    # ── CHART HEIGHT — properly sized for fullscreen ──────────────────────────
+    # In fullscreen: use viewport-relative sizing via JS in the HTML
+    chart_height = 860 if is_fullscreen else 600
 
-    # Build enhanced TradingView HTML with internal fullscreen support
-    tv_html = f"""
-    <style>
-    * {{ margin:0;padding:0;box-sizing:border-box; }}
-    body {{ background:#020609; }}
-    .tv-wrap {{ border-radius:{'2px' if is_fullscreen else '12px'};overflow:hidden;
-      border:1px solid rgba(0,212,255,0.12);
-      box-shadow:0 0 40px rgba(0,212,255,0.05);
-      position:relative; }}
-    .tv-fs-overlay {{
-      position:absolute;top:8px;right:8px;z-index:9999;
-      display:flex;gap:6px;
+    # Build TradingView widget HTML — proper autosize with JS resize
+    tv_html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+html, body {{ width:100%; height:100%; background:#020609; overflow:hidden; }}
+.tv-container {{
+  width:100vw;
+  height:{'100vh' if is_fullscreen else str(chart_height) + 'px'};
+  position:relative;
+}}
+.tradingview-widget-container,
+.tradingview-widget-container__widget {{
+  width:100% !important;
+  height:100% !important;
+}}
+</style>
+</head>
+<body>
+<div class="tv-container" id="tv-main">
+  <div class="tradingview-widget-container">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript"
+      src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {{
+      "autosize": true,
+      "symbol": "{symbol}",
+      "interval": "{iv_val}",
+      "timezone": "Asia/Kolkata",
+      "theme": "{tv_theme}",
+      "style": "{chart_style}",
+      "locale": "en",
+      "toolbar_bg": "#020609",
+      "backgroundColor": "rgba(2,6,9,1)",
+      "gridColor": "rgba(0,212,255,0.03)",
+      "enable_publishing": false,
+      "allow_symbol_change": true,
+      "save_image": true,
+      "calendar": false,
+      "hide_side_toolbar": false,
+      "details": true,
+      "hotlist": false,
+      "withdateranges": true,
+      "studies": {studies_json},
+      "show_popup_button": false,
+      "support_host": "https://www.tradingview.com"
     }}
-    .tv-fs-btn {{
-      background:rgba(2,6,9,0.85);border:1px solid rgba(0,212,255,0.4);
-      border-radius:6px;padding:5px 10px;color:#00d4ff;
-      font-size:12px;font-weight:700;cursor:pointer;
-      backdrop-filter:blur(8px);
+    </script>
+  </div>
+</div>
+<script>
+// Force proper sizing after widget loads
+function fixSize() {{
+  var c = document.getElementById('tv-main');
+  if (c) {{
+    var wh = window.innerHeight;
+    var ww = window.innerWidth;
+    c.style.width  = ww + 'px';
+    c.style.height = {'wh + "px"' if is_fullscreen else str(chart_height) + ' + "px"'};
+    var widget = document.querySelector('.tradingview-widget-container__widget');
+    if (widget) {{
+      widget.style.width  = ww + 'px';
+      widget.style.height = {'wh + "px"' if is_fullscreen else str(chart_height) + ' + "px"'};
     }}
-    .tv-fs-btn:hover {{ background:rgba(0,212,255,0.15); }}
-    </style>
-    <div class="tv-wrap">
-    <div class="tradingview-widget-container" style="height:{chart_height}px;width:100%;">
-      <div class="tradingview-widget-container__widget"
-           style="height:calc(100% - 32px);width:100%;"></div>
-      <script type="text/javascript"
-        src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-      {{
-        "autosize": true,
-        "symbol": "{symbol}",
-        "interval": "{iv_val}",
-        "timezone": "Asia/Kolkata",
-        "theme": "{tv_theme}",
-        "style": "{chart_style}",
-        "locale": "en",
-        "toolbar_bg": "#020609",
-        "backgroundColor": "rgba(2,6,9,1)",
-        "gridColor": "rgba(0,212,255,0.03)",
-        "enable_publishing": false,
-        "allow_symbol_change": true,
-        "save_image": true,
-        "calendar": false,
-        "hide_side_toolbar": false,
-        "details": true,
-        "hotlist": false,
-        "withdateranges": true,
-        "studies": {studies_json},
-        "show_popup_button": true,
-        "popup_width": "1000",
-        "popup_height": "650",
-        "support_host": "https://www.tradingview.com"
-      }}
-      </script>
-    </div>
-    </div>
-    """
-    components.html(tv_html, height=chart_height + 40, scrolling=False)
+    var iframe = document.querySelector('iframe');
+    if (iframe) {{
+      iframe.style.width  = ww + 'px';
+      iframe.style.height = {'wh + "px"' if is_fullscreen else str(chart_height) + ' + "px"'};
+    }}
+  }}
+}}
+fixSize();
+window.addEventListener('resize', fixSize);
+setTimeout(fixSize, 500);
+setTimeout(fixSize, 1500);
+</script>
+</body>
+</html>"""
 
-    # ── FULLSCREEN CHAT OVERLAY ────────────────────────────────────────────────
-    _show_tv_chat = st.session_state.get("tv_chat_open", False)
-    # Floating chat toggle button
-    st.markdown(f"""
-    <div style="position:fixed;bottom:20px;right:20px;z-index:99999;">
-        <button onclick="window.parent.postMessage({{type:'streamlit:toggle_chat'}}, '*')"
-            style="background:linear-gradient(135deg,#00d4ff,#0066cc);
-            border:none;border-radius:50%;width:56px;height:56px;
-            cursor:pointer;box-shadow:0 4px 20px rgba(0,212,255,0.4);
-            font-size:24px;color:white;">{'✕' if _show_tv_chat else '💬'}</button>
-    </div>
-    """, unsafe_allow_html=True)
+    components.html(tv_html, height=chart_height + 10, scrolling=False)
 
-    if _show_tv_chat:
-        _render_tv_chat_overlay()
-
-    # ── FULLSCREEN: show minimal price strip only ──────────────────────────────
+    # ── FULLSCREEN: show minimal price strip + chat ───────────────────────────
     if is_fullscreen:
         yf_sym  = _get_yf_sym(symbol)
         period  = YF_PERIOD_MAP.get(interval, "1y")
@@ -385,12 +370,12 @@ def render_tradingview_page():
             arrow = "▲" if c >= pc else "▼"
             col_c = "#00ff88" if c >= pc else "#ff4466"
             st.markdown(
-                f"""<div style="display:flex;gap:20px;align-items:center;padding:8px 0;
-                font-family:monospace;">
-                <span style="font-weight:900;font-size:16px;color:#e6edf3;">{yf_sym}</span>
-                <span style="font-size:22px;font-weight:900;color:{col_c};">{_fmt_price(c)}</span>
+                f"""<div style="display:flex;gap:20px;align-items:center;padding:6px 0;
+                font-family:monospace;flex-wrap:wrap;">
+                <span style="font-weight:900;font-size:15px;color:#e6edf3;">{yf_sym}</span>
+                <span style="font-size:20px;font-weight:900;color:{col_c};">{_fmt_price(c)}</span>
                 <span style="color:{col_c};font-weight:700;">{arrow} {abs(chg_pct):.2f}%</span>
-                <span style="color:#8b949e;font-size:12px;">
+                <span style="color:#8b949e;font-size:11px;">
                   H:{_fmt_price(float(lat['High']))} &nbsp;
                   L:{_fmt_price(float(lat['Low']))} &nbsp;
                   O:{_fmt_price(float(lat['Open']))}
@@ -399,11 +384,20 @@ def render_tradingview_page():
                 unsafe_allow_html=True
             )
         st.markdown(
-            '<div style="font-size:10px;color:#8b949e;margin-top:4px;">'
+            '<div style="font-size:10px;color:#8b949e;">'
             '⚖️ Charts by TradingView · Educational only · Not investment advice</div>',
             unsafe_allow_html=True
         )
+
+        # Show chat overlay in fullscreen
+        if st.session_state.get("tv_chat_open", False):
+            _render_tv_chat_overlay()
+
         return  # Don't show full panel in fullscreen
+
+    # Show chat overlay in normal mode too
+    if st.session_state.get("tv_chat_open", False):
+        _render_tv_chat_overlay()
 
     # ══════════════════════════════════════════════════════════════════════════
     # LIVE OHLCV + CANDLE PRICE MOVEMENT PANEL
@@ -430,7 +424,6 @@ def render_tradingview_page():
     c  = float(latest["Close"])
     v  = float(latest["Volume"])
     pc = float(prev["Close"])
-    po = float(prev["Open"])
 
     chg     = c - pc
     chg_pct = (chg / pc * 100) if pc else 0
@@ -443,7 +436,7 @@ def render_tradingview_page():
     arrow   = "▲" if up else "▼"
     c_type  = "Bullish 🟢" if up else "Bearish 🔴"
 
-    # ── BIG PRICE DISPLAY ─────────────────────────────────────────────────────
+    # ── BIG PRICE DISPLAY ────────────────────────────────────────────────────
     st.markdown(f"""
     <div style="background:rgba(2,6,9,0.9);border:1px solid rgba(0,212,255,0.12);
     border-radius:12px;padding:16px 20px;margin-bottom:12px;">
@@ -509,7 +502,7 @@ def render_tradingview_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── CANDLE ANATOMY ────────────────────────────────────────────────────────
+    # ── CANDLE ANATOMY ───────────────────────────────────────────────────────
     st.markdown("**🕯️ Candle Anatomy & Price Movement Breakdown**")
     an1, an2, an3, an4, an5 = st.columns(5)
     an1.metric("📏 Full Range",   _fmt_price(candle_range),  help="High − Low")
@@ -520,7 +513,6 @@ def render_tradingview_page():
                f"{'+'if chg>=0 else ''}{_fmt_price(abs(chg))}",
                delta=f"{chg_pct:+.2f}%")
 
-    # Candle structure bar
     if candle_range > 0:
         body_pct  = round(body / candle_range * 100, 1)
         upper_pct = round(upper_wick / candle_range * 100, 1)
@@ -558,7 +550,7 @@ def render_tradingview_page():
         </div>
         """, unsafe_allow_html=True)
 
-    # ── PRICE MOVEMENT MINI CHART (last 30 candles) ───────────────────────────
+    # ── PRICE MOVEMENT MINI CHART ────────────────────────────────────────────
     st.markdown("**📈 Price Movement — Last 30 Candles**")
     plot_df = df.tail(30).copy()
     if not plot_df.empty:
@@ -572,7 +564,6 @@ def render_tradingview_page():
             decreasing_fillcolor="rgba(255,68,102,0.7)",
             name="Price",
         ))
-        # Highlight last candle
         last_row = plot_df.iloc[-1]
         fig_c.add_trace(go.Scatter(
             x=[plot_df.index[-1]],
@@ -595,7 +586,7 @@ def render_tradingview_page():
         )
         st.plotly_chart(fig_c, use_container_width=True)
 
-    # ── RECENT CANDLES TABLE ──────────────────────────────────────────────────
+    # ── RECENT CANDLES TABLE ─────────────────────────────────────────────────
     st.markdown("**📋 Recent Candles — Price Movement Table (Last 15)**")
     recent = df.tail(15).copy()
     if not recent.empty:
@@ -649,3 +640,151 @@ def render_tradingview_page():
     For educational purposes only · Not investment advice
     </div>
     """, unsafe_allow_html=True)
+
+
+# ── AI CHAT OVERLAY for TradingView ──────────────────────────────────────────
+def _render_tv_chat_overlay():
+    """TradingView-style chat panel — dark, minimal, inline below chart."""
+    st.markdown("""
+    <style>
+    .tv-chat-wrap {
+        background:#131722;
+        border:1px solid #2a2e39;
+        border-radius:0 0 8px 8px;
+        overflow:hidden;
+        font-family:'Trebuchet MS',sans-serif;
+    }
+    .tv-chat-topbar {
+        background:#1e222d;
+        padding:8px 14px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        border-bottom:1px solid #2a2e39;
+    }
+    .tv-chat-topbar-title {
+        color:#d1d4dc;
+        font-size:13px;
+        font-weight:600;
+        display:flex;
+        align-items:center;
+        gap:6px;
+    }
+    .tv-chat-scroll {
+        max-height:340px;
+        overflow-y:auto;
+        padding:10px 14px;
+        background:#131722;
+    }
+    .tv-chat-scroll::-webkit-scrollbar { width:5px; }
+    .tv-chat-scroll::-webkit-scrollbar-track { background:#1a1e2d; }
+    .tv-chat-scroll::-webkit-scrollbar-thumb {
+        background:#363a45; border-radius:3px;
+    }
+    .tv-msg-user {
+        background:#1e3a5f;
+        color:#d1d4dc;
+        border-radius:12px 12px 2px 12px;
+        padding:8px 12px;
+        margin:5px 0 5px 30%;
+        font-size:12.5px;
+        line-height:1.5;
+        border:1px solid #2962ff33;
+    }
+    .tv-msg-ai {
+        background:#1e222d;
+        color:#d1d4dc;
+        border-radius:2px 12px 12px 12px;
+        padding:8px 12px;
+        margin:5px 30% 5px 0;
+        font-size:12.5px;
+        line-height:1.5;
+        border:1px solid #2a2e3944;
+    }
+    .tv-msg-ai-name {
+        color:#2962ff;
+        font-size:10px;
+        font-weight:700;
+        margin-bottom:3px;
+    }
+    .tv-chat-input-area {
+        background:#1e222d;
+        border-top:1px solid #2a2e39;
+        padding:8px 10px;
+        display:flex;
+        gap:6px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="tv-chat-wrap">', unsafe_allow_html=True)
+
+    # Top bar
+    st.markdown("""
+    <div class="tv-chat-topbar">
+        <div class="tv-chat-topbar-title">
+            <span style="color:#2962ff;font-size:16px;">⬡</span>
+            <span>SAGE AI Chat</span>
+            <span style="background:#2962ff22;color:#2962ff;font-size:9px;padding:1px 6px;
+            border-radius:10px;border:1px solid #2962ff44;font-weight:700;">LIVE</span>
+        </div>
+        <span style="color:#6a6e7a;font-size:11px;">Ask anything about this chart</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Init chat
+    if "tv_chat_msgs" not in st.session_state:
+        st.session_state.tv_chat_msgs = [
+            {"role":"ai","content":"Namaste! Main SAGE AI hoon. Chart ke baare mein kuch bhi poochho — support/resistance, RSI, MACD, entry/exit, candlestick patterns. Kya jaanna chahte ho?"}
+        ]
+
+    # Messages
+    st.markdown('<div class="tv-chat-scroll">', unsafe_allow_html=True)
+    for msg in st.session_state.tv_chat_msgs[-30:]:
+        if msg["role"] == "user":
+            st.markdown(f'<div class="tv-msg-user">{msg["content"]}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="tv-msg-ai"><div class="tv-msg-ai-name">🤖 SAGE AI</div>{msg["content"]}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Quick chips
+    chips = ["Support/Resistance kya hai?","RSI explain karo","MACD signal dekho","Is stock mein entry kab?","Stop loss kahan?"]
+    chip_cols = st.columns(len(chips))
+    for i, chip in enumerate(chips):
+        with chip_cols[i]:
+            if st.button(chip[:18]+"…" if len(chip)>18 else chip,
+                         key=f"tv_chip_{i}", use_container_width=True,
+                         help=chip):
+                st.session_state.tv_chat_msgs.append({"role":"user","content":chip})
+                with st.spinner(""):
+                    try:
+                        from ai_chat_assistant import _smart_response
+                        reply = _smart_response(chip)
+                    except Exception:
+                        reply = "Technical analysis ke baare mein poochho — support/resistance, indicators, patterns!"
+                st.session_state.tv_chat_msgs.append({"role":"ai","content":reply})
+                st.rerun()
+
+    # Input row
+    ic1, ic2, ic3 = st.columns([6, 1, 1])
+    with ic1:
+        tv_q = st.text_input("Message SAGE...", placeholder="RSI kya bol raha hai? Support kahan hai?",
+                             key="tv_chat_q_main", label_visibility="collapsed")
+    with ic2:
+        if st.button("➤ Send", key="tv_chat_send_main", type="primary", use_container_width=True):
+            if tv_q.strip():
+                st.session_state.tv_chat_msgs.append({"role":"user","content":tv_q.strip()})
+                with st.spinner(""):
+                    try:
+                        from ai_chat_assistant import _smart_response
+                        reply = _smart_response(tv_q.strip())
+                    except Exception:
+                        reply = "Please try again!"
+                st.session_state.tv_chat_msgs.append({"role":"ai","content":reply})
+                st.rerun()
+    with ic3:
+        if st.button("🗑️ Clear", key="tv_chat_clear_main", use_container_width=True):
+            st.session_state.tv_chat_msgs = []
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)

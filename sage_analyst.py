@@ -1516,6 +1516,366 @@ User ke follow-up questions ka jawab do:
         return f"**{sym} Analysis:**\n\n{ei.get('what_to_watch','Monitor key levels for breakout or breakdown.')}\n\n{ei.get('indicator_education','Use multiple indicators for confirmation.')}\n\n⚠️ {chat.get('risk_disclaimer','Educational only. Not SEBI investment advice.')}"
 
 # ══════════════════════════════════════════════════════
+# 9b. TRADINGVIEW ADVANCED WIDGET BUILDER
+# ══════════════════════════════════════════════════════
+def _build_tv_advanced_widget(tv_sym: str, tf: str, height: int = 640,
+                               studies: list = None) -> str:
+    """Build a proper TradingView advanced chart widget HTML."""
+    if studies is None:
+        studies = ['"MAExp@tv-basicstudies"','"RSI@tv-basicstudies"',
+                   '"MACD@tv-basicstudies"','"Volume@tv-basicstudies"']
+    studies_json = "[" + ",".join(studies) + "]"
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+html, body {{ width:100%; height:100%; background:#131722; overflow:hidden; }}
+.tv-wrap {{ width:100%; height:{height}px; }}
+.tradingview-widget-container,
+.tradingview-widget-container__widget {{
+    width:100% !important;
+    height:100% !important;
+}}
+</style>
+</head>
+<body>
+<div class="tv-wrap">
+  <div class="tradingview-widget-container" style="height:{height}px;width:100%;">
+    <div class="tradingview-widget-container__widget"
+         style="height:{height}px;width:100%;"></div>
+    <script type="text/javascript"
+      src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {{
+      "autosize": true,
+      "symbol": "{tv_sym}",
+      "interval": "{tf}",
+      "timezone": "Asia/Kolkata",
+      "theme": "dark",
+      "style": "1",
+      "locale": "en",
+      "toolbar_bg": "#131722",
+      "backgroundColor": "rgba(19,23,34,1)",
+      "gridColor": "rgba(255,255,255,0.03)",
+      "enable_publishing": false,
+      "allow_symbol_change": true,
+      "save_image": true,
+      "calendar": false,
+      "hide_side_toolbar": false,
+      "details": false,
+      "hotlist": false,
+      "withdateranges": true,
+      "studies": {studies_json},
+      "show_popup_button": false,
+      "support_host": "https://www.tradingview.com"
+    }}
+    </script>
+  </div>
+</div>
+<script>
+function fixH() {{
+  var w = document.querySelector('.tradingview-widget-container__widget');
+  var c = document.querySelector('.tradingview-widget-container');
+  var f = document.querySelector('iframe');
+  if(w) w.style.height = '{height}px';
+  if(c) c.style.height = '{height}px';
+  if(f) f.style.height = '{height}px';
+}}
+fixH();
+setTimeout(fixH,800);
+setTimeout(fixH,2000);
+window.addEventListener('resize', fixH);
+</script>
+</body>
+</html>"""
+
+
+def _render_sage_tv_integrated(parsed: dict, analysis: dict):
+    """
+    Full TradingView + SAGE AI integrated view.
+    Shows TradingView advanced chart on the left,
+    AI analysis + TradingView-style chat on the right.
+    """
+    import streamlit.components.v1 as components
+
+    tv_sym = parsed.get("tv_sym","NSE:RELIANCE") if parsed else "NSE:RELIANCE"
+    tf     = parsed.get("timeframe","D") if parsed else "D"
+    tf_tv  = {"5":"5","15":"15","60":"60","240":"240","D":"D","W":"W","M":"M"}.get(tf,"D")
+    draw_cmds = analysis.get("draw_commands",{}) if analysis else {}
+    chat_exp  = analysis.get("chat_explanation",{}) if analysis else {}
+    voice_seg = analysis.get("voice_script",{}).get("segments",[]) if analysis else []
+
+    # Fullscreen CSS for integrated TV view
+    st.markdown("""<style>
+    /* Integrated TV mode — maximize space */
+    .block-container { padding-left:0.3rem !important; padding-right:0.3rem !important; }
+    </style>""", unsafe_allow_html=True)
+
+    # Header bar
+    bias       = draw_cmds.get("current_price_analysis",{}).get("bias","NEUTRAL")
+    bias_color = {"BULLISH":"#26a69a","BEARISH":"#ef5350","NEUTRAL":"#f0c040"}.get(bias,"#f0c040")
+    summary    = chat_exp.get("summary","SAGE Analysis")
+    sup_lvls   = draw_cmds.get("support_levels",[])
+    res_lvls   = draw_cmds.get("resistance_levels",[])
+    cur_price  = draw_cmds.get("current_price_analysis",{}).get("price",0)
+
+    st.markdown(f"""
+    <div style="background:#131722;border:1px solid #2a2e39;border-radius:8px 8px 0 0;
+    padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    margin-bottom:0;border-bottom:none;">
+      <span style="color:#2962ff;font-size:18px;">⬡</span>
+      <span style="color:#d1d4dc;font-weight:700;font-size:14px;">{parsed.get('display_name','') if parsed else ''}</span>
+      <span style="background:#1e3a5f;color:#2962ff;font-size:10px;padding:2px 8px;
+      border-radius:10px;border:1px solid #2962ff44;">{tf_tv} · SAGE</span>
+      <span style="background:{bias_color}22;color:{bias_color};font-size:11px;
+      padding:2px 10px;border-radius:10px;font-weight:700;border:1px solid {bias_color}44;
+      margin-left:auto;">{bias}</span>
+      <span style="color:#6a6e7a;font-size:11px;">{summary}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Two-column layout: chart left (2/3), panel right (1/3)
+    chart_col, panel_col = st.columns([2, 1], gap="small")
+
+    with chart_col:
+        # TradingView Advanced Chart — full width, 700px height
+        tv_html = _build_tv_advanced_widget(tv_sym, tf_tv, height=700)
+        components.html(tv_html, height=714, scrolling=False)
+
+        # SAGE analysis overlay as Pine-script-style caption below chart
+        if sup_lvls or res_lvls:
+            sup_str = " | ".join([f"🟢 {s['label'][:10]}: {s['price']}" for s in sup_lvls[:3]])
+            res_str = " | ".join([f"🔴 {r['label'][:10]}: {r['price']}" for r in res_lvls[:3]])
+            st.markdown(f"""
+            <div style="background:#1e222d;border:1px solid #2a2e39;border-radius:0 0 8px 8px;
+            padding:7px 14px;font-size:11.5px;font-family:monospace;
+            display:flex;gap:16px;flex-wrap:wrap;">
+              <span>{sup_str}</span>
+              <span>{res_str}</span>
+              {'<span style="color:#f0c040;">📍 Current: '+str(cur_price)+'</span>' if cur_price else ''}
+            </div>
+            """, unsafe_allow_html=True)
+
+    with panel_col:
+        # TradingView-style side panel
+        st.markdown("""<style>
+        .tv-panel { background:#131722; border:1px solid #2a2e39; border-radius:8px;
+                    height:fit-content; overflow:hidden; }
+        .tv-panel-tab { background:#1e222d; border-bottom:1px solid #2a2e39;
+                        padding:8px 0; display:flex; }
+        .tv-panel-tab-item { flex:1; text-align:center; color:#6a6e7a; font-size:11px;
+                             font-weight:600; cursor:pointer; padding:4px 0; }
+        .tv-panel-tab-item.active { color:#2962ff; border-bottom:2px solid #2962ff; }
+        .tv-panel-body { padding:10px 12px; }
+        .tv-level-row { display:flex; justify-content:space-between; align-items:center;
+                        padding:5px 0; border-bottom:1px solid #1e222d; font-size:12px; }
+        .tv-ind-row { display:flex; justify-content:space-between; padding:4px 0;
+                      font-size:11.5px; border-bottom:1px solid #1a1e2d; }
+        </style>""", unsafe_allow_html=True)
+
+        panel_tab = st.session_state.get("sage_tv_panel_tab", "analysis")
+
+        tab_btns = st.columns(3)
+        with tab_btns[0]:
+            if st.button("📊 Analysis", key="tvp_analysis",
+                         type="primary" if panel_tab == "analysis" else "secondary",
+                         use_container_width=True):
+                st.session_state.sage_tv_panel_tab = "analysis"
+                st.rerun()
+        with tab_btns[1]:
+            if st.button("📐 Levels", key="tvp_levels",
+                         type="primary" if panel_tab == "levels" else "secondary",
+                         use_container_width=True):
+                st.session_state.sage_tv_panel_tab = "levels"
+                st.rerun()
+        with tab_btns[2]:
+            if st.button("💬 Chat", key="tvp_chat",
+                         type="primary" if panel_tab == "chat" else "secondary",
+                         use_container_width=True):
+                st.session_state.sage_tv_panel_tab = "chat"
+                st.rerun()
+
+        # ANALYSIS TAB
+        if panel_tab == "analysis":
+            ind_sum = chat_exp.get("indicators_summary",{})
+            st.markdown('<div class="tv-panel">', unsafe_allow_html=True)
+
+            # Bias card
+            st.markdown(f"""
+            <div style="background:{bias_color}11;border:1px solid {bias_color}33;
+            border-radius:6px;padding:10px;margin-bottom:10px;text-align:center;">
+              <div style="font-size:18px;font-weight:900;color:{bias_color};">{bias}</div>
+              <div style="color:#6a6e7a;font-size:10px;margin-top:2px;">{summary[:40]}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Indicators
+            if ind_sum:
+                st.markdown('<div style="color:#d1d4dc;font-size:11px;font-weight:700;margin-bottom:6px;">INDICATORS</div>', unsafe_allow_html=True)
+                for key, val in ind_sum.items():
+                    ic = "#26a69a" if "bull" in str(val).lower() else ("#ef5350" if "bear" in str(val).lower() else "#6a6e7a")
+                    st.markdown(f"""<div class="tv-ind-row">
+                    <span style="color:#6a6e7a;">{key.upper()}</span>
+                    <span style="color:{ic};font-weight:600;">{str(val)[:28]}</span>
+                    </div>""", unsafe_allow_html=True)
+
+            # Voice script summary
+            if voice_seg:
+                st.markdown('<div style="color:#d1d4dc;font-size:11px;font-weight:700;margin:10px 0 6px 0;">SAGE SAYS</div>', unsafe_allow_html=True)
+                for seg in voice_seg[:3]:
+                    st.markdown(f"""<div style="background:#1a1e2d;border-radius:6px;padding:7px 9px;
+                    margin-bottom:5px;font-size:11px;color:#9598a1;line-height:1.5;">
+                    <span style="color:#2962ff;font-weight:700;">#{seg['segment']}</span> {seg['text'][:100]}…
+                    </div>""", unsafe_allow_html=True)
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # LEVELS TAB
+        elif panel_tab == "levels":
+            st.markdown('<div class="tv-panel"><div class="tv-panel-body">', unsafe_allow_html=True)
+
+            if sup_lvls:
+                st.markdown('<div style="color:#26a69a;font-size:11px;font-weight:700;margin-bottom:6px;">SUPPORT LEVELS</div>', unsafe_allow_html=True)
+                for s in sup_lvls[:4]:
+                    strength_color = "#26a69a" if s.get("strength","") == "STRONG" else "#1a5c4f"
+                    st.markdown(f"""
+                    <div class="tv-level-row">
+                      <span style="color:{strength_color};font-weight:600;">{s['label'][:20]}</span>
+                      <span style="color:#26a69a;font-family:monospace;font-weight:700;">{s['price']}</span>
+                    </div>
+                    <div style="color:#4a4e5a;font-size:10px;padding:2px 0 5px 0;">{s.get('reason','')[:60]}</div>
+                    """, unsafe_allow_html=True)
+
+            if res_lvls:
+                st.markdown('<div style="color:#ef5350;font-size:11px;font-weight:700;margin:10px 0 6px 0;">RESISTANCE LEVELS</div>', unsafe_allow_html=True)
+                for r in res_lvls[:4]:
+                    strength_color = "#ef5350" if r.get("strength","") == "STRONG" else "#7a2525"
+                    st.markdown(f"""
+                    <div class="tv-level-row">
+                      <span style="color:{strength_color};font-weight:600;">{r['label'][:20]}</span>
+                      <span style="color:#ef5350;font-family:monospace;font-weight:700;">{r['price']}</span>
+                    </div>
+                    <div style="color:#4a4e5a;font-size:10px;padding:2px 0 5px 0;">{r.get('reason','')[:60]}</div>
+                    """, unsafe_allow_html=True)
+
+            zones = draw_cmds.get("zones",[])
+            if zones:
+                st.markdown('<div style="color:#f0c040;font-size:11px;font-weight:700;margin:10px 0 6px 0;">ZONES</div>', unsafe_allow_html=True)
+                for z in zones[:3]:
+                    zc = "#26a69a" if z.get("type","") == "DEMAND_ZONE" else "#ef5350"
+                    st.markdown(f"""<div class="tv-level-row">
+                    <span style="color:{zc};">{z.get('label','Zone')[:20]}</span>
+                    <span style="color:{zc};font-size:10px;">{z.get('bottom','')} – {z.get('top','')}</span>
+                    </div>""", unsafe_allow_html=True)
+
+            st.markdown('</div></div>', unsafe_allow_html=True)
+
+        # CHAT TAB — TradingView style
+        elif panel_tab == "chat":
+            _render_sage_tv_chat(parsed, analysis)
+
+    # Educational insight below
+    insight = chat_exp.get("educational_insight",{})
+    if insight:
+        with st.expander("💡 Educational Insight", expanded=False):
+            for key, val in insight.items():
+                st.markdown(f"**{key.replace('_',' ').title()}:** {val}")
+
+    # Disclaimer
+    disc = chat_exp.get("risk_disclaimer","")
+    if disc:
+        st.markdown(f'<div style="background:#1a1500;border:1px solid #3d2e00;border-radius:6px;padding:7px 12px;font-size:11px;color:#8b949e;margin-top:8px;">{disc}</div>', unsafe_allow_html=True)
+
+    # Back button
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("⬅ Back to Analysis View", key="sage_tv_back"):
+        st.session_state.sage_tv_mode = False
+        st.rerun()
+
+
+def _render_sage_tv_chat(parsed: dict, analysis: dict):
+    """TradingView-style embedded chat for SAGE integrated view."""
+    chat_exp = analysis.get("chat_explanation",{}) if analysis else {}
+    sym_name = parsed.get("display_name","Stock") if parsed else "Stock"
+
+    st.markdown("""<style>
+    .sage-tv-chat-scroll {
+        max-height:340px; overflow-y:auto; background:#131722;
+        border:1px solid #2a2e39; border-radius:6px; padding:8px;
+        margin-bottom:8px;
+    }
+    .sage-tv-chat-scroll::-webkit-scrollbar { width:4px; }
+    .sage-tv-chat-scroll::-webkit-scrollbar-track { background:#1a1e2d; }
+    .sage-tv-chat-scroll::-webkit-scrollbar-thumb { background:#2a2e39; border-radius:2px; }
+    .sage-tv-msg-u {
+        background:#1e3a5f; color:#d1d4dc; border-radius:10px 10px 2px 10px;
+        padding:7px 10px; margin:4px 0 4px 20%; font-size:11.5px;
+        border-left:2px solid #2962ff;
+    }
+    .sage-tv-msg-a {
+        background:#1e222d; color:#d1d4dc; border-radius:2px 10px 10px 10px;
+        padding:7px 10px; margin:4px 20% 4px 0; font-size:11.5px;
+        border-left:2px solid #26a69a;
+    }
+    .sage-tv-ai-tag { color:#26a69a; font-size:9px; font-weight:700; margin-bottom:2px; }
+    </style>""", unsafe_allow_html=True)
+
+    # Init
+    if "sage_tv_chat" not in st.session_state:
+        st.session_state.sage_tv_chat = [
+            {"role":"ai","content":f"Namaste! Main {sym_name} ka analysis kar chuka hoon. Support/resistance levels, indicators, entry points — kuch bhi poochho."}
+        ]
+
+    # Messages
+    st.markdown('<div class="sage-tv-chat-scroll">', unsafe_allow_html=True)
+    for msg in st.session_state.sage_tv_chat[-25:]:
+        if msg["role"] == "user":
+            st.markdown(f'<div class="sage-tv-msg-u">{msg["content"]}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="sage-tv-msg-a"><div class="sage-tv-ai-tag">🤖 SAGE AI</div>{msg["content"]}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Follow-up chips
+    follow_ups = chat_exp.get("follow_up_prompts",[])
+    if follow_ups:
+        st.markdown('<div style="margin-bottom:6px;">', unsafe_allow_html=True)
+        fu_cols = st.columns(2)
+        for i, prompt in enumerate(follow_ups[:4]):
+            with fu_cols[i % 2]:
+                lbl = prompt[:22]+"…" if len(prompt)>22 else prompt
+                if st.button(lbl, key=f"sage_tv_fu_{i}",
+                             use_container_width=True, help=prompt):
+                    st.session_state.sage_tv_chat.append({"role":"user","content":prompt})
+                    with st.spinner(""):
+                        reply = sage_chat_response(prompt, analysis, parsed)
+                    st.session_state.sage_tv_chat.append({"role":"ai","content":reply})
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Input
+    qcol, scol = st.columns([4, 1])
+    with qcol:
+        tv_chat_q = st.text_input("Ask SAGE...",
+            placeholder="Entry kab lein? RSI kya bol raha hai?",
+            key="sage_tv_chat_input", label_visibility="collapsed")
+    with scol:
+        if st.button("Send", key="sage_tv_chat_send",
+                     type="primary", use_container_width=True):
+            if tv_chat_q.strip():
+                st.session_state.sage_tv_chat.append({"role":"user","content":tv_chat_q.strip()})
+                with st.spinner(""):
+                    reply = sage_chat_response(tv_chat_q.strip(), analysis, parsed)
+                st.session_state.sage_tv_chat.append({"role":"ai","content":reply})
+                st.rerun()
+
+    # Clear
+    if st.button("🗑️ Clear Chat", key="sage_tv_chat_clear", use_container_width=True):
+        st.session_state.sage_tv_chat = []
+        st.rerun()
+
+
+# ══════════════════════════════════════════════════════
 # 10. STATE INIT
 # ══════════════════════════════════════════════════════
 def _init_sage_state():
@@ -1528,6 +1888,9 @@ def _init_sage_state():
         "sage_input":       "",
         "sage_loading":     False,
         "sage_last_sym":    "",
+        "sage_tv_mode":     False,
+        "sage_tv_panel_tab": "analysis",
+        "sage_tv_chat":     [],
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -1707,10 +2070,32 @@ def render_sage_analyst():
         tv_sym = parsed.get("tv_sym","NSE:RELIANCE")
         tf_tv  = {"5":"5","15":"15","60":"60","240":"240","D":"D","W":"W","M":"M"}.get(
                   parsed.get("timeframe","D"),"D")
-        tv_html = f"""<div style="background:#020609;border-radius:10px;overflow:hidden;height:620px;">
-        <iframe src="https://www.tradingview.com/widgetbar-chart-only/?symbol={tv_sym}&interval={tf_tv}&theme=dark&style=1&locale=en&toolbar_bg=020609&hide_side_toolbar=false&allow_symbol_change=false&saveimage=false&calendar=false&hotlist=false&details=false&news=false"
-        width="100%" height="620" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>"""
-        components.html(tv_html, height=640, scrolling=False)
+        tv_html = _build_tv_advanced_widget(tv_sym, tf_tv)
+        components.html(tv_html, height=660, scrolling=False)
+
+    # ── CONNECT TO TRADINGVIEW BUTTON ─────────────────
+    tv_sym_for_btn = parsed.get("tv_sym","NSE:RELIANCE") if parsed else "NSE:RELIANCE"
+    tf_for_btn = parsed.get("timeframe","D") if parsed else "D"
+    tf_tv_for_btn = {"5":"5","15":"15","60":"60","240":"240","D":"D","W":"W","M":"M"}.get(tf_for_btn,"D")
+
+    _btncol1, _btncol2, _btncol3 = st.columns([2,2,3])
+    with _btncol1:
+        if st.button("📊 Connect to TradingView", key="sage_tv_connect",
+                     type="primary", use_container_width=True,
+                     help="TradingView mein AI-drawn analysis dekhein"):
+            st.session_state.sage_tv_mode = not st.session_state.get("sage_tv_mode", False)
+            st.rerun()
+    with _btncol2:
+        if st.button("🔄 New Analysis", key="sage_new_analysis",
+                     use_container_width=True):
+            st.session_state.sage_analysis = None
+            st.session_state.sage_tv_mode = False
+            st.rerun()
+
+    # ── TRADINGVIEW INTEGRATED MODE ─────────────────────
+    if st.session_state.get("sage_tv_mode", False):
+        _render_sage_tv_integrated(parsed, analysis)
+        return
 
     # Voice panel (full width below chart)
     if voice_seg:
