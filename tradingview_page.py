@@ -95,25 +95,43 @@ def render_tradingview_page():
     # ── FULLSCREEN CSS — inject into parent via postMessage trick ──
     if is_fullscreen:
         st.markdown("""<style>
-        /* Hide Streamlit chrome in fullscreen mode */
-        header[data-testid="stHeader"]          { display:none !important; }
-        footer                                   { display:none !important; }
-        section[data-testid="stSidebar"]         { display:none !important; }
-        div[data-testid="stSidebarNav"]          { display:none !important; }
-        #MainMenu                                { display:none !important; }
-        div[data-testid="stDecoration"]          { display:none !important; }
-        div[data-testid="stToolbar"]             { display:none !important; }
-        div[data-testid="stBottom"]              { display:none !important; }
-        .block-container {
-            padding-top: 0.3rem !important;
-            padding-left: 0.3rem !important;
-            padding-right: 0.3rem !important;
+        /* NUCLEAR FULLSCREEN - hide EVERYTHING except chart */
+        header[data-testid="stHeader"],
+        footer,
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"][aria-label="sidebar"],
+        div[data-testid="stSidebarNav"],
+        div[data-testid="stSidebarCollapseButton"],
+        #MainMenu,
+        div[data-testid="stDecoration"],
+        div[data-testid="stToolbar"],
+        div[data-testid="stBottom"],
+        div[data-testid="stStatusWidget"],
+        .stDeployButton,
+        button[kind="header"],
+        [data-testid="collapsedControl"],
+        [data-testid="expandedControl"],
+        .stSidebar,
+        [data-testid="stSidebarContent"] {
+            display:none !important; visibility:hidden !important;
+            opacity:0 !important; pointer-events:none !important;
+        }
+        .block-container, .main .block-container, section.main .block-container {
+            padding-top: 0.2rem !important;
+            padding-left: 0.2rem !important;
+            padding-right: 0.2rem !important;
             padding-bottom: 0 !important;
             max-width: 100vw !important;
+            margin: 0 !important;
         }
-        .main .block-container { max-width:100% !important; }
-        /* Expand iframe to fill viewport */
-        iframe[title*="streamlit_components"] { min-height:96vh !important; }
+        .stHorizontalBlock, .stVerticalBlock { gap:0 !important; }
+        iframe[title*="streamlit"],
+        iframe[title*="component"],
+        div[data-testid="stCustomComponentV1"] {
+            min-height: 95vh !important;
+            width: 100% !important;
+        }
+        .stButton > button { margin-bottom: 0 !important; }
         </style>""", unsafe_allow_html=True)
 
     # ── PAGE HEADER (hide in fullscreen) ──────────────────────────────────────
@@ -181,6 +199,15 @@ def render_tradingview_page():
         if st.button(fs_label, key="tv_fs_btn", use_container_width=True, type="primary"):
             st.session_state.tv_fullscreen = not is_fullscreen
             st.rerun()
+        # Open in real TradingView as fallback (native fullscreen works there)
+        tv_link = f"https://www.tradingview.com/chart/?symbol={symbol}&interval={iv_val}&theme=dark&style=1"
+        st.markdown(
+            f'<a href="{tv_link}" target="_blank" style="display:block;text-align:center;'
+            f'background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);'
+            f'border-radius:6px;padding:4px;color:#00d4ff;font-size:10px;font-weight:600;'
+            f'text-decoration:none;margin-top:3px;">Open in TradingView</a>',
+            unsafe_allow_html=True
+        )
 
     # ── INDICATORS ROW ────────────────────────────────────────────────────────
     if not is_fullscreen:
@@ -218,7 +245,7 @@ def render_tradingview_page():
     studies_json = "[" + ",".join(studies_map[s] for s in selected_inds if s in studies_map) + "]"
 
     # Fullscreen = maximum viewport height
-    chart_height = 960 if is_fullscreen else 590
+    chart_height = 1000 if is_fullscreen else 600
 
     # Build enhanced TradingView HTML with internal fullscreen support
     tv_html = f"""
@@ -263,6 +290,8 @@ def render_tradingview_page():
         "save_image": true,
         "calendar": false,
         "hide_side_toolbar": false,
+        "details": true,
+        "hotlist": false,
         "withdateranges": true,
         "studies": {studies_json},
         "show_popup_button": true,
@@ -274,7 +303,7 @@ def render_tradingview_page():
     </div>
     </div>
     """
-    components.html(tv_html, height=chart_height + 36, scrolling=False)
+    components.html(tv_html, height=chart_height + 40, scrolling=False)
 
     # ── FULLSCREEN: show minimal price strip only ──────────────────────────────
     if is_fullscreen:

@@ -268,6 +268,372 @@ def compute_indicators(df: pd.DataFrame) -> dict:
     }
 
 # ══════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════
+# 3b. CANDLESTICK PATTERN DETECTION
+# ══════════════════════════════════════════════════════
+def detect_candlestick_patterns(df: pd.DataFrame) -> list:
+    """Detect common candlestick patterns from last N candles."""
+    if df.empty or len(df) < 5:
+        return []
+
+    patterns = []
+    # Look at last 10 candles for pattern detection
+    recent = df.tail(10)
+
+    for i in range(len(recent)):
+        row = recent.iloc[i]
+        o, h, l, c = float(row["Open"]), float(row["High"]), float(row["Low"]), float(row["Close"])
+        body = abs(c - o)
+        upper_shadow = h - max(o, c)
+        lower_shadow = min(o, c) - l
+        total_range = h - l if h > l else 0.001
+        body_pct = (body / total_range) * 100 if total_range > 0 else 0
+        is_bull = c > o
+        is_bear = c < o
+
+        # Doji — open ≈ close, very small body
+        if body_pct < 10:
+            patterns.append({
+                "name": "Doji",
+                "type": "NEUTRAL",
+                "candle_index": i,
+                "description": "Market indecision — open and close nearly equal. Reversal possible.",
+                "action": "Wait for confirmation candle",
+                "color": "#f0c040",
+            })
+
+        # Hammer — small body, long lower shadow (>= 2x body), bullish
+        if lower_shadow > 2 * body and body > 0 and upper_shadow < body * 0.5:
+            patterns.append({
+                "name": "Hammer",
+                "type": "BULLISH",
+                "candle_index": i,
+                "description": "Long lower wick — buyers rejected lower prices. Reversal signal at support.",
+                "action": "Watch for bullish confirmation",
+                "color": "#10b981",
+            })
+
+        # Shooting Star — small body, long upper shadow, bearish
+        if upper_shadow > 2 * body and body > 0 and lower_shadow < body * 0.5:
+            patterns.append({
+                "name": "Shooting Star",
+                "type": "BEARISH",
+                "candle_index": i,
+                "description": "Long upper wick — sellers rejected higher prices. Reversal at resistance.",
+                "action": "Watch for bearish confirmation",
+                "color": "#ef4444",
+            })
+
+        # Bullish Engulfing — current green candle engulfs previous red
+        if i > 0:
+            prev = recent.iloc[i-1]
+            p_o, p_c = float(prev["Open"]), float(prev["Close"])
+            if p_c < p_o and c > o and c >= p_o and o <= p_c:
+                patterns.append({
+                    "name": "Bullish Engulfing",
+                    "type": "BULLISH",
+                    "candle_index": i,
+                    "description": "Green candle fully engulfs previous red — strong bullish reversal.",
+                    "action": "Potential buy signal with volume confirmation",
+                    "color": "#10b981",
+                })
+
+        # Bearish Engulfing — current red engulfs previous green
+        if i > 0:
+            prev = recent.iloc[i-1]
+            p_o, p_c = float(prev["Open"]), float(prev["Close"])
+            if p_c > p_o and c < o and c <= p_o and o >= p_c:
+                patterns.append({
+                    "name": "Bearish Engulfing",
+                    "type": "BEARISH",
+                    "candle_index": i,
+                    "description": "Red candle fully engulfs previous green — strong bearish reversal.",
+                    "action": "Potential sell signal with volume confirmation",
+                    "color": "#ef4444",
+                })
+
+        # Morning Star (3-candle pattern)
+        if i >= 2:
+            p1 = recent.iloc[i-2]
+            p2 = recent.iloc[i-1]
+            p1_bear = float(p1["Close"]) < float(p1["Open"])
+            p2_small = abs(float(p2["Close"]) - float(p2["Open"])) < (float(p1["High"]) - float(p1["Low"])) * 0.3
+            curr_bull = c > o and c > float(p1["Open"])
+            if p1_bear and p2_small and curr_bull:
+                patterns.append({
+                    "name": "Morning Star",
+                    "type": "BULLISH",
+                    "candle_index": i,
+                    "description": "3-candle bullish reversal: big red → small body → big green. Strong bottom signal.",
+                    "action": "Bullish reversal — consider long with SL below the low",
+                    "color": "#10b981",
+                })
+
+        # Evening Star (3-candle pattern)
+        if i >= 2:
+            p1 = recent.iloc[i-2]
+            p2 = recent.iloc[i-1]
+            p1_bull = float(p1["Close"]) > float(p1["Open"])
+            p2_small = abs(float(p2["Close"]) - float(p2["Open"])) < (float(p1["High"]) - float(p1["Low"])) * 0.3
+            curr_bear = c < o and c < float(p1["Open"])
+            if p1_bull and p2_small and curr_bear:
+                patterns.append({
+                    "name": "Evening Star",
+                    "type": "BEARISH",
+                    "candle_index": i,
+                    "description": "3-candle bearish reversal: big green → small body → big red. Strong top signal.",
+                    "action": "Bearish reversal — consider short with SL above the high",
+                    "color": "#ef4444",
+                })
+
+        # Marubozu — full body, no shadows
+        if body_pct > 90:
+            if is_bull:
+                patterns.append({
+                    "name": "Bullish Marubozu",
+                    "type": "BULLISH",
+                    "candle_index": i,
+                    "description": "Full green body, no wicks — strong buying pressure throughout.",
+                    "action": "Continuation of uptrend",
+                    "color": "#10b981",
+                })
+            elif is_bear:
+                patterns.append({
+                    "name": "Bearish Marubozu",
+                    "type": "BEARISH",
+                    "candle_index": i,
+                    "description": "Full red body, no wicks — strong selling pressure throughout.",
+                    "action": "Continuation of downtrend",
+                    "color": "#ef4444",
+                })
+
+        # Spinning Top — small body, long shadows both sides
+        if body_pct < 30 and upper_shadow > body and lower_shadow > body:
+            patterns.append({
+                "name": "Spinning Top",
+                "type": "NEUTRAL",
+                "candle_index": i,
+                "description": "Small body with long wicks both sides — indecision, trend may pause or reverse.",
+                "action": "Wait for direction confirmation",
+                "color": "#f0c040",
+            })
+
+    # Chart pattern detection (from last 30 candles)
+    last30 = df.tail(30)
+    if len(last30) >= 20:
+        highs = last30["High"].values
+        lows  = last30["Low"].values
+        closes = last30["Close"].values
+
+        # Double Top — two similar highs with a dip between
+        max_idx = list(highs).index(max(highs))
+        if max_idx > 5 and max_idx < len(highs) - 5:
+            left_high = max(highs[:max_idx])
+            right_high = max(highs[max_idx+1:])
+            if abs(left_high - right_high) / left_high < 0.02 and left_high > highs[max_idx] * 0.98:
+                patterns.append({
+                    "name": "Double Top (Potential)",
+                    "type": "BEARISH",
+                    "candle_index": -1,
+                    "description": "Two similar highs — bearish reversal pattern if confirmed.",
+                    "action": "Watch for neckline break",
+                    "color": "#ef4444",
+                })
+
+        # Double Bottom — two similar lows with a bump between
+        min_idx = list(lows).index(min(lows))
+        if min_idx > 5 and min_idx < len(lows) - 5:
+            left_low = min(lows[:min_idx])
+            right_low = min(lows[min_idx+1:])
+            if abs(left_low - right_low) / left_low < 0.02 and left_low < lows[min_idx] * 1.02:
+                patterns.append({
+                    "name": "Double Bottom (Potential)",
+                    "type": "BULLISH",
+                    "candle_index": -1,
+                    "description": "Two similar lows — bullish reversal pattern if confirmed.",
+                    "action": "Watch for neckline break",
+                    "color": "#10b981",
+                })
+
+        # Higher Highs + Higher Lows = Uptrend
+        if len(closes) >= 10:
+            hh = highs[-1] > highs[-5] and highs[-5] > highs[-10]
+            hl = lows[-1] > lows[-5] and lows[-5] > lows[-10]
+            if hh and hl:
+                patterns.append({
+                    "name": "Higher Highs + Higher Lows",
+                    "type": "BULLISH",
+                    "candle_index": -1,
+                    "description": "Classic uptrend structure — each peak and trough higher than previous.",
+                    "action": "Trend continuation — buy on dips",
+                    "color": "#10b981",
+                })
+
+            lh = highs[-1] < highs[-5] and highs[-5] < highs[-10]
+            ll = lows[-1] < lows[-5] and lows[-5] < lows[-10]
+            if lh and ll:
+                patterns.append({
+                    "name": "Lower Highs + Lower Lows",
+                    "type": "BEARISH",
+                    "candle_index": -1,
+                    "description": "Classic downtrend structure — each peak and trough lower than previous.",
+                    "action": "Trend continuation — sell on rallies",
+                    "color": "#ef4444",
+                })
+
+    # Deduplicate by name (keep latest)
+    seen = {}
+    for p in patterns:
+        seen[p["name"]] = p
+    return list(seen.values())[:8]
+
+
+# ══════════════════════════════════════════════════════
+# 3c. VWAP CALCULATION
+# ══════════════════════════════════════════════════════
+def compute_vwap(df: pd.DataFrame) -> float | None:
+    """Calculate VWAP (Volume Weighted Average Price)."""
+    if df.empty or "Volume" not in df.columns:
+        return None
+    typical_price = (df["High"] + df["Low"] + df["Close"]) / 3
+    vol = df["Volume"].replace(0, np.nan)
+    vwap = (typical_price * vol).sum() / vol.sum()
+    return round(float(vwap), 2) if not np.isnan(vwap) else None
+
+
+# ══════════════════════════════════════════════════════
+# 3d. FUNDAMENTAL DATA FETCHER
+# ══════════════════════════════════════════════════════
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_fundamentals(yf_sym: str) -> dict:
+    """Fetch fundamental data: P&L, Balance Sheet, Cash Flow, Ratios, Management."""
+    try:
+        ticker = yf.Ticker(yf_sym)
+        info = ticker.info or {}
+
+        # Income Statement (P&L)
+        income_stmt = {}
+        try:
+            inc = ticker.quarterly_income_stmt
+            if inc is not None and not inc.empty:
+                income_stmt = {
+                    "revenue": _safe_float(inc.loc["Total Revenue"].iloc[0]) if "Total Revenue" in inc.index else None,
+                    "net_income": _safe_float(inc.loc["Net Income"].iloc[0]) if "Net Income" in inc.index else None,
+                    "gross_profit": _safe_float(inc.loc["Gross Profit"].iloc[0]) if "Gross Profit" in inc.index else None,
+                    "operating_income": _safe_float(inc.loc["Operating Income"].iloc[0]) if "Operating Income" in inc.index else None,
+                    "eps": _safe_float(inc.loc["Diluted EPS"].iloc[0]) if "Diluted EPS" in inc.index else None,
+                }
+        except Exception:
+            pass
+
+        # Balance Sheet
+        balance_sheet = {}
+        try:
+            bs = ticker.quarterly_balance_sheet
+            if bs is not None and not bs.empty:
+                balance_sheet = {
+                    "total_assets": _safe_float(bs.loc["Total Assets"].iloc[0]) if "Total Assets" in bs.index else None,
+                    "total_liabilities": _safe_float(bs.loc["Total Liabilities Net Minority Interest"].iloc[0]) if "Total Liabilities Net Minority Interest" in bs.index else None,
+                    "total_debt": _safe_float(bs.loc["Total Debt"].iloc[0]) if "Total Debt" in bs.index else None,
+                    "total_equity": _safe_float(bs.loc["Stockholders Equity"].iloc[0]) if "Stockholders Equity" in bs.index else None,
+                    "cash": _safe_float(bs.loc["Cash And Cash Equivalents"].iloc[0]) if "Cash And Cash Equivalents" in bs.index else None,
+                }
+        except Exception:
+            pass
+
+        # Cash Flow
+        cash_flow = {}
+        try:
+            cf = ticker.quarterly_cashflow
+            if cf is not None and not cf.empty:
+                cash_flow = {
+                    "operating_cf": _safe_float(cf.loc["Operating Cash Flow"].iloc[0]) if "Operating Cash Flow" in cf.index else None,
+                    "free_cf": _safe_float(cf.loc["Free Cash Flow"].iloc[0]) if "Free Cash Flow" in cf.index else None,
+                    "capex": _safe_float(cf.loc["Capital Expenditure"].iloc[0]) if "Capital Expenditure" in cf.index else None,
+                    "dividends_paid": _safe_float(cf.loc["Cash Dividends Paid"].iloc[0]) if "Cash Dividends Paid" in cf.index else None,
+                }
+        except Exception:
+            pass
+
+        # Valuation Ratios
+        ratios = {
+            "pe_ratio": _safe_float(info.get("trailingPE")),
+            "forward_pe": _safe_float(info.get("forwardPE")),
+            "pb_ratio": _safe_float(info.get("priceToBook")),
+            "dividend_yield": _safe_float(info.get("dividendYield")),
+            "roe": _safe_float(info.get("returnOnEquity")),
+            "roa": _safe_float(info.get("returnOnAssets")),
+            "debt_to_equity": _safe_float(info.get("debtToEquity")),
+            "current_ratio": _safe_float(info.get("currentRatio")),
+            "profit_margin": _safe_float(info.get("profitMargins")),
+            "operating_margin": _safe_float(info.get("operatingMargins")),
+            "revenue_growth": _safe_float(info.get("revenueGrowth")),
+            "earnings_growth": _safe_float(info.get("earningsGrowth")),
+            "peg_ratio": _safe_float(info.get("pegRatio")),
+            "beta": _safe_float(info.get("beta")),
+            "ev_to_ebitda": _safe_float(info.get("enterpriseToEbitda")),
+            "market_cap": _safe_float(info.get("marketCap")),
+            "enterprise_value": _safe_float(info.get("enterpriseValue")),
+            "book_value": _safe_float(info.get("bookValue")),
+            "eps_ttm": _safe_float(info.get("trailingEps")),
+        }
+
+        # Management & Company Info
+        management = {
+            "sector": info.get("sector", "N/A"),
+            "industry": info.get("industry", "N/A"),
+            "full_name": info.get("longName", info.get("shortName", "N/A")),
+            "description": (info.get("longBusinessSummary", "")[:500] + "...") if info.get("longBusinessSummary") else "N/A",
+            "website": info.get("website", "N/A"),
+            "employees": _safe_float(info.get("fullTimeEmployees")),
+            "country": info.get("country", "N/A"),
+            "address": info.get("address1", "N/A"),
+            "officers": info.get("companyOfficers", [])[:3],
+        }
+
+        return {
+            "income_stmt": income_stmt,
+            "balance_sheet": balance_sheet,
+            "cash_flow": cash_flow,
+            "ratios": ratios,
+            "management": management,
+            "available": True,
+        }
+    except Exception:
+        return {"available": False}
+
+
+def _safe_float(val) -> float | None:
+    """Safely convert to float, return None if invalid."""
+    if val is None:
+        return None
+    try:
+        f = float(val)
+        if np.isnan(f) or np.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
+
+
+def _fmt_inr(val) -> str:
+    """Format large numbers in Indian style (Cr/L) or $ style."""
+    if val is None:
+        return "N/A"
+    if abs(val) >= 1e12:
+        return f"{val/1e12:.2f}T"
+    elif abs(val) >= 1e9:
+        return f"{val/1e9:.2f}B"
+    elif abs(val) >= 1e7:
+        return f"{val/1e7:.2f}Cr"
+    elif abs(val) >= 1e5:
+        return f"{val/1e5:.2f}L"
+    elif abs(val) >= 1e3:
+        return f"{val/1e3:.2f}K"
+    return f"{val:.2f}"
+
+
+
 # 4. AI ANALYSIS GENERATION (SAGE SYSTEM PROMPT)
 # ══════════════════════════════════════════════════════
 SAGE_SYSTEM = """Tu hai "SAGE Analyst" — FinSage ka AI Chart Analyst.
@@ -277,23 +643,34 @@ Tu HAMESHA valid JSON return karega — koi extra text nahi, sirf JSON.
 JSON mein yeh fields hongi:
 - symbol, timeframe, analysis_type
 - draw_commands: support_levels, resistance_levels, trendlines, indicators, zones, patterns, current_price_analysis
+- candlestick_patterns: detected patterns with name, type, description, action
+- fundamental_analysis: income_stmt, balance_sheet, cash_flow, valuation_ratios, management_quality, industry_analysis
 - voice_script: segments array (each with segment number, duration_seconds, text, draw_action)
-- chat_explanation: summary, bias, key_levels, indicators_summary, educational_insight, follow_up_prompts
+- chat_explanation: summary, bias, key_levels, indicators_summary, candlestick_summary, fundamental_summary, educational_insight, follow_up_prompts
 
 Rules:
-- Indian stocks: ₹ currency
+- Indian stocks: Rs currency (use "Rs" not the rupee symbol)
 - Hinglish voice script (Hindi + English mix)
 - Har level ka reason batao
+- Candlestick patterns explain karo: kya dikh raha hai, kya matlab hai
+- Fundamental analysis: P&L, Balance Sheet, Cash Flow, Valuation Ratios (P/E, P/B, ROE, D/E)
+- Management quality: sector, industry growth, company description
+- Economic factors: GDP, inflation, RBI rates ka asar
 - Educational tone — koi direct buy/sell tip nahi
 - Max 3 support + 3 resistance levels
 - Voice total 60-90 seconds
 - Disclaimer hamesha shamil karo"""
 
-def generate_ai_analysis(parsed: dict, indicators: dict) -> dict | None:
-    """Call Groq to generate SAGE analysis JSON."""
+def generate_ai_analysis(parsed: dict, indicators: dict,
+                             candlestick_patterns: list = None,
+                             vwap: float = None,
+                             fundamentals: dict = None) -> dict | None:
+    """Call Groq to generate SAGE analysis JSON with full technical + fundamental data."""
     sym  = parsed["tv_sym"] or parsed["display_name"]
     tf   = parsed["timeframe"]
     mode = parsed["mode"]
+    candlestick_patterns = candlestick_patterns or []
+    fundamentals = fundamentals or {}
 
     is_indian = ".NS" in (parsed.get("yf_sym","") or "") or "NSE:" in sym
     curr      = "₹" if is_indian else "$"
@@ -313,6 +690,67 @@ def generate_ai_analysis(parsed: dict, indicators: dict) -> dict | None:
     tf_label = {"5":"5 min","15":"15 min","60":"1 hour","240":"4 hour",
                 "D":"Daily","W":"Weekly","M":"Monthly"}.get(tf,"Daily")
 
+    # Build candlestick patterns text
+    cs_text = ""
+    if candlestick_patterns:
+        cs_text = "\nDETECTED CANDLESTICK PATTERNS:\n"
+        for p in candlestick_patterns[:6]:
+            cs_text += f"- {p['name']} ({p['type']}): {p.get('description','')}\n"
+    else:
+        cs_text = "\nDETECTED CANDLESTICK PATTERNS: None detected in recent candles\n"
+
+    # Build fundamental data text
+    fund_text = ""
+    if fundamentals and fundamentals.get("available"):
+        r = fundamentals.get("ratios", {})
+        mg = fundamentals.get("management", {})
+        inc = fundamentals.get("income_stmt", {})
+        bs = fundamentals.get("balance_sheet", {})
+        cf = fundamentals.get("cash_flow", {})
+        fund_text = f"""
+FUNDAMENTAL ANALYSIS DATA:
+Sector: {mg.get('sector','N/A')}
+Industry: {mg.get('industry','N/A')}
+Company: {mg.get('full_name','N/A')}
+
+VALUATION RATIOS:
+P/E Ratio: {r.get('pe_ratio','N/A')}
+Forward P/E: {r.get('forward_pe','N/A')}
+P/B Ratio: {r.get('pb_ratio','N/A')}
+Dividend Yield: {r.get('dividend_yield','N/A')}
+ROE: {r.get('roe','N/A')}
+ROA: {r.get('roa','N/A')}
+Debt to Equity: {r.get('debt_to_equity','N/A')}
+Profit Margin: {r.get('profit_margin','N/A')}
+Revenue Growth: {r.get('revenue_growth','N/A')}
+PEG Ratio: {r.get('peg_ratio','N/A')}
+Beta: {r.get('beta','N/A')}
+Market Cap: {r.get('market_cap','N/A')}
+
+INCOME STATEMENT (Quarterly):
+Revenue: {inc.get('revenue','N/A')}
+Net Income: {inc.get('net_income','N/A')}
+Gross Profit: {inc.get('gross_profit','N/A')}
+EPS: {inc.get('eps','N/A')}
+
+BALANCE SHEET:
+Total Assets: {bs.get('total_assets','N/A')}
+Total Debt: {bs.get('total_debt','N/A')}
+Total Equity: {bs.get('total_equity','N/A')}
+Cash: {bs.get('cash','N/A')}
+
+CASH FLOW:
+Operating CF: {cf.get('operating_cf','N/A')}
+Free CF: {cf.get('free_cf','N/A')}
+CapEx: {cf.get('capex','N/A')}
+
+COMPANY DESCRIPTION: {mg.get('description','N/A')[:200]}
+"""
+    else:
+        fund_text = "\nFUNDAMENTAL ANALYSIS: Data not available for this symbol\n"
+
+    vwap_text = f"\nVWAP: {curr}{vwap}\n" if vwap else "\nVWAP: N/A\n"
+
     prompt = f"""Analyze this stock and return COMPLETE valid JSON for SAGE Analyst:
 
 STOCK: {sym}
@@ -331,8 +769,12 @@ EMA 200: {curr}{ema200 or 'N/A'}
 MACD Histogram: {macd_h} ({'Bullish' if macd_h > 0 else 'Bearish'})
 Volume Ratio: {vol_r}x average
 5-day Change: {chg5}%
+VWAP: {vwap_text.strip()}
 Detected Supports: {supp}
 Detected Resistances: {res}
+
+{cs_text}
+{fund_text}
 
 Generate EXACT JSON with this structure (use real price data above):
 {{
@@ -435,8 +877,32 @@ Return ONLY valid JSON. No markdown, no explanations outside JSON."""
 # ══════════════════════════════════════════════════════
 # 5. RULE-BASED FALLBACK (no API key)
 # ══════════════════════════════════════════════════════
-def generate_rule_based_analysis(parsed: dict, ind: dict) -> dict:
-    """Generate analysis without AI when no API key."""
+def _build_fund_summary(fund: dict, curr: str) -> str:
+    """Build fundamental summary string from fund data."""
+    if not fund or not fund.get("available"):
+        return "Fundamental data not available for this symbol."
+    r = fund.get("ratios", {})
+    mg = fund.get("management", {})
+    parts = []
+    if r.get("pe_ratio"):
+        parts.append(f"P/E: {r['pe_ratio']:.1f}")
+    if r.get("pb_ratio"):
+        parts.append(f"P/B: {r['pb_ratio']:.1f}")
+    if r.get("roe"):
+        parts.append(f"ROE: {r['roe']*100:.1f}%")
+    if r.get("debt_to_equity"):
+        parts.append(f"D/E: {r['debt_to_equity']:.2f}")
+    if mg.get("sector"):
+        parts.append(f"Sector: {mg['sector']}")
+    return " | ".join(parts) if parts else "Fundamental data available but ratios not populated."
+
+def generate_rule_based_analysis(parsed: dict, ind: dict,
+                                 candlestick_patterns: list = None,
+                                 vwap: float = None,
+                                 fundamentals: dict = None) -> dict:
+    """Generate analysis without AI when no API key — includes patterns + fundamentals."""
+    candlestick_patterns = candlestick_patterns or []
+    fundamentals = fundamentals or {}
     sym    = parsed.get("tv_sym") or parsed.get("display_name","Stock")
     name   = parsed.get("display_name","Stock")
     tf_lbl = {"5":"5 min","15":"15 min","60":"1 hour","240":"4 hour",
@@ -563,14 +1029,23 @@ def generate_rule_based_analysis(parsed: dict, ind: dict) -> dict:
                 "Is stock mein entry kaise dhundhein?",
                 "Support level kyun important hai?",
                 "MACD ko aur detail mein samjhao",
-            ]
+                "Fundamental analysis dikhao",
+                "Industry aur sector analysis karo",
+            ],
+            "candlestick_summary": (
+                f"{len(candlestick_patterns)} patterns detected. "
+                + "; ".join(f"{p['name']} ({p['type']})" for p in candlestick_patterns[:3])
+                if candlestick_patterns else "No significant candlestick patterns in recent candles."
+            ),
+            "fundamental_summary": _build_fund_summary(fundamentals, curr),
         }
     }
 
 # ══════════════════════════════════════════════════════
 # 6. TRADINGVIEW LIGHTWEIGHT CHART WITH DRAWINGS
 # ══════════════════════════════════════════════════════
-def build_chart_html(parsed: dict, analysis: dict, ohlcv: pd.DataFrame) -> str:
+def build_chart_html(parsed: dict, analysis: dict, ohlcv: pd.DataFrame,
+                         candlestick_patterns: list = None, vwap: float = None) -> str:
     tv_sym    = parsed.get("tv_sym","BINANCE:BTCUSDT")
     tf        = parsed.get("timeframe","D")
     tf_tv     = {"5":"5","15":"15","60":"60","240":"240","D":"D","W":"W","M":"M"}.get(tf,"D")
@@ -717,6 +1192,9 @@ resLvls.forEach(function(r) {{
     axisLabelVisible: true, title: r.label || 'Resistance',
   }});
 }});
+
+// VWAP line
+{f"candleSeries.createPriceLine({{ price: {vwap}, color: '#fbbf24', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: true, title: 'VWAP' }});" if vwap else ""}
 
 // Current price line
 candleSeries.createPriceLine({{
@@ -937,10 +1415,22 @@ def sage_chat_response(question: str, analysis: dict, parsed: dict) -> str:
     ind   = chat.get("indicators_summary",{})
     levels= chat.get("key_levels",{})
 
+    # Build context with candlestick + fundamental data
+    cs_patterns = analysis.get("detected_candlestick_patterns", [])
+    fund_data = analysis.get("fundamentals", {})
+    cs_text = "; ".join(f"{p['name']} ({p['type']})" for p in cs_patterns[:5]) if cs_patterns else "None detected"
+    fund_text = ""
+    if fund_data and fund_data.get("available"):
+        r = fund_data.get("ratios", {})
+        mg = fund_data.get("management", {})
+        fund_text = f"Sector: {mg.get('sector','N/A')}, P/E: {r.get('pe_ratio','N/A')}, ROE: {r.get('roe','N/A')}, D/E: {r.get('debt_to_equity','N/A')}"
+
     system = f"""Tu SAGE Analyst hai. User ne {sym} ka analysis dekha:
 Bias: {bias}
 Key Levels: {json.dumps(levels)}
 Indicators: {json.dumps(ind)}
+Candlestick Patterns: {cs_text}
+Fundamental Data: {fund_text}
 Educational Insight: {json.dumps(chat.get('educational_insight',{}))}
 
 User ke follow-up questions ka jawab do:
@@ -948,6 +1438,10 @@ User ke follow-up questions ka jawab do:
 - Educational tone — koi direct buy/sell tip nahi
 - 100-200 words
 - Specific levels aur indicators reference karo
+- Candlestick patterns explain karo agar sawaal ho
+- Fundamental analysis (P/E, ROE, Balance Sheet) explain karo
+- Industry/sector analysis karo
+- Economic factors (GDP, inflation, RBI rates) ka asar batao
 - Har jawab mein ek educational insight do
 - Disclaimer add karo agar trading decision ki baat ho"""
 
@@ -961,7 +1455,32 @@ User ke follow-up questions ka jawab do:
 
     # Rule-based fallback
     q = question.lower()
-    if "support" in q or "support kyun" in q:
+    if "fundamental" in q or "balance sheet" in q or "p/e" in q or "pe ratio" in q or "valuation" in q:
+        fund_data = analysis.get("fundamentals", {})
+        if fund_data and fund_data.get("available"):
+            r = fund_data.get("ratios", {})
+            mg = fund_data.get("management", {})
+            return f"**Fundamental Analysis — {sym}**\n\n**Sector:** {mg.get('sector','N/A')}\n**Industry:** {mg.get('industry','N/A')}\n\n**Valuation Ratios:**\n- P/E: {r.get('pe_ratio','N/A')}\n- P/B: {r.get('pb_ratio','N/A')}\n- ROE: {r.get('roe','N/A')}\n- Debt/Equity: {r.get('debt_to_equity','N/A')}\n- Profit Margin: {r.get('profit_margin','N/A')}\n\nP/E ratio batata hai ki market company ki earnings ke liye kitna pay kar raha hai. Lower P/E = cheaper, but growth prospects bhi check karo.\n\n⚠️ Educational only. Apne advisor se consult karein."
+        return f"**Fundamental Analysis**\n\n{sym} ka fundamental data abhi available nahi hai. Yahoo Finance se fetch nahi ho paaya.\n\n⚠️ Educational only."
+    elif "candlestick" in q or "pattern" in q or "doji" in q or "hammer" in q or "engulfing" in q:
+        cs = analysis.get("detected_candlestick_patterns", [])
+        if cs:
+            names = ", ".join(f"{p['name']} ({p['type']})" for p in cs[:5])
+            return f"**Candlestick Patterns — {sym}**\n\nDetected patterns: {names}\n\nCandlestick patterns price action ki psychology dikhate hain. Har pattern ka apna matlab hai:\n- Doji = Indecision\n- Hammer = Bullish reversal at support\n- Engulfing = Strong reversal signal\n\nVolume ke saath confirm karo before acting.\n\n⚠️ Educational only."
+        return f"**Candlestick Patterns**\n\n{sym} mein abhi koi significant candlestick pattern detect nahi hua. Recent candles mein clear pattern nahi ban raha.\n\n⚠️ Educational only."
+    elif "industry" in q or "sector" in q:
+        fund_data = analysis.get("fundamentals", {})
+        mg = fund_data.get("management", {}) if fund_data else {}
+        sector = mg.get("sector", "N/A")
+        industry = mg.get("industry", "N/A")
+        return f"**Industry Analysis — {sym}**\n\n**Sector:** {sector}\n**Industry:** {industry}\n\nSector analysis important hai kyunki:\n1. Growing sector mein company ko grow karna aasaan hai\n2. Government policies ka asar padta hai (PLI scheme, FDI rules)\n3. Competition aur market share matter karta hai\n4. India mein {sector} sector ki growth rate monitor karo\n\n⚠️ Educational only."
+    elif "economic" in q or "gdp" in q or "inflation" in q or "rbi" in q or "interest rate" in q:
+        return f"**Economic Factors — {sym}**\n\nEconomic factors stock prices ko directly affect karte hain:\n\n1. **GDP Growth:** India GDP 6-7% grow kar raha hai — positive for equity markets\n2. **Inflation:** High inflation se RBI interest rates badhata hai — negative for stocks\n3. **RBI Rates:** High rates se borrowing cost badhti hai, company profits par asar padta hai\n4. **Global Factors:** US Fed rates, crude oil prices, geo-political tensions\n\n⚠️ Educational only. Economic factors long-term investing mein important hain."
+    elif "management" in q:
+        fund_data = analysis.get("fundamentals", {})
+        mg = fund_data.get("management", {}) if fund_data else {}
+        return f"**Management Quality — {sym}**\n\n**Company:** {mg.get('full_name','N/A')}\n**Sector:** {mg.get('sector','N/A')}\n\nManagement quality check karne ke points:\n1. **Experience:** Promoter aur CEO ka track record\n2. **Honesty:** Corporate governance, auditor reports\n3. **Alignment:** Promoter shareholding (% stake)\n4. **Execution:** Past promises vs deliverables\n5. **Transparency:** Quarterly results, disclosures\n\n⚠️ Educational only."
+    elif "support" in q or "support kyun" in q:
         ns = levels.get("strong_support","key level")
         return f"**Support level kyun important hai?**\n\nSupport {ns} par isliye important hai kyunki historically price yahan se bounce hua hai. Hazaron traders yeh level dekhte hain aur wahan buy orders lagate hain. Jab buyers ek saath active ho jaate hain, price support le leta hai.\n\n⚠️ Educational only. Apne advisor se consult karein."
     elif "entry" in q:
@@ -1090,25 +1609,47 @@ def render_sage_analyst():
             # Fetch real OHLCV
             ohlcv = pd.DataFrame()
             ind   = {}
+            cs_patterns = []
+            vwap_val = None
+            fund_data = {}
             if parsed.get("yf_sym"):
                 ohlcv = fetch_ohlcv(parsed["yf_sym"], parsed["timeframe"])
                 if not ohlcv.empty:
                     ind = compute_indicators(ohlcv)
+                    cs_patterns = detect_candlestick_patterns(ohlcv)
+                    vwap_val = compute_vwap(ohlcv)
+                    # Fetch fundamentals for stocks (not crypto/indices)
+                    yf_s = parsed["yf_sym"]
+                    if not yf_s.startswith("^") and ".NS" in yf_s or ".BO" in yf_s or (yf_s.isupper() and len(yf_s) <= 6 and "." not in yf_s and "-" not in yf_s):
+                        fund_data = fetch_fundamentals(yf_s)
 
             # Try AI analysis first
             analysis = None
             if _groq_key() and ind:
-                analysis = generate_ai_analysis(parsed, ind)
+                analysis = generate_ai_analysis(parsed, ind,
+                    candlestick_patterns=cs_patterns,
+                    vwap=vwap_val,
+                    fundamentals=fund_data)
 
             # Fallback
             if not analysis and ind:
-                analysis = generate_rule_based_analysis(parsed, ind)
+                analysis = generate_rule_based_analysis(parsed, ind,
+                    candlestick_patterns=cs_patterns,
+                    vwap=vwap_val,
+                    fundamentals=fund_data)
             elif not analysis:
-                # No data, no AI — minimal fallback
                 parsed["tv_sym"] = parsed.get("tv_sym") or "NSE:RELIANCE"
                 parsed["display_name"] = parsed.get("display_name") or user_input.title()
                 ind = {"price":0,"rsi":50,"trend":"SIDEWAYS","ema20":0,"supports":[],"resistances":[],"vol_ratio":1.0,"macd_hist":0}
-                analysis = generate_rule_based_analysis(parsed, ind)
+                analysis = generate_rule_based_analysis(parsed, ind,
+                    candlestick_patterns=cs_patterns,
+                    vwap=vwap_val,
+                    fundamentals=fund_data)
+
+            # Attach detected patterns & fundamentals to analysis for display
+            analysis["detected_candlestick_patterns"] = cs_patterns
+            analysis["fundamentals"] = fund_data
+            analysis["vwap"] = vwap_val
 
             st.session_state.sage_analysis   = analysis
             st.session_state.sage_parsed     = parsed
@@ -1139,7 +1680,9 @@ def render_sage_analyst():
 
     with col_chart:
         if ohlcv is not None and not (ohlcv.empty if hasattr(ohlcv,'empty') else True):
-            chart_html = build_chart_html(parsed, analysis, ohlcv)
+            chart_html = build_chart_html(parsed, analysis, ohlcv,
+                candlestick_patterns=analysis.get("detected_candlestick_patterns",[]),
+                vwap=analysis.get("vwap"))
             components.html(chart_html, height=540, scrolling=False)
         else:
             # Fallback to TradingView embed
@@ -1198,6 +1741,27 @@ def render_sage_analyst():
                 border:1px solid {color}33;">{key.upper()}: {str(val)[:40]}</span>""",
                 unsafe_allow_html=True)
 
+        # Candlestick Summary
+        cs_sum = chat_exp.get("candlestick_summary", "")
+        detected_cs = analysis.get("detected_candlestick_patterns", [])
+        if detected_cs:
+            st.write("")
+            st.markdown("**🕯️ Candlestick Patterns**")
+            for p in detected_cs[:4]:
+                ptype = p.get("type","NEUTRAL")
+                pcolor = {"BULLISH":"#10b981","BEARISH":"#ef4444","NEUTRAL":"#f0c040"}.get(ptype,"#8b949e")
+                st.markdown(f"""<span class="sage-indicator-chip"
+                style="background:{pcolor}1a;color:{pcolor};border:1px solid {pcolor}33;">
+                {p['name']} ({ptype})</span>""", unsafe_allow_html=True)
+
+        # Fundamental Summary
+        fund_sum = chat_exp.get("fundamental_summary", "")
+        if fund_sum and fund_sum != "Fundamental data not available for this symbol.":
+            st.write("")
+            st.markdown("**📊 Fundamentals**")
+            st.markdown(f'<div class="sage-insight" style="font-size:0.75rem;">{fund_sum}</div>',
+                       unsafe_allow_html=True)
+
         # Educational Insight
         insight = chat_exp.get("educational_insight",{})
         if insight:
@@ -1213,8 +1777,120 @@ def render_sage_analyst():
             st.markdown(f'<div class="sage-disclaimer">{disc}</div>',
                        unsafe_allow_html=True)
 
+    # ── CANDLESTICK PATTERNS SECTION ───────────────────
+    detected_patterns = analysis.get("detected_candlestick_patterns", [])
+    if detected_patterns:
+        st.markdown("---")
+        st.markdown("### 🕯️ Candlestick Patterns Detected")
+        cs_cols = st.columns(min(4, len(detected_patterns)))
+        for i, p in enumerate(detected_patterns[:8]):
+            with cs_cols[i % len(cs_cols)]:
+                ptype = p.get("type", "NEUTRAL")
+                bg = {"BULLISH":"rgba(16,185,129,0.08)","BEARISH":"rgba(239,68,68,0.08)","NEUTRAL":"rgba(240,196,64,0.08)"}.get(ptype, "rgba(255,255,255,0.05)")
+                border = {"BULLISH":"rgba(16,185,129,0.3)","BEARISH":"rgba(239,68,68,0.3)","NEUTRAL":"rgba(240,196,64,0.3)"}.get(ptype, "rgba(255,255,255,0.1)")
+                emoji = {"BULLISH":"🟢","BEARISH":"🔴","NEUTRAL":"🟡"}.get(ptype, "⚪")
+                st.markdown(f"""<div style="background:{bg};border:1px solid {border};
+                border-radius:8px;padding:10px;margin:4px 0;">
+                <div style="font-weight:700;font-size:0.85rem;color:{p.get('color','#00d4ff')};">
+                {emoji} {p['name']}</div>
+                <div style="font-size:0.72rem;color:#8b949e;margin:4px 0;">
+                {p.get('description','')}</div>
+                <div style="font-size:0.72rem;color:#4a9eff;font-weight:600;">
+                → {p.get('action','')}</div>
+                </div>""", unsafe_allow_html=True)
+
+    # ── FUNDAMENTAL ANALYSIS SECTION ─────────────────────
+    fund_data = analysis.get("fundamentals", {})
+    if fund_data and fund_data.get("available"):
+        st.markdown("---")
+        st.markdown("### 📊 Fundamental Analysis")
+
+        mg = fund_data.get("management", {})
+        ratios = fund_data.get("ratios", {})
+        inc = fund_data.get("income_stmt", {})
+        bs = fund_data.get("balance_sheet", {})
+        cf = fund_data.get("cash_flow", {})
+
+        is_indian = ".NS" in (parsed.get("yf_sym","") or "") or ".BO" in (parsed.get("yf_sym","") or "")
+        curr_sym = "Rs" if is_indian else "$"
+
+        # Company info
+        if mg.get("full_name") and mg.get("full_name") != "N/A":
+            st.markdown(f"""<div class="sage-card">
+            <div style="font-weight:700;color:#00d4ff;font-size:0.9rem;">{mg.get('full_name','')}</div>
+            <div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">
+            {mg.get('sector','N/A')} · {mg.get('industry','N/A')} · {mg.get('country','N/A')}
+            </div>
+            <div style="font-size:0.76rem;color:#b0cce0;margin-top:6px;line-height:1.6;">
+            {mg.get('description','N/A')[:300]}
+            </div></div>""", unsafe_allow_html=True)
+
+        # Valuation Ratios
+        if ratios:
+            st.markdown("**🔑 Valuation Ratios**")
+            r_cols = st.columns(4)
+            ratio_items = [
+                ("P/E Ratio", ratios.get("pe_ratio"), "Lower = cheaper"),
+                ("Forward P/E", ratios.get("forward_pe"), "Future earnings P/E"),
+                ("P/B Ratio", ratios.get("pb_ratio"), "Price to Book"),
+                ("Dividend Yield", ratios.get("dividend_yield"), "Annual dividend %"),
+                ("ROE", ratios.get("roe"), "Return on Equity"),
+                ("ROA", ratios.get("roa"), "Return on Assets"),
+                ("Debt/Equity", ratios.get("debt_to_equity"), "Lower = safer"),
+                ("Profit Margin", ratios.get("profit_margin"), "Net profit %"),
+                ("Revenue Growth", ratios.get("revenue_growth"), "YoY growth"),
+                ("PEG Ratio", ratios.get("peg_ratio"), "P/E adjusted for growth"),
+                ("Beta", ratios.get("beta"), "Volatility vs market"),
+                ("Market Cap", ratios.get("market_cap"), "Company size"),
+            ]
+            for i, (label, val, hint) in enumerate(ratio_items):
+                with r_cols[i % 4]:
+                    if val is not None:
+                        if "yield" in label.lower() or "margin" in label.lower() or "growth" in label.lower() or "roe" in label.lower() or "roa" in label.lower():
+                            display = f"{val*100:.1f}%" if abs(val) < 100 else f"{val:.2f}"
+                        elif "cap" in label.lower() or "market" in label.lower():
+                            display = _fmt_inr(val)
+                        else:
+                            display = f"{val:.2f}"
+                        st.metric(label, display, help=hint)
+
+        # Financial Statements in expanders
+        col_fs1, col_fs2, col_fs3 = st.columns(3)
+        with col_fs1:
+            with st.expander("📋 P&L Statement"):
+                if inc:
+                    for k, v in inc.items():
+                        if v is not None:
+                            st.markdown(f"**{k.replace('_',' ').title()}:** {curr_sym}{_fmt_inr(v)}")
+                else:
+                    st.info("P&L data not available")
+        with col_fs2:
+            with st.expander("🏛️ Balance Sheet"):
+                if bs:
+                    for k, v in bs.items():
+                        if v is not None:
+                            st.markdown(f"**{k.replace('_',' ').title()}:** {curr_sym}{_fmt_inr(v)}")
+                else:
+                    st.info("Balance sheet not available")
+        with col_fs3:
+            with st.expander("💵 Cash Flow"):
+                if cf:
+                    for k, v in cf.items():
+                        if v is not None:
+                            st.markdown(f"**{k.replace('_',' ').title()}:** {curr_sym}{_fmt_inr(v)}")
+                else:
+                    st.info("Cash flow data not available")
+
+        # Industry Analysis
+        if mg.get("sector") and mg.get("sector") != "N/A":
+            st.markdown(f"""<div class="sage-insight">
+            <b>🏢 Industry Analysis:</b> {mg.get('sector','N/A')} — {mg.get('industry','N/A')}.
+            Sector performance aur industry trends company ke growth ko directly affect karte hain.
+            India mein {mg.get('sector','')} sector ka growth rate aur government policies monitor karo.
+            </div>""", unsafe_allow_html=True)
+
     # ── Raw JSON Expander ──────────────────────────────
-    with st.expander("🔢 View Raw Analysis JSON (for developers)"):
+    with st.expander("View Raw Analysis JSON (for developers)"):
         st.json(analysis)
 
     # ── SAGE CHAT ──────────────────────────────────────
@@ -1224,8 +1900,8 @@ def render_sage_analyst():
     # Follow-up prompts
     follow_ups = chat_exp.get("follow_up_prompts",[])
     if follow_ups:
-        fu_cols = st.columns(min(4, len(follow_ups)))
-        for i, prompt in enumerate(follow_ups[:4]):
+        fu_cols = st.columns(min(3, len(follow_ups)))
+        for i, prompt in enumerate(follow_ups[:6]):
             with fu_cols[i]:
                 if st.button(prompt[:30]+"..." if len(prompt)>30 else prompt,
                              key=f"sage_fu_{i}", use_container_width=True):
