@@ -11,7 +11,7 @@ import os
 import re
 from datetime import datetime
 
-LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg"
+LOGO_URL = "https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg"
 
 # ── Timeframe-based analysis rules ──────────────────────────────────────────────
 TIMEFRAME_PROFILES = {

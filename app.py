@@ -58,7 +58,12 @@ button[kind="header"],.st-emotion-cache-czk5ss,
 { display:none !important; visibility:hidden !important; }
 
 /* ════════════════════════════════════════════
-   BASE — DEEP SPACE OBSIDIAN
+   BASE — MIDNIGHT PROFESSIONAL DARK
+   Primary: #050d1f (Midnight Navy)
+   Accent:  #00d4ff (Electric Teal/Cyan)
+   Success: #00c896 (Mint Green — Profit)
+   Alert:   #e05c6e (Muted Red — Loss/Sell)
+   Gold:    #ffd700 (Premium Accent)
 ════════════════════════════════════════════ */
 .stApp {
     background: #020609 !important;
@@ -675,7 +680,9 @@ def render_onboarding():
     # Logo
     st.markdown("""
     <div class="ob-logo">
-        <div class="ob-logo-name">FinsageAI</div>
+        <img src="https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg" style="height:52px;border-radius:10px;
+        object-fit:contain;filter:drop-shadow(0 0 12px rgba(0,212,255,0.4));
+        margin-bottom:8px;">
         <div class="ob-logo-tag">STOCK · CRYPTO · FOREX · AI-POWERED</div>
     </div>""", unsafe_allow_html=True)
 
@@ -754,8 +761,8 @@ with nb_left:
     st.markdown("""
     <div class="stox-navbar" style="display:flex;align-items:center;gap:1rem;">
         <div style="position:relative;">
-            <img src="https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg"
-                 style="height:48px;width:48px;border-radius:12px;object-fit:cover;
+            <img src="https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg"
+                 style="height:44px;border-radius:10px;object-fit:contain;
                  box-shadow:0 0 20px rgba(0,212,255,0.4),0 0 40px rgba(0,212,255,0.1);
                  border:1px solid rgba(0,212,255,0.3);">
             <div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;
@@ -763,7 +770,7 @@ with nb_left:
             box-shadow:0 0 6px rgba(0,255,136,0.8);animation:livePulse 1.2s infinite;"></div>
         </div>
         <div>
-            <div class="stox-brand">FinsageAI</div>
+            <!-- logo already contains brand text -->
             <div class="stox-tagline">STOCK &middot; CRYPTO &middot; MEME COIN ANALYSIS</div>
         </div>
         <div style="margin-left:0.5rem;display:flex;flex-direction:column;gap:0.25rem;">
@@ -789,30 +796,44 @@ with nb_right:
         ⚡ MENU
         </div>""", unsafe_allow_html=True)
 
-        all_pages = [
-            ("🤖 AI Assistant",       "🤖 AI Assistant",       "Ask any trading question"),
-            ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        "AI Chart Analysis + Voice + Drawing"),
-            ("🔬 Pro Analyser",       "🔬 Pro Analyser",        "10 deep analysis modules"),
-            ("📈 TradingView Charts", "📈 TradingView",         "Live candlestick charts"),
-            ("📸 Chart Analyzer",     "📸 Chart Analyzer",      "Upload & analyze screenshots"),
-            ("⭐ Community",          "⭐ Community",            "Rate & share real trades"),
-            ("🧠 Advanced Intel",     "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
-            ("🛡️ Risk Engine",         "🛡️ Risk Engine",         "CRO-level capital protection"),
-            ("📡 Adv. Analyzer",      "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
-            ("🎓 Academy",             "🎓 Academy",             "AI Trading School — Learn, Quiz, Earn Badges"),
-            ("📚 Learn Trading",      "📚 Learn Trading",       "AI-powered beginner→advanced trading course"),
-            ("📖 Marketplace",         "📖 Marketplace",         "Ebooks, Courses & Video Series — Buy/Sell with 0% commission"),
-            ("🔍 Screener",            "🔍 Screener",             "Filter NSE + US + Crypto by signals"),
-            ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on real history"),
-            ("⚙️ Options Greeks",       "⚙️ Options Greeks",       "Delta Gamma Theta Vega + IV Rank"),
-
-
+        # ── GROUPED NAVIGATION ────────────────────────────────────────────────
+        nav_groups = [
+            ("📊 CHARTS & ANALYSIS", [
+                ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        "AI Analysis + Voice + Drawing"),
+                ("📈 TradingView",          "📈 TradingView",         "Live candlestick charts"),
+                ("🔬 Pro Analyser",        "🔬 Pro Analyser",        "10 deep analysis modules"),
+                ("🧠 Advanced Intel",      "🧠 Advanced Intel",      "Sentiment, Whale, On-chain"),
+            ]),
+            ("🤖 AI TOOLS", [
+                ("🤖 AI Assistant",        "🤖 AI Assistant",        "Ask any trading question"),
+                ("📸 Chart Analyzer",      "📸 Chart Analyzer",      "Upload & analyze screenshots"),
+                ("📡 Adv. Analyzer",       "📡 Adv. Analyzer",       "10 indicators + Groq AI signals"),
+                ("🛡️ Risk Engine",          "🛡️ Risk Engine",         "Capital protection"),
+            ]),
+            ("📚 LEARN & EARN", [
+                ("🎓 Academy",             "🎓 Academy",             "AI Trading School"),
+                ("📚 Learn Trading",       "📚 Learn Trading",       "Course: Beginner → Advanced"),
+                ("📖 Marketplace",         "📖 Marketplace",         "Ebooks, Courses — 0% commission"),
+            ]),
+            ("🛠️ TOOLS", [
+                ("🔍 Screener",            "🔍 Screener",             "Filter NSE + Crypto by signals"),
+                ("📊 Backtester",          "📊 Backtester",           "Test RSI/MACD/EMA on history"),
+                ("⚙️ Options Greeks",      "⚙️ Options Greeks",       "Delta Gamma Theta Vega"),
+                ("⭐ Community",           "⭐ Community",            "Rate & share real trades"),
+            ]),
         ]
-        for label, page_key, desc in all_pages:
-            st.caption(desc)
-            if st.button(label, key=f"nav_{page_key}", use_container_width=True):
-                st.session_state.active_page = page_key
-                st.rerun()
+        for group_label, pages in nav_groups:
+            st.markdown(
+                f'''<div style="font-size:0.6rem;font-weight:800;color:#4a9eff;
+                text-transform:uppercase;letter-spacing:0.12em;margin:10px 0 4px;
+                padding:4px 6px;background:rgba(74,158,255,0.06);border-radius:4px;
+                border-left:2px solid rgba(74,158,255,0.4);">{group_label}</div>''',
+                unsafe_allow_html=True)
+            for label, page_key, desc in pages:
+                st.caption(desc)
+                if st.button(label, key=f"nav_{page_key}", use_container_width=True):
+                    st.session_state.active_page = page_key
+                    st.rerun()
 
         if user:
             st.markdown("---")

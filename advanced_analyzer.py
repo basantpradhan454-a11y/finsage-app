@@ -481,10 +481,11 @@ def render_advanced_analyzer():
     # ── Header ────────────────────────────────────────────────────────────────
     st.markdown(f"""
     <div style="background:linear-gradient(135deg,rgba(2,6,9,0.97),rgba(5,0,20,0.95));
-    border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:1.2rem 1.5rem;margin-bottom:1rem;">
+    border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:1.2rem 1.5rem;margin-bottom:1rem;
+    box-shadow:0 0 30px rgba(0,212,255,0.06),inset 0 1px 0 rgba(0,212,255,0.08);">
         <div style="display:flex;align-items:center;gap:0.8rem;">
-            <img src="{LOGO_URL}" style="height:44px;border-radius:10px;
-            box-shadow:0 0 15px rgba(0,212,255,0.25);">
+            <img src="{LOGO_URL}" style="height:40px;border-radius:8px;object-fit:contain;
+            filter:drop-shadow(0 0 8px rgba(0,212,255,0.3));">
             <div>
                 <div style="font-size:1.15rem;font-weight:800;
                 background:linear-gradient(90deg,#00d4ff,#a371f7);

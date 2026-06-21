@@ -832,70 +832,98 @@ window.speechSynthesis.onvoiceschanged = function() {{}};
 # ══════════════════════════════════════════════════════
 # 8. CSS
 # ══════════════════════════════════════════════════════
+# ── Finsage AI New Logo
+_SAGE_LOGO = "https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg"
+
 SAGE_CSS = """<style>
+/* ── SAGE Pro Dark Theme — Midnight Blue + Teal + Gold ─────────────── */
 .sage-header {
-  background:linear-gradient(135deg,#020609,#0a1220,#050010);
-  border:1px solid rgba(0,212,255,0.25);border-radius:16px;
-  padding:18px 22px;margin-bottom:16px;
+  background:linear-gradient(135deg,#050d1f 0%,#091628 50%,#050d1f 100%);
+  border:1px solid transparent;
+  border-image:linear-gradient(90deg,rgba(0,212,255,0.5),rgba(0,180,200,0.3),rgba(0,212,255,0.5)) 1;
+  border-radius:16px;padding:16px 20px;margin-bottom:14px;
+  box-shadow:0 0 32px rgba(0,212,255,0.06),inset 0 1px 0 rgba(0,212,255,0.1);
+  position:relative;overflow:hidden;
+}
+.sage-header::before {
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,0.7),rgba(0,212,255,0.3),transparent);
+}
+.sage-logo-img {
+  height:38px;border-radius:8px;object-fit:contain;
+  filter:drop-shadow(0 0 8px rgba(0,212,255,0.4));
 }
 .sage-title {
-  font-size:1.3rem;font-weight:900;font-family:Orbitron,monospace;
-  background:linear-gradient(90deg,#00d4ff,#a371f7);
+  font-size:1.2rem;font-weight:900;font-family:Orbitron,monospace;
+  background:linear-gradient(90deg,#00d4ff,#00b8d9,#00d4ff);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
 }
 .sage-badge {
-  display:inline-block;font-size:9px;font-weight:700;padding:2px 8px;
-  border-radius:12px;margin-left:8px;
-  background:rgba(0,255,136,0.1);color:#00ff88;
-  border:1px solid rgba(0,255,136,0.3);
+  display:inline-block;font-size:9px;font-weight:800;padding:2px 8px;
+  border-radius:10px;margin-left:6px;letter-spacing:0.05em;
+  background:rgba(0,212,255,0.08);color:#00d4ff;
+  border:1px solid rgba(0,212,255,0.3);
+}
+.sage-badge-gold {
+  background:rgba(255,185,0,0.1);color:#ffd700;
+  border:1px solid rgba(255,185,0,0.3);
 }
 .sage-input-bar {
-  background:#060f1e;border:1px solid rgba(0,212,255,0.2);
-  border-radius:12px;padding:14px;margin-bottom:12px;
+  background:linear-gradient(135deg,#060f1e,#091628);
+  border:1px solid rgba(0,212,255,0.18);
+  border-radius:12px;padding:12px;margin-bottom:10px;
+  box-shadow:inset 0 1px 0 rgba(0,212,255,0.05);
 }
 .sage-card {
-  background:linear-gradient(145deg,#060f1e,#071525);
-  border:1px solid rgba(0,212,255,0.14);border-radius:12px;padding:14px;margin:8px 0;
+  background:linear-gradient(145deg,#050d1f,#071a30);
+  border:1px solid rgba(0,212,255,0.12);border-radius:12px;
+  padding:14px;margin:8px 0;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);
 }
 .sage-bias-box {
-  display:inline-block;padding:6px 16px;border-radius:20px;
-  font-size:1rem;font-weight:900;margin:6px 0;
+  display:inline-block;padding:5px 14px;border-radius:16px;
+  font-size:0.9rem;font-weight:900;margin:4px 0;letter-spacing:0.05em;
 }
 .sage-level-row {
   display:flex;justify-content:space-between;align-items:center;
-  padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);
-  font-size:0.82rem;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:0.8rem;
 }
 .sage-indicator-chip {
-  display:inline-block;padding:4px 10px;border-radius:8px;
-  font-size:0.75rem;font-weight:600;margin:3px;
+  display:inline-block;padding:3px 9px;border-radius:6px;
+  font-size:0.72rem;font-weight:600;margin:2px;
 }
 .sage-insight {
-  background:#060f1e;border-left:3px solid #00d4ff;
-  border-radius:0 8px 8px 0;padding:10px 14px;margin:8px 0;
-  font-size:0.8rem;color:#c9d8ea;line-height:1.7;
+  background:linear-gradient(135deg,#060f1e,#071a30);
+  border-left:2px solid #00d4ff;border-radius:0 8px 8px 0;
+  padding:10px 14px;margin:6px 0;font-size:0.79rem;color:#b0cce0;line-height:1.7;
 }
 .sage-disclaimer {
-  background:rgba(255,170,0,0.06);border:1px solid rgba(255,170,0,0.2);
-  border-radius:8px;padding:10px 14px;margin:10px 0;
-  font-size:0.76rem;color:#ffaa00;
+  background:rgba(255,185,0,0.05);border:1px solid rgba(255,185,0,0.2);
+  border-radius:8px;padding:9px 13px;margin:8px 0;
+  font-size:0.74rem;color:#ffd700;
 }
-.sage-followup {
-  background:#060f1e;border:1px solid rgba(0,212,255,0.1);
-  border-radius:8px;padding:8px 12px;margin:4px 0;
-  font-size:0.78rem;color:#4a9eff;cursor:pointer;
+.sage-section-title {
+  font-size:0.7rem;font-weight:800;color:#00d4ff;text-transform:uppercase;
+  letter-spacing:0.1em;margin:12px 0 6px;
+  display:flex;align-items:center;gap:6px;
 }
-.sage-followup:hover { border-color:rgba(0,212,255,0.4); }
+.sage-section-title::after {
+  content:"";flex:1;height:1px;background:rgba(0,212,255,0.12);
+}
 .sage-msg-user {
-  background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.2);
-  border-radius:12px 12px 4px 12px;padding:10px 14px;margin:6px 0;
-  font-size:0.85rem;color:#e8f4fd;max-width:85%;margin-left:auto;
+  background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);
+  border-radius:12px 12px 4px 12px;padding:10px 14px;margin:5px 0;
+  font-size:0.83rem;color:#e8f4fd;max-width:85%;margin-left:auto;
 }
 .sage-msg-ai {
-  background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);
-  border-radius:4px 12px 12px 12px;padding:10px 14px;margin:6px 0;
-  font-size:0.85rem;color:#c9d8ea;max-width:90%;line-height:1.6;
+  background:rgba(0,0,0,0.2);border:1px solid rgba(0,212,255,0.1);
+  border-radius:4px 12px 12px 12px;padding:10px 14px;margin:5px 0;
+  font-size:0.83rem;color:#b0cce0;max-width:90%;line-height:1.6;
 }
+.sage-quick-btn { transition:all 0.15s; }
+.sage-quick-btn:hover { transform:translateY(-1px); }
 </style>"""
 
 # ══════════════════════════════════════════════════════
@@ -975,21 +1003,30 @@ def render_sage_analyst():
     lang = st.session_state.get("user_lang","en")
 
     # ── Header ────────────────────────────────────────
-    st.markdown("""<div class="sage-header">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    st.markdown(f"""<div class="sage-header">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <img src="https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg" class="sage-logo-img" alt="Finsage AI">
       <div>
-        <span class="sage-title">🧠 SAGE Analyst</span>
-        <span class="sage-badge">AI POWERED</span>
-        <span class="sage-badge" style="background:rgba(123,47,247,0.1);color:#a371f7;border-color:rgba(123,47,247,0.3);">
-        GROQ LLAMA 3.3</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span class="sage-title">SAGE Analyst</span>
+          <span class="sage-badge">AI POWERED</span>
+          <span class="sage-badge sage-badge-gold">GROQ LLAMA 3.3</span>
+        </div>
+        <div style="font-size:0.72rem;color:#4a7a99;margin-top:3px;">
+        Chart Analysis · Voice · S/R Drawing · Education
+        </div>
       </div>
       <div style="margin-left:auto;text-align:right;">
-        <div style="font-size:0.72rem;color:#8b949e;">Real-time Chart Analysis</div>
-        <div style="font-size:0.68rem;color:#556;">Voice · Drawing · Education</div>
+        <div style="font-size:0.68rem;color:#556;line-height:1.6;">
+        🔴 LIVE &nbsp;·&nbsp; NSE / BSE / Crypto / US<br>
+        Groq AI + Real yfinance Data
+        </div>
       </div>
     </div>
-    <div style="font-size:0.78rem;color:#7fa8c9;margin-top:8px;">
-    Koi bhi stock bolo → AI chart analyze karega, levels draw karega, aur voice mein samjhayega
+    <div style="font-size:0.76rem;color:#4a7a99;margin-top:10px;
+    padding-top:8px;border-top:1px solid rgba(0,212,255,0.08);">
+    Koi bhi stock bolo → AI chart analyze karega, support/resistance draw karega,
+    voice mein samjhayega aur follow-up sawaalon ka jawab dega
     </div>
     </div>""", unsafe_allow_html=True)
 

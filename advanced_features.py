@@ -21,7 +21,7 @@ def _cached_stock(ticker: str):
 def _cached_crypto(sym: str):
     return fetch_crypto_data(sym)
 
-LOGO_URL = "https://base44.app/api/apps/69d31dd9bb1428bbeeb1fec7/files/mp/public/69d31dd9bb1428bbeeb1fec7/7386585d4_finsage_logo.jpg"
+LOGO_URL = "https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. FEAR & GREED INDEX + SENTIMENT
@@ -652,13 +652,20 @@ def render_whale_alerts():
 # ═══════════════════════════════════════════════════════════════════════════════
 def render_advanced_features():
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg,#0d1117,#1a2035);border:1px solid #30363d;
-    border-radius:14px;padding:1.2rem 1.5rem;margin-bottom:1rem;">
+    <div style="background:linear-gradient(135deg,#050d1f,#091628);
+    border:1px solid rgba(0,212,255,0.2);border-radius:14px;
+    padding:1.2rem 1.5rem;margin-bottom:1rem;
+    box-shadow:0 0 30px rgba(0,212,255,0.06);">
         <div style="display:flex;align-items:center;gap:0.8rem;">
-            <img src="{LOGO_URL}" style="height:44px;width:44px;border-radius:10px;">
+            <img src="https://base44.app/api/apps/6a34884cbcecdd779c9d0281/files/mp/public/6a34884cbcecdd779c9d0281/a07ce8a2c_finsage_new_logo.jpg" style="height:38px;border-radius:8px;object-fit:contain;
+            filter:drop-shadow(0 0 8px rgba(0,212,255,0.3));">
             <div>
-                <div style="font-size:1.2rem;font-weight:800;color:#58a6ff;">Advanced Intelligence</div>
-                <div style="color:#8b949e;font-size:0.78rem;">Sentiment • Whale Watch • Smart Contract Audit • Pattern Recognition</div>
+                <div style="font-size:1.1rem;font-weight:800;
+                background:linear-gradient(90deg,#00d4ff,#00b8d9);
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+                🧠 Advanced Intelligence</div>
+                <div style="color:#4a7a99;font-size:0.76rem;margin-top:2px;">
+                Sentiment · Whale Watch · Contract Audit · Pattern Recognition</div>
             </div>
         </div>
     </div>

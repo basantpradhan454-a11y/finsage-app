@@ -92,10 +92,10 @@ def _fmt_price(p: float) -> str:
 def render_tradingview_page():
     is_fullscreen = st.session_state.get("tv_fullscreen", False)
 
-    # ── FULLSCREEN CSS — hides Streamlit chrome for true full-screen experience ──
+    # ── FULLSCREEN CSS — inject into parent via postMessage trick ──
     if is_fullscreen:
         st.markdown("""<style>
-        /* Hide Streamlit header, footer, sidebar, deploy button */
+        /* Hide Streamlit chrome in fullscreen mode */
         header[data-testid="stHeader"]          { display:none !important; }
         footer                                   { display:none !important; }
         section[data-testid="stSidebar"]         { display:none !important; }
@@ -103,14 +103,17 @@ def render_tradingview_page():
         #MainMenu                                { display:none !important; }
         div[data-testid="stDecoration"]          { display:none !important; }
         div[data-testid="stToolbar"]             { display:none !important; }
+        div[data-testid="stBottom"]              { display:none !important; }
         .block-container {
-            padding-top: 0.5rem !important;
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            max-width: 100% !important;
+            padding-top: 0.3rem !important;
+            padding-left: 0.3rem !important;
+            padding-right: 0.3rem !important;
+            padding-bottom: 0 !important;
+            max-width: 100vw !important;
         }
-        /* Make iframe expand to near full window */
-        iframe { width:100% !important; }
+        .main .block-container { max-width:100% !important; }
+        /* Expand iframe to fill viewport */
+        iframe[title*="streamlit_components"] { min-height:96vh !important; }
         </style>""", unsafe_allow_html=True)
 
     # ── PAGE HEADER (hide in fullscreen) ──────────────────────────────────────
@@ -214,15 +217,29 @@ def render_tradingview_page():
     }
     studies_json = "[" + ",".join(studies_map[s] for s in selected_inds if s in studies_map) + "]"
 
-    # Fullscreen = almost full window height
-    chart_height = 920 if is_fullscreen else 580
+    # Fullscreen = maximum viewport height
+    chart_height = 960 if is_fullscreen else 590
 
+    # Build enhanced TradingView HTML with internal fullscreen support
     tv_html = f"""
     <style>
-    body {{ margin:0;padding:0;background:#020609; }}
-    .tv-wrap {{ border-radius:{'4px' if is_fullscreen else '12px'};overflow:hidden;
+    * {{ margin:0;padding:0;box-sizing:border-box; }}
+    body {{ background:#020609; }}
+    .tv-wrap {{ border-radius:{'2px' if is_fullscreen else '12px'};overflow:hidden;
       border:1px solid rgba(0,212,255,0.12);
-      box-shadow:0 0 40px rgba(0,212,255,0.05); }}
+      box-shadow:0 0 40px rgba(0,212,255,0.05);
+      position:relative; }}
+    .tv-fs-overlay {{
+      position:absolute;top:8px;right:8px;z-index:9999;
+      display:flex;gap:6px;
+    }}
+    .tv-fs-btn {{
+      background:rgba(2,6,9,0.85);border:1px solid rgba(0,212,255,0.4);
+      border-radius:6px;padding:5px 10px;color:#00d4ff;
+      font-size:12px;font-weight:700;cursor:pointer;
+      backdrop-filter:blur(8px);
+    }}
+    .tv-fs-btn:hover {{ background:rgba(0,212,255,0.15); }}
     </style>
     <div class="tv-wrap">
     <div class="tradingview-widget-container" style="height:{chart_height}px;width:100%;">
@@ -257,7 +274,7 @@ def render_tradingview_page():
     </div>
     </div>
     """
-    components.html(tv_html, height=chart_height + 30, scrolling=False)
+    components.html(tv_html, height=chart_height + 36, scrolling=False)
 
     # ── FULLSCREEN: show minimal price strip only ──────────────────────────────
     if is_fullscreen:
