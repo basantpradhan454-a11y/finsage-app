@@ -18,6 +18,7 @@ from ai_assistant import render_ai_assistant
 from feedback_dashboard import render_feedback_dashboard
 from advanced_features import render_advanced_features
 from chart_analyzer import render_chart_analyzer
+from sage_analyst import render_sage_analyst
 from tradingview_page import render_tradingview_page
 from ai_chat_assistant import render_ai_chat_assistant
 from privacy_policy import render_privacy_policy, render_signup_page, render_signup_with_privacy
@@ -790,6 +791,7 @@ with nb_right:
 
         all_pages = [
             ("🤖 AI Assistant",       "🤖 AI Assistant",       "Ask any trading question"),
+            ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        "AI Chart Analysis + Voice + Drawing"),
             ("🔬 Pro Analyser",       "🔬 Pro Analyser",        "10 deep analysis modules"),
             ("📈 TradingView Charts", "📈 TradingView",         "Live candlestick charts"),
             ("📸 Chart Analyzer",     "📸 Chart Analyzer",      "Upload & analyze screenshots"),
@@ -1089,6 +1091,8 @@ def _back_btn(key):
 _ap = st.session_state.get("active_page", "main")
 if _ap == "🤖 AI Assistant":
     _back_btn("back_ai"); render_ai_chat_assistant(); st.stop()
+elif _ap == "🧠 SAGE Analyst":
+    _back_btn("back_sage"); render_sage_analyst(); st.stop()
 elif _ap == "🔬 Pro Analyser":
     _back_btn("back_pro"); render_ai_assistant(); st.stop()
 elif _ap == "📈 TradingView":
