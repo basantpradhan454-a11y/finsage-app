@@ -19,6 +19,7 @@ from feedback_dashboard import render_feedback_dashboard
 from advanced_features import render_advanced_features
 from chart_analyzer import render_chart_analyzer
 from sage_analyst import render_sage_analyst
+from footprint_chart import render_footprint_chart
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
@@ -805,6 +806,7 @@ with nb_right:
             ("📊 " + t("nav_charts"), [
                 ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        t("desc_sage")),
                 ("📈 TradingView",          "📈 TradingView",         t("desc_tv")),
+                ("🔢 Footprint Chart",      "🔢 Footprint Chart",     "AI-powered order flow & volume profile"),
                 ("🔬 Pro Analyser",        "🔬 Pro Analyser",        t("desc_pro")),
                 ("🧠 Advanced Intel",      "🧠 Advanced Intel",      t("desc_adv_intel")),
             ]),
@@ -1150,6 +1152,8 @@ elif _ap == "🔍 Screener":
     _back_btn("back_sc"); render_screener(); st.stop()
 elif _ap == "📊 Backtester":
     _back_btn("back_bt"); render_backtester(); st.stop()
+elif _ap == "🔢 Footprint Chart":
+    _back_btn("back_fp"); render_footprint_chart(); st.stop()
 elif _ap == "⚙️ Options Greeks":
     _back_btn("back_oc"); render_options_calc(); st.stop()
 
