@@ -838,7 +838,7 @@ with nb_right:
             st.session_state.active_page = "📊 Research Report"; st.rerun()
         st.markdown("<hr style='margin:6px 0;border-color:#2a2e39;'>", unsafe_allow_html=True)
 
-        for group_label, pages in nav_groups[2:]:  # skip Charts group (already shown)
+        for group_label, pages in nav_groups[1:]:  # skip Charts group (shown as top buttons above)
             with st.expander(group_label, expanded=False):
                 for label, page_key, desc in pages:
                     st.caption(desc)
