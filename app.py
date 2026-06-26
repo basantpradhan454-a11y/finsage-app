@@ -28,6 +28,10 @@ try:
     from pro_chart import render_pro_chart
 except Exception:
     render_pro_chart=None
+try:
+    from user_dashboard import render_user_dashboard
+except Exception:
+    render_user_dashboard=None
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
@@ -810,6 +814,7 @@ with nb_right:
         # ── GROUPED NAVIGATION ────────────────────────────────────────────────
         nav_groups = [
             ("🤖 AI Analyser", [
+                ("👤 User Dashboard",    "👤 User Dashboard",    "Your favourites · AI auto-analysis · Full chart drawings"),
                 ("🔬 Pro Chart Studio",  "🔬 Pro Chart Studio",  "Glass UI · 200+ indicators · SMC · Elliott Wave · All trader types"),
                 ("🧠 SAGE Analyst",      "🧠 SAGE Analyst",      "Multi-timeframe AI chart analysis"),
                 ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow & volume profile"),
@@ -1123,7 +1128,10 @@ def _back_btn(key):
             st.rerun()
 
 _ap = st.session_state.get("active_page", "main")
-if _ap == "🔬 Pro Chart Studio":
+if _ap == "👤 User Dashboard":
+    if render_user_dashboard: render_user_dashboard()
+    else: st.error("User Dashboard loading...")
+elif _ap == "🔬 Pro Chart Studio":
     if render_pro_chart: render_pro_chart()
     else: st.error("Pro Chart loading... refresh in 10s")
 elif _ap == "🤖 AI Assistant":
