@@ -805,45 +805,46 @@ with nb_right:
 
         # ── GROUPED NAVIGATION ────────────────────────────────────────────────
         nav_groups = [
-            ("📊 " + t("nav_charts"), [
-                ("🏠 Market Dashboard",    "🏠 Market Dashboard",    "TradingView-style watchlist + AI Analysis"),
-                ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        t("desc_sage")),
-                ("📈 TradingView",          "📈 TradingView",         t("desc_tv")),
-                ("🔢 Footprint Chart",      "🔢 Footprint Chart",     "AI-powered order flow & volume profile"),
-                ("🧠 Cognitive Assistant",  "🧠 Cognitive Assistant", "Multi-TF · Heatmap · Watchlist · Brief"),
-                ("🔬 Pro Analyser",        "🔬 Pro Analyser",        t("desc_pro")),
-                ("🧠 Advanced Intel",      "🧠 Advanced Intel",      t("desc_adv_intel")),
+            ("📊 Charts", [
+                ("🏠 Market Dashboard",  "🏠 Market Dashboard",  "Home · Watchlist · AI Charts"),
+                ("📊 Research Report",   "📊 Research Report",   "Institutional-grade full analysis"),
             ]),
-            ("🤖 " + t("nav_ai_tools"), [
-                ("📊 Research Report",     "📊 Research Report",     "Institutional-grade fundamental + technical analysis"),
-                ("🤖 AI Strategy Bot",     "🤖 AI Strategy Bot",     t("desc_strat_bot")),
-                ("🤖 AI Assistant",        "🤖 AI Assistant",        t("desc_ai_assist")),
-                ("📸 Chart Analyzer",      "📸 Chart Analyzer",      t("desc_chart_analyzer")),
-                ("📡 Adv. Analyzer",       "📡 Adv. Analyzer",       t("desc_adv_analyzer")),
-                ("🛡️ Risk Engine",          "🛡️ Risk Engine",         t("desc_risk")),
+            ("🤖 AI Analyser", [
+                ("🧠 SAGE Analyst",      "🧠 SAGE Analyst",      "Multi-timeframe AI chart analysis"),
+                ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow & volume profile"),
+                ("🔬 Pro Analyser",      "🔬 Pro Analyser",      "Advanced AI analysis"),
+                ("🧠 Advanced Intel",    "🧠 Advanced Intel",    "Market intelligence"),
+                ("🧠 Cognitive Asst.",   "🧠 Cognitive Assistant","MTF · Heatmap · Brief"),
             ]),
-            ("📚 " + t("nav_learn"), [
-                ("📖 Marketplace",         "📖 Marketplace",         t("desc_marketplace")),
+            ("🛠️ AI Tools", [
+                ("🤖 AI Strategy Bot",   "🤖 AI Strategy Bot",   "AI trading strategy"),
+                ("🤖 AI Assistant",      "🤖 AI Assistant",      "General AI assistant"),
+                ("📸 Chart Analyzer",    "📸 Chart Analyzer",    "Upload & analyze charts"),
+                ("📡 Adv. Analyzer",     "📡 Adv. Analyzer",     "Advanced market analyzer"),
+                ("🛡️ Risk Engine",       "🛡️ Risk Engine",       "Position & risk calculator"),
+                ("🔍 Screener",          "🔍 Screener",          "Stock screener"),
+                ("📊 Backtester",        "📊 Backtester",        "Strategy backtester"),
+                ("⚙️ Options Greeks",    "⚙️ Options Greeks",    "Options calculator"),
+                ("⭐ Community",         "⭐ Community",         "Community & feedback"),
             ]),
-            ("🛠️ " + t("nav_tools"), [
-                ("🔍 Screener",            "🔍 Screener",             t("desc_screener")),
-                ("📊 Backtester",          "📊 Backtester",           t("desc_backtester")),
-                ("⚙️ Options Greeks",      "⚙️ Options Greeks",       t("desc_options")),
-                ("⭐ Community",           "⭐ Community",            t("desc_community")),
+            ("📚 Marketplace", [
+                ("📖 Marketplace",       "📖 Marketplace",       "eBooks & resources"),
             ]),
         ]
-        for group_label, pages in nav_groups:
-            st.markdown(
-                f'''<div style="font-size:0.6rem;font-weight:800;color:#4a9eff;
-                text-transform:uppercase;letter-spacing:0.12em;margin:10px 0 4px;
-                padding:4px 6px;background:rgba(74,158,255,0.06);border-radius:4px;
-                border-left:2px solid rgba(74,158,255,0.4);">{group_label}</div>''',
-                unsafe_allow_html=True)
-            for label, page_key, desc in pages:
-                st.caption(desc)
-                if st.button(label, key=f"nav_{page_key}", use_container_width=True):
-                    st.session_state.active_page = page_key
-                    st.rerun()
+        # Market Dashboard always visible at top
+        if st.button("🏠 Market Dashboard", key="nav_home_top", use_container_width=True, type="primary"):
+            st.session_state.active_page = "🏠 Market Dashboard"; st.rerun()
+        if st.button("📊 Research Report", key="nav_rr_top", use_container_width=True):
+            st.session_state.active_page = "📊 Research Report"; st.rerun()
+        st.markdown("<hr style='margin:6px 0;border-color:#2a2e39;'>", unsafe_allow_html=True)
+
+        for group_label, pages in nav_groups[2:]:  # skip Charts group (already shown)
+            with st.expander(group_label, expanded=False):
+                for label, page_key, desc in pages:
+                    st.caption(desc)
+                    if st.button(label, key=f"nav_{page_key}", use_container_width=True):
+                        st.session_state.active_page = page_key
+                        st.rerun()
 
         if user:
             st.markdown("---")
