@@ -621,7 +621,8 @@ def render_cognitive_assistant():
     </style>""", unsafe_allow_html=True)
 
     # Header
-    st.markdown("""<div style="background:linear-gradient(135deg,#131722,#1a1f2e);
+    _now_str = datetime.now().strftime("%H:%M")
+    st.markdown(f"""<div style="background:linear-gradient(135deg,#131722,#1a1f2e);
     border:1px solid #2a2e39;border-radius:12px;padding:12px 18px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <div>
@@ -635,10 +636,10 @@ def render_cognitive_assistant():
           </div>
         </div>
         <div style="margin-left:auto;color:#6a6e7a;font-size:11px;">
-          🕐 {now} IST · Reduce 50 charts → 5 actionable setups
+          🕐 {_now_str} IST · Reduce 50 charts → 5 actionable setups
         </div>
       </div>
-    </div>""".replace("{now}", datetime.now().strftime("%H:%M")), unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
 
     # Navigation tabs
     tab1,tab2,tab3,tab4 = st.tabs([

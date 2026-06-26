@@ -21,6 +21,7 @@ from chart_analyzer import render_chart_analyzer
 from sage_analyst import render_sage_analyst
 from footprint_chart import render_footprint_chart
 from cognitive_assistant import render_cognitive_assistant
+from tradingview_dashboard import render_tv_dashboard
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
@@ -29,12 +30,10 @@ from ai_chat_assistant import render_ai_chat_assistant
 from privacy_policy import render_privacy_policy, render_signup_page, render_signup_with_privacy
 from config import APP_NAME, APP_TAGLINE, LOGO_URL as CFG_LOGO
 from risk_engine import render_risk_dashboard
-from finsage_academy import render_finsage_academy
 from advanced_analyzer import render_advanced_analyzer
 from screener import render_screener
 from backtester import render_backtester
 from options_calc import render_options_calc
-from trading_learning import show_trading_learning
 from library import show_library_page
 
 # ── Page Config ────────────────────────────────────────────────────────────────
@@ -805,6 +804,7 @@ with nb_right:
         # ── GROUPED NAVIGATION ────────────────────────────────────────────────
         nav_groups = [
             ("📊 " + t("nav_charts"), [
+                ("🏠 Market Dashboard",    "🏠 Market Dashboard",    "TradingView-style watchlist + AI Analysis"),
                 ("🧠 SAGE Analyst",        "🧠 SAGE Analyst",        t("desc_sage")),
                 ("📈 TradingView",          "📈 TradingView",         t("desc_tv")),
                 ("🔢 Footprint Chart",      "🔢 Footprint Chart",     "AI-powered order flow & volume profile"),
@@ -820,8 +820,6 @@ with nb_right:
                 ("🛡️ Risk Engine",          "🛡️ Risk Engine",         t("desc_risk")),
             ]),
             ("📚 " + t("nav_learn"), [
-                ("🎓 Academy",             "🎓 Academy",             t("desc_academy")),
-                ("📚 Learn Trading",       "📚 Learn Trading",       t("desc_learn")),
                 ("📖 Marketplace",         "📖 Marketplace",         t("desc_marketplace")),
             ]),
             ("🛠️ " + t("nav_tools"), [
@@ -1139,8 +1137,7 @@ elif _ap == "🔒 Privacy Policy":
     _back_btn("back_pp"); render_privacy_policy(); st.stop()
 elif _ap == "📝 Sign Up":
     _back_btn("back_su"); render_signup_with_privacy(); st.stop()
-elif _ap == "📚 Learn Trading":
-    _back_btn("back_lt"); show_trading_learning(); st.stop()
+
 elif _ap in ("📖 Library", "📖 Marketplace"):
     _back_btn("back_lib"); show_library_page(); st.stop()
 elif _ap == "🛡️ Risk Engine":
@@ -1148,14 +1145,15 @@ elif _ap == "🛡️ Risk Engine":
 
 elif _ap == "📡 Adv. Analyzer":
     _back_btn("back_aa"); render_advanced_analyzer(); st.stop()
-elif _ap == "🎓 Academy":
-    _back_btn("back_pb"); render_finsage_academy(); st.stop()
+
 elif _ap == "🔍 Screener":
     _back_btn("back_sc"); render_screener(); st.stop()
 elif _ap == "📊 Backtester":
     _back_btn("back_bt"); render_backtester(); st.stop()
 elif _ap == "🔢 Footprint Chart":
     _back_btn("back_fp"); render_footprint_chart(); st.stop()
+elif _ap == "🏠 Market Dashboard":
+    _back_btn("back_mktd"); render_tv_dashboard(); st.stop()
 elif _ap == "🧠 Cognitive Assistant":
     _back_btn("back_ca2"); render_cognitive_assistant(); st.stop()
 elif _ap == "⚙️ Options Greeks":

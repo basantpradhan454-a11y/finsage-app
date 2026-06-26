@@ -468,11 +468,10 @@ html,body{{background:#131722;font-family:'Trebuchet MS',sans-serif;
       </div>
       <!-- Voice panel bottom -->
       <div id="voice-panel">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;">
           <span style="color:#2962ff;font-weight:700;font-size:11px;">🔊 SAGE Voice</span>
-          <span id="voice-status" style="color:#6a6e7a;font-size:10px;">Click ▶ to hear analysis</span>
+          <span id="voice-status" style="color:#6a6e7a;font-size:10px;">Tap to hear analysis</span>
         </div>
-        <div id="voice-text">{ai_res.get('summary','')}</div>
       </div>
       <button id="voice-btn" onclick="toggleVoice()" title="Voice Analysis">🔊</button>
     </div>
