@@ -22,6 +22,7 @@ from sage_analyst import render_sage_analyst
 from footprint_chart import render_footprint_chart
 from cognitive_assistant import render_cognitive_assistant
 from tradingview_dashboard import render_tv_dashboard
+from institutional_report import render_institutional_report
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
@@ -813,6 +814,7 @@ with nb_right:
                 ("🧠 Advanced Intel",      "🧠 Advanced Intel",      t("desc_adv_intel")),
             ]),
             ("🤖 " + t("nav_ai_tools"), [
+                ("📊 Research Report",     "📊 Research Report",     "Institutional-grade fundamental + technical analysis"),
                 ("🤖 AI Strategy Bot",     "🤖 AI Strategy Bot",     t("desc_strat_bot")),
                 ("🤖 AI Assistant",        "🤖 AI Assistant",        t("desc_ai_assist")),
                 ("📸 Chart Analyzer",      "📸 Chart Analyzer",      t("desc_chart_analyzer")),
@@ -1154,6 +1156,8 @@ elif _ap == "🔢 Footprint Chart":
     _back_btn("back_fp"); render_footprint_chart(); st.stop()
 elif _ap == "🏠 Market Dashboard":
     _back_btn("back_mktd"); render_tv_dashboard(); st.stop()
+elif _ap == "📊 Research Report":
+    _back_btn("back_ir"); render_institutional_report(); st.stop()
 elif _ap == "🧠 Cognitive Assistant":
     _back_btn("back_ca2"); render_cognitive_assistant(); st.stop()
 elif _ap == "⚙️ Options Greeks":
