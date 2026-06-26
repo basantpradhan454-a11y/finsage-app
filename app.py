@@ -814,7 +814,7 @@ with nb_right:
         # ── GROUPED NAVIGATION ────────────────────────────────────────────────
         nav_groups = [
             ("🤖 AI Analyser", [
-                ("👤 User Dashboard",    "👤 User Dashboard",    "Your favourites · AI auto-analysis · Full chart drawings"),
+                ("👤 Personal Dashboard","👤 User Dashboard",    "Favourites · AI auto-draws all levels · 6 trader styles"),
                 ("🔬 Pro Chart Studio",  "🔬 Pro Chart Studio",  "Glass UI · 200+ indicators · SMC · Elliott Wave · All trader types"),
                 ("🧠 SAGE Analyst",      "🧠 SAGE Analyst",      "Multi-timeframe AI chart analysis"),
                 ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow & volume profile"),
