@@ -24,6 +24,10 @@ from cognitive_assistant import render_cognitive_assistant
 from tradingview_dashboard import render_tv_dashboard
 from institutional_report import render_institutional_report
 from market_dashboard import render_market_dashboard
+try:
+    from pro_chart import render_pro_chart
+except Exception:
+    render_pro_chart=None
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
@@ -805,11 +809,8 @@ with nb_right:
 
         # ── GROUPED NAVIGATION ────────────────────────────────────────────────
         nav_groups = [
-            ("📊 Charts", [
-                ("🏠 Market Dashboard",  "🏠 Market Dashboard",  "Home · Watchlist · AI Charts"),
-                ("📊 Research Report",   "📊 Research Report",   "Institutional-grade full analysis"),
-            ]),
             ("🤖 AI Analyser", [
+                ("🔬 Pro Chart Studio",  "🔬 Pro Chart Studio",  "Glass UI · 200+ indicators · SMC · Elliott Wave · All trader types"),
                 ("🧠 SAGE Analyst",      "🧠 SAGE Analyst",      "Multi-timeframe AI chart analysis"),
                 ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow & volume profile"),
                 ("🔬 Pro Analyser",      "🔬 Pro Analyser",      "Advanced AI analysis"),
@@ -831,14 +832,15 @@ with nb_right:
                 ("📖 Marketplace",       "📖 Marketplace",       "eBooks & resources"),
             ]),
         ]
-        # Market Dashboard always visible at top
+        # Top always-visible navigation
         if st.button("🏠 Market Dashboard", key="nav_home_top", use_container_width=True, type="primary"):
             st.session_state.active_page = "🏠 Market Dashboard"; st.rerun()
         if st.button("📊 Research Report", key="nav_rr_top", use_container_width=True):
             st.session_state.active_page = "📊 Research Report"; st.rerun()
         st.markdown("<hr style='margin:6px 0;border-color:#2a2e39;'>", unsafe_allow_html=True)
 
-        for group_label, pages in nav_groups[1:]:  # skip Charts group (shown as top buttons above)
+        # Collapsible groups
+        for group_label, pages in nav_groups:  # all groups as expanders
             with st.expander(group_label, expanded=False):
                 for label, page_key, desc in pages:
                     st.caption(desc)
@@ -1121,7 +1123,10 @@ def _back_btn(key):
             st.rerun()
 
 _ap = st.session_state.get("active_page", "main")
-if _ap == "🤖 AI Assistant":
+if _ap == "🔬 Pro Chart Studio":
+    if render_pro_chart: render_pro_chart()
+    else: st.error("Pro Chart loading... refresh in 10s")
+elif _ap == "🤖 AI Assistant":
     _back_btn("back_ai"); render_ai_chat_assistant(); st.stop()
 elif _ap == "🤖 AI Strategy Bot":
     _back_btn("back_strat"); render_strategy_bot(); st.stop()
