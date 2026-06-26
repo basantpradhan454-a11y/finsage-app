@@ -23,6 +23,7 @@ from footprint_chart import render_footprint_chart
 from cognitive_assistant import render_cognitive_assistant
 from tradingview_dashboard import render_tv_dashboard
 from institutional_report import render_institutional_report
+from market_dashboard import render_market_dashboard
 from tradingview_page import render_tradingview_page
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
@@ -430,7 +431,7 @@ h3, h2 {
 
 # ── Session State ────────────────────────────────────────────────────────────
 if "active_page" not in st.session_state:
-    st.session_state.active_page = "main"
+    st.session_state.active_page = "🏠 Market Dashboard"
 
 # ══════════════════════════════════════════════════════════════
 # SESSION PERSISTENCE — Cookie-based auto-login
@@ -750,7 +751,7 @@ if not st.session_state.get("ob_done"):
 
 # ── Auto-rerun guard — safe 60s refresh (only on main page) ─────────────────
 # Only refresh ticker on main page, never inside sub-pages
-_is_main_page = st.session_state.get("active_page", "main") == "main"
+_is_main_page = st.session_state.get("active_page","🏠 Market Dashboard") in ("main","🏠 Market Dashboard")
 if _is_main_page:
     if "last_auto_rerun" not in st.session_state:
         st.session_state.last_auto_rerun = time.time()
@@ -1115,7 +1116,7 @@ def _back_btn(key):
     col_b, col_t = st.columns([1, 6])
     with col_b:
         if st.button(f"◀ {t('back_dashboard')}", key=key, use_container_width=True):
-            st.session_state.active_page = "main"
+            st.session_state.active_page = "🏠 Market Dashboard"
             st.rerun()
 
 _ap = st.session_state.get("active_page", "main")
@@ -1155,7 +1156,7 @@ elif _ap == "📊 Backtester":
 elif _ap == "🔢 Footprint Chart":
     _back_btn("back_fp"); render_footprint_chart(); st.stop()
 elif _ap == "🏠 Market Dashboard":
-    _back_btn("back_mktd"); render_tv_dashboard(); st.stop()
+    render_market_dashboard(); st.stop()
 elif _ap == "📊 Research Report":
     _back_btn("back_ir"); render_institutional_report(); st.stop()
 elif _ap == "🧠 Cognitive Assistant":
