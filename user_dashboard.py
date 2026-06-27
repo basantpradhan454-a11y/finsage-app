@@ -994,344 +994,623 @@ FinSage AI · Personal Dashboard · For educational use only.
 # ════════════════════════════════════════════════════════════════════════
 # MAIN RENDER
 # ════════════════════════════════════════════════════════════════════════
+
+def _mini_chart_html(sym, name, price, chg, trend, sup, res, height=180):
+    """6-mini-chart: small LightweightCharts candle chart for watchlist overview"""
+    from pro_chart import _ohlcv, _compute_tech
+    import json
+    try:
+        df = _ohlcv(sym, "1mo", "1d")
+    except:
+        df = None
+    candles = []
+    if df is not None and not df.empty:
+        import pandas as pd
+        for idx, row in df.tail(60).iterrows():
+            ts = int(pd.Timestamp(idx).timestamp())
+            candles.append({"time": ts, "open": round(float(row["Open"]), 4),
+                            "high": round(float(row["High"]), 4),
+                            "low":  round(float(row["Low"]),  4),
+                            "close":round(float(row["Close"]),4)})
+    cc = "#26a69a" if chg >= 0 else "#ef5350"
+    tc = "#26a69a" if trend == "BULLISH" else "#ef5350" if trend == "BEARISH" else "#f59e0b"
+    pr_s = f"{price:,.2f}" if price >= 1 else f"{price:.4f}"
+    chg_s = f"{chg:+.2f}%"
+    sup_v = round(sup[0], 2) if sup else 0
+    res_v = round(res[0], 2) if res else 0
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+html,body{{background:transparent;width:100%;height:{height}px;overflow:hidden;}}
+#h{{display:flex;align-items:center;justify-content:space-between;padding:5px 8px 3px;}}
+#nm{{font-size:11px;font-weight:800;color:#fff;font-family:Inter,sans-serif;}}
+#pr{{font-size:13px;font-weight:900;color:{cc};font-family:'Courier New',monospace;}}
+#ch{{font-size:10px;color:{cc};}}
+#cd{{width:100%;height:{height-50}px;}}
+#ft{{display:flex;justify-content:space-between;padding:2px 8px;font-size:9px;font-family:Inter,sans-serif;}}
+</style></head><body>
+<div id="h"><span id="nm">{name[:12]}</span><div style="text-align:right;"><div id="pr">{pr_s}</div><div id="ch">{chg_s}</div></div></div>
+<div id="cd"></div>
+<div id="ft">
+  <span style="color:#26a69a;">S:{sup_v or '—'}</span>
+  <span style="color:{tc};font-weight:700;">{trend[:4]}</span>
+  <span style="color:#ef5350;">R:{res_v or '—'}</span>
+</div>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(function(){{
+var candles={json.dumps(candles)};
+var el=document.getElementById('cd'); if(!el||!candles.length) return;
+var chart=LightweightCharts.createChart(el,{{
+  width:el.clientWidth||200,height:{height-50},
+  layout:{{background:{{type:'solid',color:'transparent'}},textColor:'#5a6070',fontSize:9}},
+  grid:{{vertLines:{{color:'rgba(255,255,255,0.02)'}},horzLines:{{color:'rgba(255,255,255,0.02)'}}}},
+  rightPriceScale:{{borderColor:'rgba(255,255,255,0.04)',scaleMargins:{{top:0.05,bottom:0.05}},textColor:'#374151'}},
+  timeScale:{{borderColor:'rgba(255,255,255,0.04)',visible:false}},
+  crosshair:{{vertLine:{{visible:false}},horzLine:{{visible:false}}}},
+  handleScroll:false,handleScale:false,
+}});
+var cs=chart.addCandlestickSeries({{
+  upColor:'#26a69a',downColor:'#ef5350',
+  borderUpColor:'#26a69a',borderDownColor:'#ef5350',
+  wickUpColor:'rgba(38,166,154,0.6)',wickDownColor:'rgba(239,83,80,0.6)',
+}});
+cs.setData(candles);
+{f"cs.createPriceLine({{price:{sup_v},color:'rgba(38,166,154,0.6)',lineWidth:1,lineStyle:1,axisLabelVisible:false,title:'S'}});" if sup_v else ""}
+{f"cs.createPriceLine({{price:{res_v},color:'rgba(239,83,80,0.6)',lineWidth:1,lineStyle:1,axisLabelVisible:false,title:'R'}});" if res_v else ""}
+chart.timeScale().fitContent();
+window.addEventListener('resize',function(){{chart.applyOptions({{width:el.clientWidth||200}});}});
+}})();
+</script></body></html>"""
+
+
+def _to_tv(sym):
+    """TV symbol converter — covers NSE/BSE/crypto/US/indices"""
+    s = sym.upper()
+    if s.endswith(".NS"):  return f"NSE:{s[:-3]}"
+    if s.endswith(".BO"):  return f"BSE:{s[:-3]}"
+    if s.endswith(".L"):   return f"LSE:{s[:-2]}"
+    if s.endswith(".DE"):  return f"XETR:{s[:-3]}"
+    if s.endswith(".T"):   return f"TSE:{s[:-2]}"
+    if s.endswith(".HK"):  return f"HKEX:{s[:-3]}"
+    if s.endswith(".AX"):  return f"ASX:{s[:-3]}"
+    # Crypto
+    if s.endswith("-USD"):
+        base = s[:-4].replace("-","")
+        return f"BINANCE:{base}USDT"
+    if s.endswith("-USDT"): return f"BINANCE:{s[:-5]}USDT"
+    if s.endswith("-BTC"):  return f"BINANCE:{s[:-4]}BTC"
+    # Indices
+    index_map = {
+        "^NSEI":"NSE:NIFTY","^BSESN":"BSE:SENSEX","^GSPC":"SP:SPX",
+        "^DJI":"DJ:DJI","^IXIC":"NASDAQ:IXIC","^VIX":"CBOE:VIX",
+        "^NSEBANK":"NSE:BANKNIFTY","^CNXIT":"NSE:CNXIT",
+        "^FTSE":"SPREADEX:FTSE","^N225":"TVC:NI225","^HSI":"TVC:HSI",
+    }
+    if s in index_map: return index_map[s]
+    # Commodities/Futures
+    comm_map = {"GC=F":"TVC:GOLD","SI=F":"TVC:SILVER","CL=F":"NYMEX:CL1!",
+                "NG=F":"NYMEX:NG1!","BZ=F":"TVC:UKOIL","HG=F":"COMEX:HG1!"}
+    if s in comm_map: return comm_map[s]
+    # Forex
+    if s in {"EURUSD=X","GBPUSD=X","USDINR=X","USDJPY=X","AUDUSD=X"}:
+        return "FX:" + s.replace("=X","")
+    # NYSE large caps
+    NYSE = {"JPM","BAC","WMT","JNJ","V","MA","UNH","XOM","CVX","PFE","KO",
+            "PEP","DIS","BA","GE","GM","F","T","VZ","BRK-B","C","GS","MS"}
+    if s in NYSE: return f"NYSE:{s}"
+    return f"NASDAQ:{s}"
+
+
 def render_user_dashboard():
+    import json
+
     st.markdown("""<style>
-    header[data-testid="stHeader"],footer,div[data-testid="stDecoration"],
-    div[data-testid="stToolbar"],div[data-testid="stStatusWidget"],.stDeployButton{display:none!important;}
+    /* ── HIDE STREAMLIT CHROME ── */
+    header[data-testid="stHeader"],footer,
+    div[data-testid="stDecoration"],div[data-testid="stToolbar"],
+    div[data-testid="stStatusWidget"],.stDeployButton{display:none!important;}
+
+    /* ── TRANSPARENT BACKGROUND ── */
+    .stApp,[data-testid="stAppViewContainer"],[data-testid="stMainBlockContainer"],
+    .main,.block-container,[data-testid="stVerticalBlock"],
+    section[data-testid="stMain"]{
+        background:transparent!important;
+    }
     .block-container{padding:0 0 20px 0!important;max-width:100vw!important;}
-    .stTabs [data-baseweb="tab-list"]{gap:4px;background:rgba(13,17,28,0.9);padding:4px;border-radius:10px;}
-    .stTabs [data-baseweb="tab"]{background:transparent;border-radius:8px;color:#6a6e7a;font-size:12px;padding:5px 12px;}
-    .stTabs [aria-selected="true"]{background:rgba(41,98,255,0.2)!important;color:#4a9eff!important;}
+
+    /* ── TABS ── */
+    .stTabs [data-baseweb="tab-list"]{
+        gap:4px;background:rgba(13,17,28,0.7);
+        backdrop-filter:blur(10px);padding:4px;border-radius:10px;
+        border:1px solid rgba(255,255,255,0.06);}
+    .stTabs [data-baseweb="tab"]{
+        background:transparent;border-radius:8px;
+        color:#6a6e7a;font-size:12px;padding:5px 12px;}
+    .stTabs [aria-selected="true"]{
+        background:rgba(41,98,255,0.2)!important;color:#4a9eff!important;}
     div[data-testid="stVerticalBlock"]{gap:4px!important;}
+
+    /* ── GLASS CARDS (use this class everywhere) ── */
+    .g-card{
+        background:rgba(13,17,28,0.75)!important;
+        backdrop-filter:blur(18px)!important;
+        border:1px solid rgba(255,255,255,0.07)!important;
+        border-radius:12px!important;}
+
+    /* ── STREAMLIT WIDGETS ── */
+    div[data-testid="stTextInput"] input{
+        background:rgba(13,17,28,0.7)!important;
+        border:1px solid rgba(255,255,255,0.08)!important;
+        color:#d1d4dc!important;border-radius:8px!important;}
+    div[data-baseweb="select"]{
+        background:rgba(13,17,28,0.7)!important;border-radius:8px!important;}
+    div[data-baseweb="select"] *{color:#d1d4dc!important;}
+    div[data-testid="stRadio"] label{color:#9598a1!important;font-size:12px!important;}
+    button[kind="secondary"]{
+        background:rgba(255,255,255,0.04)!important;
+        border:1px solid rgba(255,255,255,0.08)!important;
+        color:#9598a1!important;border-radius:8px!important;}
+    button[kind="primary"]{border-radius:8px!important;}
     </style>""", unsafe_allow_html=True)
 
-    # Init state
-    for k,v in [("pd_favs",list(DEFAULT_FAVS)),("pd_sel",None),("pd_ai",None),
-                ("pd_fund",{}),("pd_srch",""),("pd_srch_res",[]),("pd_tf","1D"),
-                ("pd_trader","all"),("pd_mode","tv")]:
-        if k not in st.session_state: st.session_state[k]=v
+    # ── STATE INIT ────────────────────────────────────────────────────
+    for k, v in [
+        ("pd_favs",    list(DEFAULT_FAVS)),
+        ("pd_sel",     None),
+        ("pd_ai",      None),
+        ("pd_fund",    {}),
+        ("pd_srch",    ""),
+        ("pd_srch_res",[]),
+        ("pd_tf",      "1D"),
+        ("pd_trader",  "all"),
+        ("pd_mode",    "tv"),
+        ("pd_view",    "single"),   # "single" or "grid6"
+    ]:
+        if k not in st.session_state:
+            st.session_state[k] = v
+
     if st.session_state.pd_sel is None and st.session_state.pd_favs:
-        st.session_state.pd_sel=st.session_state.pd_favs[0]
+        st.session_state.pd_sel = st.session_state.pd_favs[0]
 
-    favs=st.session_state.pd_favs; sel=st.session_state.pd_sel or DEFAULT_FAVS[0]
-    sym=sel["sym"]; name=sel["name"]
+    favs = st.session_state.pd_favs
+    sel  = st.session_state.pd_sel or DEFAULT_FAVS[0]
+    sym  = sel["sym"]; name = sel["name"]
 
-    # TOP BAR
-    d=_price_fast(sym); pr=d.get("price",0); chg=d.get("chg",0)
-    cc="#26a69a" if chg>=0 else "#ef5350"
-    pr_s=f"{pr:,.4f}" if pr<10 else f"{pr:,.2f}" if pr>0 else "—"
+    # ── TOP BAR ───────────────────────────────────────────────────────
+    d   = _price_fast(sym)
+    pr  = d.get("price", 0); chg = d.get("chg", 0)
+    cc  = "#26a69a" if chg >= 0 else "#ef5350"
+    pr_s= f"{pr:,.4f}" if pr < 10 else f"{pr:,.2f}" if pr > 0 else "—"
 
-    st.markdown(f"""<div style="background:rgba(8,11,18,0.99);backdrop-filter:blur(24px);
-    border-bottom:1px solid rgba(255,255,255,0.05);padding:8px 18px;
-    display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    st.markdown(f"""
+    <div style="background:rgba(8,11,18,0.92);backdrop-filter:blur(24px);
+    border-bottom:1px solid rgba(255,255,255,0.06);padding:8px 18px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:38px;height:38px;background:linear-gradient(135deg,#2962ff,#a855f7);
-          border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">👤</div>
+        <div style="width:36px;height:36px;background:linear-gradient(135deg,#2962ff,#a855f7);
+          border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>
         <div>
-          <div style="color:#fff;font-weight:900;font-size:16px;">Personal <span style="color:#2962ff;">Dashboard</span></div>
-          <div style="color:#374151;font-size:10px;">Your trading command center · AI-powered analysis</div>
+          <div style="color:#fff;font-weight:900;font-size:15px;">Personal <span style="color:#2962ff;">Dashboard</span></div>
+          <div style="color:#374151;font-size:10px;">AI-powered · All 6 trader styles · Auto-draws everything</div>
         </div>
       </div>
       <div style="flex:1;"></div>
       <div style="text-align:right;">
-        <div style="color:#9598a1;font-size:13px;font-weight:700;">{name} &nbsp;
-          <span style="color:{cc};font-family:monospace;font-size:18px;font-weight:900;">{pr_s}</span>
-          &nbsp;<span style="color:{cc};font-size:12px;">{chg:+.2f}%</span>
+        <div style="color:#9598a1;font-size:12px;font-weight:700;">{name}
+          <span style="color:{cc};font-family:monospace;font-size:17px;font-weight:900;margin-left:6px;">{pr_s}</span>
+          <span style="color:{cc};font-size:11px;margin-left:4px;">{chg:+.2f}%</span>
         </div>
-        <div style="color:#374151;font-size:10px;">🕐 {datetime.now().strftime('%a, %d %b %Y · %H:%M IST')}</div>
+        <div style="color:#374151;font-size:10px;">🕐 {datetime.now().strftime('%a, %d %b · %H:%M IST')}</div>
       </div>
     </div>""", unsafe_allow_html=True)
 
-    # LAYOUT
+    # ── MAIN LAYOUT ───────────────────────────────────────────────────
     left_col, chart_col = st.columns([1, 4], gap="small")
 
-    # ══ LEFT PANEL ════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════════════
+    # LEFT PANEL
+    # ══════════════════════════════════════════════════════════════════
     with left_col:
         # Search
-        srch=st.text_input("","",placeholder="🔍 Search & add any stock...",
-                           key="pd_srch_inp",label_visibility="collapsed")
-        if srch!=st.session_state.pd_srch:
-            st.session_state.pd_srch=srch
+        srch = st.text_input("", "", placeholder="🔍 Search any stock / crypto...",
+                             key="pd_srch_inp", label_visibility="collapsed")
+        if srch != st.session_state.pd_srch:
+            st.session_state.pd_srch = srch
             if srch.strip():
-                with st.spinner("..."): st.session_state.pd_srch_res=_srch(srch)
-            else: st.session_state.pd_srch_res=[]
+                with st.spinner("..."): st.session_state.pd_srch_res = _srch(srch)
+            else: st.session_state.pd_srch_res = []
 
-        for item in st.session_state.pd_srch_res:
-            d2=_price_fast(item["sym"]); pr2=d2.get("price",0); chg2=d2.get("chg",0)
-            cc2="#26a69a" if chg2>=0 else "#ef5350"
-            c1,c2=st.columns([3,1])
+        for item in st.session_state.pd_srch_res[:6]:
+            d2  = _price_fast(item["sym"]); pr2 = d2.get("price", 0); chg2 = d2.get("chg", 0)
+            cc2 = "#26a69a" if chg2 >= 0 else "#ef5350"
+            c1, c2 = st.columns([3, 1])
             with c1:
-                if st.button(f"+ {item['name'][:14]}",key=f"padd_{item['sym']}",use_container_width=True):
-                    if not any(f["sym"]==item["sym"] for f in st.session_state.pd_favs):
+                if st.button(f"+ {item['name'][:14]}", key=f"padd_{item['sym']}", use_container_width=True):
+                    if not any(f["sym"] == item["sym"] for f in st.session_state.pd_favs):
                         st.session_state.pd_favs.append({"sym":item["sym"],"name":item["name"],"type":item["type"]})
                         st.toast(f"⭐ {item['name']} added!")
-                    st.session_state.pd_sel={"sym":item["sym"],"name":item["name"],"type":item["type"]}
-                    st.session_state.pd_ai=None; st.session_state.pd_srch=""
-                    st.session_state.pd_srch_res=[]; st.rerun()
+                    st.session_state.pd_sel = {"sym":item["sym"],"name":item["name"],"type":item["type"]}
+                    st.session_state.pd_ai  = None
+                    st.session_state.pd_srch = ""; st.session_state.pd_srch_res = []
+                    st.rerun()
             with c2:
-                st.markdown(f'<div style="font-size:10px;color:{cc2};text-align:right;padding-top:6px;">{pr2:.2f}</div>',unsafe_allow_html=True)
+                st.markdown(f'<div style="font-size:10px;color:{cc2};text-align:right;padding-top:6px;">{pr2:.2f}</div>', unsafe_allow_html=True)
 
         # Watchlist header
-        st.markdown("""<div style="display:flex;padding:4px 5px;font-size:8.5px;color:#374151;
-        font-weight:700;background:rgba(255,255,255,0.02);border-radius:6px 6px 0 0;
+        st.markdown("""<div style="display:flex;padding:4px 5px;font-size:8px;color:#374151;
+        font-weight:700;background:rgba(255,255,255,0.03);border-radius:6px 6px 0 0;
         text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,0.04);">
           <span style="flex:1;">Favourite</span>
-          <span style="width:65px;text-align:right;">Price</span>
-          <span style="width:40px;text-align:right;">Chg%</span>
+          <span style="width:62px;text-align:right;">Price</span>
+          <span style="width:38px;text-align:right;">Chg%</span>
           <span style="width:14px;"></span>
-        </div>""",unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
-        to_remove=None
+        to_remove = None
         for item in list(favs):
-            d3=_price_fast(item["sym"]); pr3=d3.get("price",0); chg3=d3.get("chg",0)
-            cc3="#26a69a" if chg3>=0 else "#ef5350"; is_sel=sel["sym"]==item["sym"]
-            pr3s=f"{pr3:,.4f}" if 0<pr3<10 else f"{pr3:,.2f}" if pr3>0 else "—"
-            chg3s=f"{chg3:+.1f}%" if pr3>0 else "—"
-            type_icon={"stock":"📈","crypto":"🪙","index":"📊","commodity":"🥇"}.get(item["type"],"📈")
-            bc1,bc2=st.columns([5,1])
+            d3   = _price_fast(item["sym"]); pr3 = d3.get("price", 0); chg3 = d3.get("chg", 0)
+            cc3  = "#26a69a" if chg3 >= 0 else "#ef5350"
+            is_s = sel["sym"] == item["sym"]
+            pr3s = f"{pr3:,.4f}" if 0 < pr3 < 10 else f"{pr3:,.2f}" if pr3 > 0 else "—"
+            chg3s= f"{chg3:+.1f}%" if pr3 > 0 else "—"
+            ti   = {"stock":"📈","crypto":"🪙","index":"📊","commodity":"🥇"}.get(item["type"],"📈")
+            bc1, bc2 = st.columns([5, 1])
             with bc1:
-                if st.button(f"{type_icon} {item['name'][:14]}",key=f"pfav_{item['sym']}",
-                             use_container_width=True,type="primary" if is_sel else "secondary"):
-                    st.session_state.pd_sel=item; st.session_state.pd_ai=None; st.rerun()
+                if st.button(f"{ti} {item['name'][:13]}", key=f"pfav_{item['sym']}",
+                             use_container_width=True, type="primary" if is_s else "secondary"):
+                    st.session_state.pd_sel  = item
+                    st.session_state.pd_ai   = None; st.rerun()
             with bc2:
-                if st.button("✕",key=f"prem_{item['sym']}",use_container_width=True):
-                    to_remove=item["sym"]
+                if st.button("✕", key=f"prem_{item['sym']}", use_container_width=True):
+                    to_remove = item["sym"]
             st.markdown(
-                f'<div style="display:flex;padding:0 5px 3px 5px;font-size:10.5px;'
+                f'<div style="display:flex;padding:0 5px 3px 5px;font-size:10px;'
                 f'border-bottom:1px solid rgba(255,255,255,0.03);margin-top:-8px;">'
-                f'<span style="flex:1;color:#374151;font-size:9px;">{item["sym"].replace(".NS","").replace("-USD","").replace("^","")}</span>'
-                f'<span style="color:{cc3};font-family:monospace;font-weight:700;min-width:65px;text-align:right;">{pr3s}</span>'
-                f'<span style="color:{cc3};min-width:40px;text-align:right;font-size:10px;">{chg3s}</span>'
-                f'<span style="width:14px;"></span></div>',unsafe_allow_html=True)
+                f'<span style="flex:1;color:#374151;font-size:8.5px;">'
+                f'{item["sym"].replace(".NS","").replace("-USD","").replace("^","")}</span>'
+                f'<span style="color:{cc3};font-family:monospace;font-weight:700;min-width:62px;text-align:right;">{pr3s}</span>'
+                f'<span style="color:{cc3};min-width:38px;text-align:right;font-size:9.5px;">{chg3s}</span>'
+                f'<span style="width:14px;"></span></div>', unsafe_allow_html=True)
 
         if to_remove:
-            st.session_state.pd_favs=[f for f in st.session_state.pd_favs if f["sym"]!=to_remove]
-            if sel["sym"]==to_remove and st.session_state.pd_favs:
-                st.session_state.pd_sel=st.session_state.pd_favs[0]; st.session_state.pd_ai=None
+            st.session_state.pd_favs = [f for f in st.session_state.pd_favs if f["sym"] != to_remove]
+            if sel["sym"] == to_remove and st.session_state.pd_favs:
+                st.session_state.pd_sel = st.session_state.pd_favs[0]
+                st.session_state.pd_ai  = None
             st.rerun()
 
-        st.markdown("<div style='height:6px'></div>",unsafe_allow_html=True)
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-        # Sector quick add
-        st.markdown('<div style="font-size:9.5px;color:#374151;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Quick Add</div>',unsafe_allow_html=True)
-        sec=st.selectbox("",list(SECTOR_STOCKS.keys()),key="pd_sec",label_visibility="collapsed")
+        # Sector Quick Add
+        st.markdown('<div style="font-size:9px;color:#374151;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Quick Add</div>', unsafe_allow_html=True)
+        sec = st.selectbox("", list(SECTOR_STOCKS.keys()), key="pd_sec", label_visibility="collapsed")
         for s in SECTOR_STOCKS[sec][:5]:
-            d4=_price_fast(s); pr4=d4.get("price",0); chg4=d4.get("chg",0)
-            cc4="#26a69a" if chg4>=0 else "#ef5350"
-            already=any(f["sym"]==s for f in st.session_state.pd_favs)
-            lbl=("✓ " if already else "+ ")+s.replace(".NS","").replace("-USD","").replace("^","")
-            if st.button(lbl,key=f"pqa_{s}",use_container_width=True):
+            d4 = _price_fast(s); pr4 = d4.get("price", 0); chg4 = d4.get("chg", 0)
+            cc4 = "#26a69a" if chg4 >= 0 else "#ef5350"
+            already = any(f["sym"] == s for f in st.session_state.pd_favs)
+            lbl = ("✓ " if already else "+ ") + s.replace(".NS","").replace("-USD","").replace("^","")
+            if st.button(lbl, key=f"pqa_{s}", use_container_width=True):
+                nm2 = s.replace(".NS","").replace("-USD","").replace("^","")
                 if not already:
-                    nm=s.replace(".NS","").replace("-USD","").replace("^","")
-                    st.session_state.pd_favs.append({"sym":s,"name":nm,"type":"stock"})
-                    st.toast(f"⭐ {nm} added!")
-                nm2=s.replace(".NS","").replace("-USD","").replace("^","")
-                st.session_state.pd_sel={"sym":s,"name":nm2,"type":"stock"}
-                st.session_state.pd_ai=None; st.rerun()
-            if pr4>0:
-                st.markdown(f'<div style="display:flex;font-size:10px;padding:0 3px 2px 3px;margin-top:-8px;border-bottom:1px solid rgba(255,255,255,0.03);"><span style="flex:1;color:#374151;font-size:9px;">{s}</span><span style="color:{cc4};font-family:monospace;">{pr4:.2f}</span><span style="color:{cc4};margin-left:4px;">{chg4:+.1f}%</span></div>',unsafe_allow_html=True)
+                    st.session_state.pd_favs.append({"sym":s,"name":nm2,"type":"stock"})
+                    st.toast(f"⭐ {nm2} added!")
+                st.session_state.pd_sel = {"sym":s,"name":nm2,"type":"stock"}
+                st.session_state.pd_ai  = None; st.rerun()
+            if pr4 > 0:
+                st.markdown(f'<div style="display:flex;font-size:9.5px;padding:0 3px 2px;margin-top:-8px;border-bottom:1px solid rgba(255,255,255,0.03);"><span style="flex:1;color:#374151;font-size:8px;">{s}</span><span style="color:{cc4};font-family:monospace;">{pr4:.2f}</span><span style="color:{cc4};margin-left:4px;">{chg4:+.1f}%</span></div>', unsafe_allow_html=True)
 
-    # ══ CHART + ANALYSIS ══════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════════════
+    # RIGHT PANEL — CHART + ANALYSIS
+    # ══════════════════════════════════════════════════════════════════
     with chart_col:
-        # Toolbar
-        t1,t2,t3,t4,t5,t6=st.columns([3,2,2,1,1,1])
-        with t1:
-            tf=st.radio("",["1D","1H","15m","4H","1W","1M"],
-                        horizontal=True,key="pd_tf_r",index=0,label_visibility="collapsed")
-        with t2:
-            trader=st.selectbox("",["all","price_action","smc","indicator","volume","wave","quant"],
-                format_func=lambda x:{"all":"🎯 All Styles","price_action":"📊 Price Action",
-                "smc":"🏦 SMC/ICT","indicator":"📈 Indicators",
-                "volume":"📦 Volume","wave":"🌊 Elliott Wave","quant":"🤖 Quant"}[x],
-                key="pd_trader_sel",label_visibility="collapsed")
-        with t3:
-            mode=st.radio("",["📺 TradingView","🤖 AI Chart"],
-                          horizontal=True,key="pd_mode_r",label_visibility="collapsed")
-        with t4:
-            run_ai=st.button("🤖 Analyse",key="pd_run",type="primary",use_container_width=True)
-        with t5:
-            if st.button("🔄",key="pd_ref",use_container_width=True):
-                st.session_state.pd_ai=None; st.rerun()
-        with t6:
-            if st.button("📺 TV",key="pd_tv",use_container_width=True):
-                st.session_state.pd_mode="tv"; st.rerun()
+
+        # ── VIEW TOGGLE: Single chart OR 6-chart grid ─────────────────
+        v1, v2, v3, v4, v5, v6, v7 = st.columns([2, 2, 2, 2, 1, 1, 1])
+        with v1:
+            view = st.radio("", ["📊 Single", "🔲 6 Charts"],
+                            horizontal=True, key="pd_view_r", label_visibility="collapsed")
+        with v2:
+            tf = st.radio("", ["1D","1H","15m","4H","1W"],
+                          horizontal=True, key="pd_tf_r", index=0, label_visibility="collapsed")
+        with v3:
+            trader = st.selectbox("",
+                ["all","price_action","smc","indicator","volume","wave","quant"],
+                format_func=lambda x: {
+                    "all":"🎯 All","price_action":"📊 PA","smc":"🏦 SMC",
+                    "indicator":"📈 Ind","volume":"📦 Vol","wave":"🌊 Wave","quant":"🤖 Quant"}[x],
+                key="pd_trader_sel", label_visibility="collapsed")
+        with v4:
+            mode = st.radio("", ["📺 TV","🤖 AI"],
+                            horizontal=True, key="pd_mode_r", label_visibility="collapsed")
+        with v5:
+            run_ai = st.button("🤖 Analyse", key="pd_run", type="primary", use_container_width=True)
+        with v6:
+            if st.button("🔄", key="pd_ref", use_container_width=True):
+                st.session_state.pd_ai = None; st.rerun()
+        with v7:
+            if st.button("📺 TV", key="pd_tv_btn", use_container_width=True):
+                st.session_state.pd_mode = "tv"; st.rerun()
 
         if run_ai:
-            st.session_state.pd_ai=None; st.session_state.pd_trader=trader
-            st.session_state.pd_mode="ai"; st.rerun()
+            st.session_state.pd_ai    = None
+            st.session_state.pd_trader= trader
+            st.session_state.pd_mode  = "ai"
+            st.rerun()
 
-        # Load data
-        tf_map={"1D":("3mo","1d"),"1H":("1mo","1h"),"15m":("5d","15m"),
-                "4H":("6mo","1d"),"1W":("2y","1wk"),"1M":("5y","1mo")}
-        period,interval=tf_map.get(tf,("3mo","1d"))
+        # ════════════════════════════════════════════════════════════
+        # 6-CHART GRID VIEW
+        # ════════════════════════════════════════════════════════════
+        if "6 Charts" in view:
+            show_favs = favs[:6] if len(favs) >= 6 else (favs + DEFAULT_FAVS)[:6]
+            st.markdown(f"""<div style="background:rgba(13,17,28,0.6);backdrop-filter:blur(14px);
+            border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 12px;margin-bottom:6px;
+            display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <span style="color:#fff;font-weight:800;">📊 Favourite Stocks Overview</span>
+              <span style="color:#374151;font-size:11px;">Click any card to open full analysis</span>
+            </div>""", unsafe_allow_html=True)
+
+            # 2 rows × 3 cols
+            for row in range(2):
+                cols = st.columns(3, gap="small")
+                for col_idx in range(3):
+                    idx = row * 3 + col_idx
+                    if idx >= len(show_favs): break
+                    item = show_favs[idx]
+                    with cols[col_idx]:
+                        d5   = _price_fast(item["sym"])
+                        pr5  = d5.get("price", 0); chg5 = d5.get("chg", 0)
+                        cc5  = "#26a69a" if chg5 >= 0 else "#ef5350"
+
+                        # Load tech for this symbol
+                        try:
+                            from pro_chart import _ohlcv as _ov2, _compute_tech as _ct2
+                            df5   = _ov2(item["sym"], "1mo", "1d")
+                            tech5 = _ct2(df5) if not df5.empty else {}
+                        except:
+                            tech5 = {}
+
+                        sup5 = tech5.get("supports", [])
+                        res5 = tech5.get("resistances", [])
+                        trend5 = tech5.get("trend", "—")
+                        rsi5   = tech5.get("rsi", 50)
+
+                        # Card header
+                        pr5s = f"{pr5:,.2f}" if pr5 >= 1 else f"{pr5:.4f}"
+                        tc5  = "#26a69a" if trend5=="BULLISH" else "#ef5350" if trend5=="BEARISH" else "#f59e0b"
+                        st.markdown(f"""<div style="background:rgba(13,17,28,0.8);backdrop-filter:blur(14px);
+                        border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden;
+                        cursor:pointer;transition:all .2s;">
+                          <div style="padding:8px 10px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <div>
+                              <div style="font-size:12px;font-weight:800;color:#fff;">{item['name'][:12]}</div>
+                              <div style="font-size:9.5px;color:#374151;">{item['sym'].replace('.NS','').replace('-USD','').replace('^','')}</div>
+                            </div>
+                            <div style="text-align:right;">
+                              <div style="font-size:14px;font-weight:900;color:{cc5};font-family:'Courier New';">{pr5s}</div>
+                              <div style="font-size:10px;color:{cc5};">{chg5:+.2f}%</div>
+                            </div>
+                          </div>
+                        </div>""", unsafe_allow_html=True)
+
+                        # Mini chart
+                        mini_h = _mini_chart_html(item["sym"], item["name"], pr5, chg5, trend5, sup5, res5, height=190)
+                        components.html(mini_h, height=195, scrolling=False)
+
+                        # Stats + open button
+                        st.markdown(f"""<div style="background:rgba(13,17,28,0.7);backdrop-filter:blur(10px);
+                        border:1px solid rgba(255,255,255,0.05);border-radius:0 0 12px 12px;padding:5px 10px;
+                        display:flex;gap:8px;align-items:center;margin-top:-4px;font-size:10px;">
+                          <span style="color:#6a6e7a;">RSI <b style="color:#d1d4dc;">{rsi5:.0f}</b></span>
+                          <span style="color:{tc5};font-weight:700;font-size:9px;">{trend5[:4]}</span>
+                          <span style="flex:1;"></span>
+                          <span style="color:#26a69a;font-size:9.5px;">S:{round(sup5[0],1) if sup5 else '—'}</span>
+                          <span style="color:#ef5350;font-size:9.5px;">R:{round(res5[0],1) if res5 else '—'}</span>
+                        </div>""", unsafe_allow_html=True)
+
+                        if st.button(f"🔍 Full Analysis", key=f"pgrid_{item['sym']}", use_container_width=True):
+                            st.session_state.pd_sel  = item
+                            st.session_state.pd_ai   = None
+                            st.rerun()
+
+            return  # Grid view done — no further analysis below
+
+        # ════════════════════════════════════════════════════════════
+        # SINGLE CHART VIEW
+        # ════════════════════════════════════════════════════════════
+        tf_map = {"1D":("3mo","1d"),"1H":("1mo","1h"),"15m":("5d","15m"),
+                  "4H":("6mo","1d"),"1W":("2y","1wk"),"1M":("5y","1mo")}
+        period, interval = tf_map.get(tf, ("3mo","1d"))
+
         with st.spinner(f"Loading {name}..."):
             from pro_chart import _ohlcv, _compute_tech
-            df=_ohlcv(sym,period,interval)
-            tech=_compute_tech(df) if not df.empty else {}
+            df   = _ohlcv(sym, period, interval)
+            tech = _compute_tech(df) if not df.empty else {}
 
         if df.empty:
-            st.error(f"❌ No data for `{sym}`"); return
+            st.error(f"❌ No data for `{sym}` — try a different symbol"); return
 
-        use_ai = "🤖 AI Chart" in mode or st.session_state.pd_mode=="ai"
+        use_ai = "🤖 AI" in mode or st.session_state.pd_mode == "ai"
 
-        # ── TradingView mode ─────────────────────────────────────────
+        # ── TradingView Mode ─────────────────────────────────────────
         if not use_ai:
-            tv_s=_to_tv(sym)
-            tv_tf={"1D":"D","1H":"60","15m":"15","4H":"240","1W":"W","1M":"M"}.get(tf,"D")
-            tv_html=f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>*{{margin:0;padding:0;}}html,body{{background:#080b12;width:100%;height:640px;overflow:hidden;}}</style>
-</head><body><div id="tc" style="width:100%;height:640px;"></div>
+            tv_s  = _to_tv(sym)
+            tv_tf = {"1D":"D","1H":"60","15m":"15","4H":"240","1W":"W","1M":"M"}.get(tf,"D")
+            tv_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>*{{margin:0;padding:0;box-sizing:border-box;}}
+html,body{{background:#080b12;width:100%;height:640px;overflow:hidden;}}
+</style></head><body>
+<div id="tc" style="width:100%;height:640px;"></div>
 <script src="https://s3.tradingview.com/tv.js"></script>
-<script>new TradingView.widget({{
-  "autosize":false,"width":"100%","height":640,"symbol":"{tv_s}","interval":"{tv_tf}",
+<script>
+try{{
+new TradingView.widget({{
+  "autosize":false,"width":"100%","height":640,
+  "symbol":"{tv_s}","interval":"{tv_tf}",
   "timezone":"Asia/Kolkata","theme":"dark","style":"1","locale":"en",
-  "toolbar_bg":"#080b12","enable_publishing":false,"container_id":"tc",
-  "allow_symbol_change":true,"withdateranges":true,
+  "toolbar_bg":"#080b12","enable_publishing":false,
+  "container_id":"tc","allow_symbol_change":true,"withdateranges":true,
   "studies":["RSI@tv-basicstudies","MACD@tv-basicstudies","Volume@tv-basicstudies","BB@tv-basicstudies"],
   "overrides":{{
-    "mainSeriesProperties.candleStyle.upColor":"#26a69a","mainSeriesProperties.candleStyle.downColor":"#ef5350",
-    "mainSeriesProperties.candleStyle.borderUpColor":"#26a69a","mainSeriesProperties.candleStyle.borderDownColor":"#ef5350",
-    "mainSeriesProperties.candleStyle.wickUpColor":"#26a69a","mainSeriesProperties.candleStyle.wickDownColor":"#ef5350",
+    "mainSeriesProperties.candleStyle.upColor":"#26a69a",
+    "mainSeriesProperties.candleStyle.downColor":"#ef5350",
+    "mainSeriesProperties.candleStyle.borderUpColor":"#26a69a",
+    "mainSeriesProperties.candleStyle.borderDownColor":"#ef5350",
+    "mainSeriesProperties.candleStyle.wickUpColor":"rgba(38,166,154,0.7)",
+    "mainSeriesProperties.candleStyle.wickDownColor":"rgba(239,83,80,0.7)",
     "paneProperties.background":"#080b12",
+    "paneProperties.backgroundType":"solid",
     "paneProperties.vertGridProperties.color":"rgba(255,255,255,0.025)",
     "paneProperties.horzGridProperties.color":"rgba(255,255,255,0.025)"
+  }},
+  "studies_overrides":{{
+    "volume.volume.color.0":"#ef535044","volume.volume.color.1":"#26a69a44",
+    "RSI.plot.color":"#2962ff"
   }}
-}});</script></body></html>"""
-            components.html(tv_html,height=654,scrolling=False)
-            rsi_v=tech.get("rsi",50); trend=tech.get("trend","—")
-            tc_="#26a69a" if trend=="BULLISH" else "#ef5350" if trend=="BEARISH" else "#f59e0b"
-            sup=tech.get("supports",[]); res=tech.get("resistances",[]); vr=tech.get("vol_ratio",1)
-            st.markdown(f"""<div style="background:rgba(13,17,28,0.97);backdrop-filter:blur(20px);
-            border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 16px;margin:4px 0;
-            display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
-              <span style="color:#fff;font-weight:800;font-size:14px;">{name}</span>
-              <span style="color:{tc_};font-weight:700;background:{tc_}18;padding:2px 10px;border-radius:20px;font-size:12px;">{trend}</span>
+}});
+}}catch(e){{
+  document.getElementById('tc').innerHTML=
+    '<div style="color:#ef5350;padding:20px;font-family:monospace;">TV Error: '+e.message+'<br>Symbol: {tv_s}</div>';
+}}
+</script></body></html>"""
+            components.html(tv_html, height=654, scrolling=False)
+
+            # Stats bar
+            rsi_v  = tech.get("rsi", 50); trend = tech.get("trend","—")
+            tc_    = "#26a69a" if trend=="BULLISH" else "#ef5350" if trend=="BEARISH" else "#f59e0b"
+            sup    = tech.get("supports",[]); res = tech.get("resistances",[]); vr = tech.get("vol_ratio",1)
+            perf1m = tech.get("perf1m",0); atr_v = tech.get("atr",0)
+            st.markdown(f"""<div style="background:rgba(13,17,28,0.85);backdrop-filter:blur(18px);
+            border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;margin:4px 0;
+            display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+              <span style="color:#fff;font-weight:800;font-size:13px;">{name}</span>
+              <span style="color:{tc_};background:{tc_}18;padding:2px 10px;border-radius:16px;font-size:11px;font-weight:700;">{trend}</span>
               <span style="color:#6a6e7a;font-size:12px;">RSI <b style="color:#d1d4dc;">{rsi_v:.1f}</b></span>
               <span style="color:#6a6e7a;font-size:12px;">Vol <b style="color:#d1d4dc;">{vr:.2f}x</b></span>
+              <span style="color:#6a6e7a;font-size:12px;">ATR <b style="color:#d1d4dc;">{atr_v:.4f}</b></span>
               <span style="color:#6a6e7a;font-size:12px;">Sup <b style="color:#26a69a;">{round(sup[0],2) if sup else '—'}</b></span>
               <span style="color:#6a6e7a;font-size:12px;">Res <b style="color:#ef5350;">{round(res[0],2) if res else '—'}</b></span>
-              <span style="margin-left:auto;color:#374151;font-size:11px;">Click <b style="color:#2962ff;">🤖 Analyse</b> for full AI chart</span>
-            </div>""",unsafe_allow_html=True)
+              <span style="color:#6a6e7a;font-size:12px;">1M <b style="color:{'#26a69a' if perf1m>0 else '#ef5350'};">{perf1m:+.1f}%</b></span>
+              <span style="margin-left:auto;color:#374151;font-size:11px;">👆 Click <b style="color:#2962ff;">🤖 Analyse</b> for AI chart with drawings</span>
+            </div>""", unsafe_allow_html=True)
 
-        # ── AI CHART MODE ─────────────────────────────────────────────
+        # ── AI Chart Mode ─────────────────────────────────────────────
         else:
             if st.session_state.pd_ai is None:
-                with st.spinner(f"🤖 SAGE AI — Drawing all levels on {name} chart + Full 6-style analysis..."):
-                    fund=_fundamental(sym)
-                    ai_res=_master_analysis(sym,name,tech,fund)
-                st.session_state.pd_ai=ai_res; st.session_state.pd_fund=fund
+                with st.spinner(f"🤖 SAGE AI: Analysing {name} — all 6 trader perspectives..."):
+                    fund    = _fundamental(sym)
+                    ai_res  = _master_analysis(sym, name, tech, fund)
+                st.session_state.pd_ai   = ai_res
+                st.session_state.pd_fund = fund
             else:
-                ai_res=st.session_state.pd_ai; fund=st.session_state.pd_fund
+                ai_res = st.session_state.pd_ai
+                fund   = st.session_state.pd_fund
 
-            # THE CHART — AI draws everything
-            chart_html=_personal_chart_html(df,tech,ai_res,sym,height=660)
-            components.html(chart_html,height=675,scrolling=False)
+            # Chart
+            chart_html = _personal_chart_html(df, tech, ai_res, sym, height=660)
+            components.html(chart_html, height=674, scrolling=False)
 
             # Summary bar
-            bc=ai_res.get("bias_color","#f59e0b"); rat=ai_res.get("rating","HOLD")
-            rc2=ai_res.get("rating_color","#f59e0b"); conf=ai_res.get("confidence",65)
-            api_u=ai_res.get("_api","AI")
-            st.markdown(f"""<div style="background:rgba(13,17,28,0.97);backdrop-filter:blur(20px);
-            border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:10px 16px;margin:5px 0;
+            bc2   = ai_res.get("bias_color","#f59e0b"); rat = ai_res.get("rating","HOLD")
+            rc2   = ai_res.get("rating_color","#f59e0b"); conf = ai_res.get("confidence",65)
+            api_u = ai_res.get("_api","AI")
+            st.markdown(f"""<div style="background:rgba(13,17,28,0.85);backdrop-filter:blur(18px);
+            border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:10px 16px;margin:4px 0;
             display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-              <span style="background:{rc2}18;color:{rc2};border:1px solid {rc2}33;
-                border-radius:20px;padding:4px 14px;font-weight:800;font-size:13px;">{rat}</span>
-              <span style="color:{bc};font-weight:800;font-size:15px;">{ai_res.get('bias','NEUTRAL')}</span>
+              <span style="background:{rc2}18;color:{rc2};border:1px solid {rc2}33;border-radius:20px;
+                padding:4px 14px;font-weight:800;font-size:13px;">{rat}</span>
+              <span style="color:{bc2};font-weight:800;font-size:15px;">{ai_res.get('bias','NEUTRAL')}</span>
               <span style="color:#9598a1;font-size:12px;">{ai_res.get('summary','')[:130]}</span>
               <span style="margin-left:auto;color:#374151;font-size:10px;">via {api_u} · {conf}% conf</span>
-            </div>""",unsafe_allow_html=True)
+            </div>""", unsafe_allow_html=True)
 
-            # ANALYSIS TABS
-            tabs=st.tabs(["📊 Price Action","🏦 SMC/ICT","🤖 Quant","📈 Indicators",
-                          "📦 Volume","🌊 Wave+Fib","📋 Setup","📄 Full Report"])
+            # Analysis Tabs
+            tabs = st.tabs(["📊 Price Action","🏦 SMC/ICT","🤖 Quant",
+                            "📈 Indicators","📦 Volume","🌊 Wave+Fib","📋 Setup","📄 Full Report"])
 
-            # ── Tab 1: Price Action ────────────────────────────────────
             with tabs[0]:
-                pa=ai_res.get("price_action",{})
-                st.markdown(f"""<div style="background:rgba(26,35,126,0.08);border:1px solid rgba(26,35,126,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="font-size:11px;color:#4a9eff;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📊 Price Action Trader Perspective — Clean Chart, No Noise</div>
-                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{pa.get('view','')}</div></div>""",unsafe_allow_html=True)
-                c1,c2,c3=st.columns(3)
+                pa = ai_res.get("price_action", {})
+                st.markdown(f"""<div style="background:rgba(26,35,126,0.1);border:1px solid rgba(26,35,126,0.3);border-radius:10px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#4a9eff;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📊 Price Action — Clean Chart · Candles · S/R · Chart Patterns</div>
+                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{pa.get('view','')}</div></div>""", unsafe_allow_html=True)
+                c1,c2,c3 = st.columns(3)
                 with c1:
+                    pat_name = pa.get('pattern_detected','—'); pat_desc = pa.get('pattern_desc','')
                     st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px;text-align:center;">
-                    <div style="font-size:10px;color:#374151;text-transform:uppercase;margin-bottom:4px;">Pattern</div>
-                    <div style="font-size:15px;font-weight:800;color:#4a9eff;">{pa.get('pattern_detected','—')}</div>
-                    <div style="font-size:11px;color:#9598a1;margin-top:3px;">{pa.get('pattern_desc','')[:50]}</div>
-                    </div>""",unsafe_allow_html=True)
+                    <div style="font-size:10px;color:#374151;text-transform:uppercase;margin-bottom:4px;">Chart Pattern</div>
+                    <div style="font-size:14px;font-weight:800;color:#4a9eff;">{pat_name}</div>
+                    <div style="font-size:11px;color:#9598a1;margin-top:4px;">{pat_desc[:60]}</div></div>""", unsafe_allow_html=True)
                 with c2:
-                    sig=pa.get('signal','WAIT'); sc="#26a69a" if sig=="BUY" else "#ef5350" if sig=="SELL" else "#f59e0b"
-                    st.markdown(f"""<div style="background:{sc}11;border:2px solid {sc}33;border-radius:8px;padding:10px;text-align:center;">
+                    sig = pa.get('signal','WAIT'); sc = "#26a69a" if sig=="BUY" else "#ef5350" if sig=="SELL" else "#f59e0b"
+                    st.markdown(f"""<div style="background:{sc}11;border:2px solid {sc}44;border-radius:8px;padding:10px;text-align:center;">
                     <div style="font-size:10px;color:#374151;text-transform:uppercase;margin-bottom:4px;">PA Signal</div>
-                    <div style="font-size:20px;font-weight:900;color:{sc};">{sig}</div></div>""",unsafe_allow_html=True)
+                    <div style="font-size:22px;font-weight:900;color:{sc};">{sig}</div>
+                    <div style="font-size:11px;color:{sc};margin-top:3px;">{pa.get('signal_reason','')[:50]}</div></div>""", unsafe_allow_html=True)
                 with c3:
-                    pats=tech.get("patterns",[])
+                    pats = tech.get("patterns",[])
                     if pats:
+                        rows = "".join([f"<div style='font-size:11px;color:{'#26a69a' if p['type']=='BULLISH' else '#ef5350' if p['type']=='BEARISH' else '#f59e0b'};padding:2px 0;'>{'▲' if p['type']=='BULLISH' else '▼' if p['type']=='BEARISH' else '◆'} {p['name']}</div>" for p in pats[:6]])
                         st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px;">
-                        <div style="font-size:10px;color:#374151;text-transform:uppercase;margin-bottom:4px;">Candles</div>
-                        {''.join([f"<div style='font-size:11px;color:{'#26a69a' if p['type']=='BULLISH' else '#ef5350' if p['type']=='BEARISH' else '#f59e0b'};padding:2px 0;'>{'▲' if p['type']=='BULLISH' else '▼' if p['type']=='BEARISH' else '◆'} {p['name']}</div>" for p in pats[:5]])}</div>""",unsafe_allow_html=True)
+                        <div style="font-size:10px;color:#374151;text-transform:uppercase;margin-bottom:4px;">Candles Detected</div>{rows}</div>""", unsafe_allow_html=True)
 
-            # ── Tab 2: SMC ────────────────────────────────────────────
             with tabs[1]:
-                smc=ai_res.get("smc",{})
-                st.markdown(f"""<div style="background:rgba(183,28,28,0.07);border:1px solid rgba(183,28,28,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="font-size:11px;color:#ef5350;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">🏦 Smart Money / ICT Perspective — Order Blocks · Liquidity · FVG</div>
-                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{smc.get('view','')}</div></div>""",unsafe_allow_html=True)
-                c1,c2=st.columns(2)
+                smc = ai_res.get("smc", {})
+                st.markdown(f"""<div style="background:rgba(183,28,28,0.08);border:1px solid rgba(183,28,28,0.3);border-radius:10px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#ef5350;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">🏦 SMC/ICT — Order Blocks · FVG · Liquidity · Market Structure</div>
+                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{smc.get('view','')}</div></div>""", unsafe_allow_html=True)
+                c1,c2 = st.columns(2)
                 with c1:
+                    ob_items  = smc.get("ob_zones", tech.get("order_blocks",[]))
+                    fvg_items = smc.get("fvg_zones", tech.get("fvg",[]))
+                    ob_html   = "".join([f"<div style='font-size:11.5px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#c8cad0;'>{'🟢' if 'BULL' in ob.get('type','') else '🔴'} {ob.get('type','OB')} — <span style='font-family:monospace;'>{ob.get('bot',ob.get('zone_bot',0)):.4f}–{ob.get('top',ob.get('zone_top',0)):.4f}</span></div>" for ob in ob_items[:3]])
+                    fvg_html  = "".join([f"<div style='font-size:11.5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#c8cad0;'>{'🟢' if 'BULL' in fv.get('type','') else '🔴'} FVG — <span style='font-family:monospace;'>{fv.get('bot',0):.4f}–{fv.get('top',0):.4f}</span></div>" for fv in fvg_items[:3]])
                     st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px;margin-bottom:6px;">
-                    <div style="font-size:10px;color:#ef5350;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Order Blocks</div>
-                    {''.join([f"<div style='font-size:12px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#c8cad0;'>{'🟢 Bull OB' if 'BULL' in ob.get('type','') else '🔴 Bear OB'} — <span style='font-family:monospace;'>{ob.get('bot',ob.get('zone_bot',0)):.4f}–{ob.get('top',ob.get('zone_top',0)):.4f}</span> <span style='color:#6a6e7a;font-size:10px;'>({ob.get('quality','—')})</span></div>" for ob in smc.get('ob_zones',tech.get('order_blocks',[]))[:3]])}
-                    </div>
+                    <div style="font-size:10px;color:#ef5350;font-weight:700;text-transform:uppercase;margin-bottom:5px;">Order Blocks</div>{ob_html or '<div style="color:#6a6e7a;font-size:11px;">Toggle OB layer on chart</div>'}</div>
                     <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:10px;">
-                    <div style="font-size:10px;color:#2962ff;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Fair Value Gaps</div>
-                    {''.join([f"<div style='font-size:12px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#c8cad0;'>{'🟢 Bullish' if 'BULL' in fv.get('type','') else '🔴 Bearish'} FVG — <span style='font-family:monospace;'>{fv.get('bot',0):.4f}–{fv.get('top',0):.4f}</span> <span style='color:#6a6e7a;'>({fv.get('fill_prob','—')})</span></div>" for fv in smc.get('fvg_zones',tech.get('fvg',[]))[:3]])}
-                    </div>""",unsafe_allow_html=True)
+                    <div style="font-size:10px;color:#2962ff;font-weight:700;text-transform:uppercase;margin-bottom:5px;">Fair Value Gaps</div>{fvg_html or '<div style="color:#6a6e7a;font-size:11px;">Toggle FVG layer on chart</div>'}</div>""", unsafe_allow_html=True)
                 with c2:
-                    liq=smc.get("liquidity_pools",[])
-                    ms=smc.get('market_structure','—'); pd_z=smc.get('pd_zone','—')
+                    liq = smc.get("liquidity_pools",[])
+                    liq_html = "".join([f"<div style='font-size:11.5px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#c8cad0;'><span style='color:{'#2962ff' if 'BUY' in lz.get('type','').upper() else '#ef5350'};'>{'🔵' if 'BUY' in lz.get('type','').upper() else '🔴'} {lz.get('type','LIQUIDITY')}</span> @ <span style='font-family:monospace;'>{lz.get('level',0):.4f}</span><br><span style='color:#6a6e7a;font-size:10px;'>{lz.get('desc','')[:50]}</span></div>" for lz in liq[:3]])
+                    ms = smc.get('market_structure','—'); pd_z = smc.get('pd_zone','—')
+                    sig2 = smc.get('signal','WAIT'); sc2 = "#26a69a" if sig2=="BUY" else "#ef5350" if sig2=="SELL" else "#f59e0b"
                     st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px;margin-bottom:6px;">
-                    <div style="font-size:10px;color:#f59e0b;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Market Structure + PD Zone</div>
-                    <div style="font-size:14px;font-weight:700;color:#d1d4dc;margin-bottom:4px;">{ms}</div>
-                    <div style="font-size:13px;color:#9598a1;">{pd_z}</div></div>
+                    <div style="font-size:10px;color:#f59e0b;font-weight:700;text-transform:uppercase;margin-bottom:5px;">Market Structure · PD Zone · Signal</div>
+                    <div style="font-size:13px;font-weight:700;color:#d1d4dc;">{ms}</div>
+                    <div style="font-size:12px;color:#9598a1;margin:3px 0;">{pd_z}</div>
+                    <span style="background:{sc2}18;color:{sc2};border:1px solid {sc2}33;border-radius:12px;padding:2px 10px;font-weight:700;font-size:12px;">{sig2}</span></div>
                     <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:10px;">
-                    <div style="font-size:10px;color:#a855f7;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Liquidity Pools</div>
-                    {''.join([f"<div style='font-size:12px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#c8cad0;'><span style='color:{'#2962ff' if 'BUY' in lz.get('type','').upper() else '#ef5350'};'>{'🔵 Buy-side' if 'BUY' in lz.get('type','').upper() else '🔴 Sell-side'}</span> @ <span style='font-family:monospace;'>{lz.get('level',0):.4f}</span><br><span style='color:#6a6e7a;font-size:10px;'>{lz.get('desc','')[:50]}</span></div>" for lz in liq[:3]]) if liq else '<div style="font-size:11px;color:#6a6e7a;">Enable OB layer on chart for visual zones</div>'}
-                    </div>""",unsafe_allow_html=True)
+                    <div style="font-size:10px;color:#a855f7;font-weight:700;text-transform:uppercase;margin-bottom:5px;">Liquidity Pools</div>
+                    {liq_html or '<div style="color:#6a6e7a;font-size:11px;">No major liquidity pools detected</div>'}</div>""", unsafe_allow_html=True)
 
-            # ── Tab 3: Quant ──────────────────────────────────────────
             with tabs[2]:
-                q=ai_res.get("quant",{})
-                st.markdown(f"""<div style="background:rgba(27,94,32,0.07);border:1px solid rgba(27,94,32,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="font-size:11px;color:#26a69a;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">🤖 Quant / Algo Perspective — Probability & Statistical Edge</div>
-                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{q.get('view','')}</div></div>""",unsafe_allow_html=True)
-                cols=st.columns(4)
-                for i,(lbl,val,col2) in enumerate([
+                q = ai_res.get("quant", {})
+                st.markdown(f"""<div style="background:rgba(27,94,32,0.08);border:1px solid rgba(27,94,32,0.3);border-radius:10px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#26a69a;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">🤖 Quant — Probability · Statistical Edge · Expected Value</div>
+                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{q.get('view','')}</div></div>""", unsafe_allow_html=True)
+                cols = st.columns(4)
+                for i,(lbl,val,c) in enumerate([
                     ("Win Rate",q.get('win_rate','—'),"#26a69a"),
                     ("Expected Value",str(q.get('expected_value','—')),"#2962ff"),
                     ("Setup Grade",q.get('setup_quality','B'),"#f59e0b"),
-                    ("Bull Probability",q.get('probability_bullish','—'),"#26a69a"),
+                    ("Bull Prob",q.get('probability_bullish','—'),"#26a69a"),
                 ]):
                     with cols[i]:
-                        st.markdown(f"""<div style="background:{col2}0d;border:1px solid {col2}33;border-radius:8px;padding:10px;text-align:center;">
-                        <div style="font-size:9.5px;color:#374151;text-transform:uppercase;margin-bottom:4px;">{lbl}</div>
-                        <div style="font-size:22px;font-weight:900;color:{col2};font-family:'Courier New';">{val}</div></div>""",unsafe_allow_html=True)
-                st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;margin-top:8px;font-size:13px;color:#c8cad0;line-height:1.7;">
-                <b style="color:#26a69a;">Statistical Edge:</b> {q.get('statistical_edge','')}</div>""",unsafe_allow_html=True)
+                        st.markdown(f"""<div style="background:{c}0d;border:1px solid {c}33;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:9.5px;color:#374151;text-transform:uppercase;margin-bottom:3px;">{lbl}</div>
+                        <div style="font-size:22px;font-weight:900;color:{c};font-family:'Courier New';">{val}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;margin-top:8px;font-size:13px;color:#c8cad0;">
+                <b style="color:#26a69a;">Statistical Edge:</b> {q.get('statistical_edge','—')}</div>""", unsafe_allow_html=True)
 
-            # ── Tab 4: Indicators ─────────────────────────────────────
             with tabs[3]:
-                ind=ai_res.get("indicator",{})
-                st.markdown(f"""<div style="background:rgba(230,81,0,0.07);border:1px solid rgba(230,81,0,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="font-size:11px;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📈 Technical Indicator Perspective — RSI · MACD · BB · EMA · VWAP</div>
-                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{ind.get('view','')}</div></div>""",unsafe_allow_html=True)
+                ind = ai_res.get("indicator", {})
+                st.markdown(f"""<div style="background:rgba(230,81,0,0.08);border:1px solid rgba(230,81,0,0.3);border-radius:10px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📈 Indicators — RSI · MACD · BB · EMA · VWAP Confluence</div>
+                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{ind.get('view','')}</div></div>""", unsafe_allow_html=True)
                 rsi_v=tech.get("rsi",50); stoch=tech.get("stoch_rsi",50); macd_h=tech.get("macd_h",0)
                 e20=tech.get("ema20",0); e50=tech.get("ema50",0); e200=tech.get("ema200",0)
                 p2=tech.get("price",0); vwap_v=tech.get("vwap",0); bb_u=tech.get("bb_upper",0); bb_l=tech.get("bb_lower",0); vr=tech.get("vol_ratio",1)
                 inds=[
-                    ("RSI 14",f"{rsi_v:.1f}","#ef5350" if rsi_v>70 else "#26a69a" if rsi_v<30 else "#d1d4dc",
-                     "Overbought ⚠️" if rsi_v>70 else "Oversold 🎯" if rsi_v<30 else "Neutral"),
-                    ("StochRSI",f"{stoch:.1f}","#ef5350" if stoch>80 else "#26a69a" if stoch<20 else "#d1d4dc",
-                     "Overbought" if stoch>80 else "Oversold" if stoch<20 else "Neutral"),
+                    ("RSI 14",f"{rsi_v:.1f}","#ef5350" if rsi_v>70 else "#26a69a" if rsi_v<30 else "#d1d4dc","Overbought⚠️" if rsi_v>70 else "Oversold🎯" if rsi_v<30 else "Neutral"),
+                    ("StochRSI",f"{stoch:.1f}","#ef5350" if stoch>80 else "#26a69a" if stoch<20 else "#d1d4dc","OB" if stoch>80 else "OS" if stoch<20 else "Neutral"),
                     ("MACD","Bull" if macd_h>0 else "Bear","#26a69a" if macd_h>0 else "#ef5350",f"{macd_h:.4f}"),
                     ("EMA20",f"{e20:.3f}","#26a69a" if p2>e20 else "#ef5350","Above" if p2>e20 else "Below"),
                     ("EMA50",f"{e50:.3f}","#26a69a" if p2>e50 else "#ef5350","Above" if p2>e50 else "Below"),
@@ -1340,126 +1619,111 @@ def render_user_dashboard():
                     ("BB%",f"{round((p2-bb_l)/(bb_u-bb_l)*100,1) if bb_u!=bb_l else 50:.0f}%","#ef5350" if p2>bb_u else "#26a69a" if p2<bb_l else "#d1d4dc","Upper" if p2>bb_u else "Lower" if p2<bb_l else "Mid"),
                     ("Volume",f"{vr:.2f}x","#2962ff" if vr>1.5 else "#d1d4dc","High" if vr>1.5 else "Normal"),
                 ]
-                ic=st.columns(3)
+                ic = st.columns(3)
                 for i,(nm,val,col,sig) in enumerate(inds):
                     with ic[i%3]:
-                        st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid {col}22;border-radius:8px;padding:9px 10px;margin-bottom:5px;">
-                        <div style="font-size:9.5px;color:#374151;text-transform:uppercase;letter-spacing:.05em;">{nm}</div>
+                        st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid {col}22;border-radius:8px;padding:9px;margin-bottom:5px;">
+                        <div style="font-size:9.5px;color:#374151;text-transform:uppercase;">{nm}</div>
                         <div style="font-size:18px;font-weight:900;color:{col};font-family:'Courier New';">{val}</div>
-                        <div style="font-size:10px;color:{col};">{sig}</div></div>""",unsafe_allow_html=True)
+                        <div style="font-size:10px;color:{col};">{sig}</div></div>""", unsafe_allow_html=True)
 
-            # ── Tab 5: Volume ─────────────────────────────────────────
             with tabs[4]:
-                v=ai_res.get("volume",{})
-                st.markdown(f"""<div style="background:rgba(74,20,140,0.07);border:1px solid rgba(74,20,140,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="font-size:11px;color:#a855f7;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📦 Volume Profile / Order Flow Perspective — POC · HVN · LVN · Delta</div>
-                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{v.get('view','')}</div></div>""",unsafe_allow_html=True)
-                c1,c2=st.columns(2)
+                v = ai_res.get("volume", {})
+                st.markdown(f"""<div style="background:rgba(74,20,140,0.08);border:1px solid rgba(74,20,140,0.3);border-radius:10px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#a855f7;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📦 Volume — POC · HVN · LVN · Delta · Money Flow</div>
+                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{v.get('view','')}</div></div>""", unsafe_allow_html=True)
+                c1,c2 = st.columns(2)
                 with c1:
-                    poc=v.get('poc_level',tech.get('vwap',0))
-                    st.markdown(f"""<div style="background:rgba(41,98,255,0.08);border:1px solid rgba(41,98,255,0.25);border-radius:8px;padding:12px;text-align:center;margin-bottom:6px;">
-                    <div style="font-size:10px;color:#2962ff;font-weight:700;text-transform:uppercase;">Point of Control (POC)</div>
+                    poc = v.get('poc_level', tech.get('vwap',0))
+                    st.markdown(f"""<div style="background:rgba(41,98,255,0.08);border:1px solid rgba(41,98,255,0.3);border-radius:8px;padding:12px;text-align:center;margin-bottom:6px;">
+                    <div style="font-size:10px;color:#2962ff;font-weight:700;text-transform:uppercase;">POC</div>
                     <div style="font-size:24px;font-weight:900;color:#2962ff;font-family:'Courier New';">{poc:.4f}</div>
                     <div style="font-size:11px;color:#9598a1;">{v.get('poc_significance','')[:60]}</div></div>
                     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;">
-                    <div style="font-size:10px;color:#374151;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Volume Delta</div>
-                    <div style="font-size:14px;font-weight:700;color:#d1d4dc;">{v.get('volume_delta','—')}</div>
-                    <div style="font-size:11px;color:#9598a1;margin-top:4px;">{v.get('money_flow','')[:60]}</div></div>""",unsafe_allow_html=True)
+                    <div style="font-size:10px;color:#374151;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Delta · Money Flow</div>
+                    <div style="font-size:13px;font-weight:700;color:#d1d4dc;">{v.get('volume_delta','—')}</div>
+                    <div style="font-size:11px;color:#9598a1;margin-top:4px;">{v.get('money_flow','')[:60]}</div></div>""", unsafe_allow_html=True)
                 with c2:
-                    vp=tech.get("vp",[]); max_vp=max([x["vol"] for x in vp],default=1) or 1
-                    if vp:
-                        for vi in vp[:10]:
-                            pct=vi["vol"]/max_vp*100; is_poc=vi["vol"]==max_vp
-                            vc="#2962ff" if is_poc else "#26a69a" if vi["price"]<tech.get("price",0) else "#ef5350"
-                            label=f"🔵 POC" if is_poc else ("🟢" if vi["price"]<tech.get("price",0) else "🔴")
-                            st.markdown(f"""<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
-                            <span style="width:55px;font-size:10px;color:{vc};font-family:monospace;font-weight:{'700' if is_poc else '400'};">{vi['price']:.2f}</span>
-                            <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:2px;height:11px;">
-                              <div style="background:{vc};height:11px;border-radius:2px;width:{pct:.0f}%;opacity:{'1' if is_poc else '0.65'};"></div></div>
-                            <span style="font-size:9px;color:{vc};width:18px;">{label}</span></div>""",unsafe_allow_html=True)
+                    vp = tech.get("vp",[]); max_vp = max([x["vol"] for x in vp], default=1) or 1
+                    p3 = tech.get("price",0)
+                    for vi in vp[:10]:
+                        pct = vi["vol"]/max_vp*100; is_poc = vi["vol"]==max_vp
+                        vc = "#2962ff" if is_poc else "#26a69a" if vi["price"]<p3 else "#ef5350"
+                        st.markdown(f"""<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
+                        <span style="width:55px;font-size:10px;color:{vc};font-family:monospace;font-weight:{'700' if is_poc else '400'};">{vi['price']:.2f}</span>
+                        <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:2px;height:11px;">
+                          <div style="background:{vc};height:11px;border-radius:2px;width:{pct:.0f}%;opacity:{'1' if is_poc else '0.6'};"></div></div>
+                        {'<span style="font-size:9px;color:#2962ff;font-weight:700;">POC</span>' if is_poc else ''}</div>""", unsafe_allow_html=True)
 
-            # ── Tab 6: Wave + Fib ─────────────────────────────────────
             with tabs[5]:
-                w=ai_res.get("wave",{})
-                st.markdown(f"""<div style="background:rgba(0,96,100,0.07);border:1px solid rgba(0,96,100,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="font-size:11px;color:#26c6da;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">🌊 Elliott Wave / Gann Perspective — Wave Count · Fibonacci · Cycle</div>
-                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{w.get('view','')}</div></div>""",unsafe_allow_html=True)
-                c1,c2=st.columns(2)
+                w = ai_res.get("wave", {}); fib = tech.get("fib",{}); p4 = tech.get("price",0)
+                st.markdown(f"""<div style="background:rgba(0,96,100,0.08);border:1px solid rgba(0,96,100,0.3);border-radius:10px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#26c6da;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">🌊 Elliott Wave / Gann — Wave Count · Fibonacci · Cycle</div>
+                <div style="font-size:13.5px;color:#c8cad0;line-height:1.8;">{w.get('view','')}</div></div>""", unsafe_allow_html=True)
+                c1,c2 = st.columns(2)
                 with c1:
                     st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px;">
-                    <div style="font-size:10px;color:#374151;text-transform:uppercase;font-weight:700;margin-bottom:8px;">Wave Analysis</div>
-                    <div style="font-size:14px;font-weight:800;color:#26c6da;margin-bottom:4px;">{w.get('wave_count','—')}</div>
-                    <div style="font-size:12px;color:#9598a1;margin-bottom:8px;">{w.get('cycle_phase','—')}</div>
-                    <div style="font-size:12px;color:#d1d4dc;">{w.get('next_move','')}</div>
-                    <div style="font-size:11px;color:#6a6e7a;margin-top:6px;">Target: {w.get('wave_target','')[:60]}</div>
-                    </div>""",unsafe_allow_html=True)
+                    <div style="font-size:10px;color:#374151;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Wave Count</div>
+                    <div style="font-size:14px;font-weight:800;color:#26c6da;">{w.get('wave_count','—')}</div>
+                    <div style="font-size:12px;color:#9598a1;margin:4px 0;">{w.get('cycle_phase','—')}</div>
+                    <div style="font-size:12px;color:#d1d4dc;">{w.get('next_move','')[:80]}</div></div>""", unsafe_allow_html=True)
                 with c2:
-                    fib=tech.get("fib",{}); p3=tech.get("price",0)
-                    fib_c={"0.236":"#7986cb","0.382":"#26a69a","0.500":"#fbbf24","0.618":"#ef5350","0.786":"#e040fb"}
+                    fib_c = {"0.236":"#7986cb","0.382":"#26a69a","0.500":"#fbbf24","0.618":"#ef5350","0.786":"#e040fb"}
                     for k,v_fib in fib.items():
-                        is_near=abs(v_fib-p3)/p3<0.015 if p3 else False
-                        fc=fib_c.get(k,"#6a6e7a"); dist=round((v_fib-p3)/p3*100,2) if p3 else 0
-                        st.markdown(f"""<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;margin:3px 0;
-                        background:{'rgba(255,255,255,0.07)' if is_near else 'rgba(255,255,255,0.02)'};
-                        border:{'1.5px solid '+fc if is_near else '1px solid rgba(255,255,255,0.05)'};">
+                        is_n = abs(v_fib-p4)/p4<0.015 if p4 else False
+                        fc = fib_c.get(k,"#6a6e7a"); dist = round((v_fib-p4)/p4*100,2) if p4 else 0
+                        st.markdown(f"""<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;margin:3px 0;
+                        background:{'rgba(255,255,255,0.07)' if is_n else 'rgba(255,255,255,0.02)'};
+                        border:{'1.5px solid '+fc if is_n else '1px solid rgba(255,255,255,0.05)'};">
                         <span style="width:55px;color:{fc};font-weight:700;font-size:12px;">Fib {k}</span>
                         <span style="flex:1;font-family:'Courier New';font-size:14px;font-weight:700;color:#d1d4dc;">{v_fib:.4f}</span>
                         <span style="font-size:10px;color:{'#26a69a' if dist<0 else '#ef5350'};">{dist:+.2f}%</span>
-                        {'<span style="font-size:9px;color:'+fc+';border:1px solid '+fc+';border-radius:8px;padding:1px 5px;font-weight:700;">◀ NEAR</span>' if is_near else ''}
-                        </div>""",unsafe_allow_html=True)
+                        {'<span style="font-size:9px;color:'+fc+';border:1px solid '+fc+';border-radius:8px;padding:1px 5px;font-weight:700;">◀ NEAR</span>' if is_n else ''}
+                        </div>""", unsafe_allow_html=True)
 
-            # ── Tab 7: Trade Setup ────────────────────────────────────
             with tabs[6]:
-                c1,c2,c3=st.columns(3)
+                c1,c2,c3 = st.columns(3)
+                entry_v=ai_res.get("entry",0); stop_v=ai_res.get("stop",0)
+                t1_v=ai_res.get("t1",0); t2_v=ai_res.get("t2",0)
+                rr=ai_res.get("rr","—"); qual=ai_res.get("quality","—"); bc3=ai_res.get("bias_color","#f59e0b")
                 with c1:
-                    entry_v=ai_res.get("entry",0); stop_v=ai_res.get("stop",0)
-                    t1_v=ai_res.get("t1",0); t2_v=ai_res.get("t2",0)
-                    rr=ai_res.get("rr","—"); qual=ai_res.get("quality","—"); bc=ai_res.get("bias_color","#f59e0b")
                     st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;">
                     <div style="font-size:11px;color:#374151;text-transform:uppercase;font-weight:700;margin-bottom:10px;">🎯 Trade Setup</div>
-                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <span style="color:#26a69a;font-weight:700;font-size:13px;">Entry</span><span style="color:#26a69a;font-family:'Courier New';font-size:17px;font-weight:900;">{entry_v:.4f}</span></div>
-                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <span style="color:#ef5350;font-weight:700;font-size:13px;">Stop Loss</span><span style="color:#ef5350;font-family:'Courier New';font-size:17px;font-weight:900;">{stop_v:.4f}</span></div>
-                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <span style="color:#2962ff;">Target 1</span><span style="color:#2962ff;font-family:'Courier New';font-size:15px;font-weight:800;">{t1_v:.4f}</span></div>
-                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <span style="color:#9c27b0;">Target 2</span><span style="color:#9c27b0;font-family:'Courier New';font-size:15px;font-weight:800;">{t2_v:.4f}</span></div>
-                    <div style="display:flex;justify-content:space-between;padding:10px 0 4px;">
-                      <span style="color:#374151;font-size:12px;">R:R · Quality</span><span style="font-weight:900;font-size:22px;color:{bc};">{rr}</span></div>
-                    <div style="text-align:right;font-size:11px;color:#374151;">{qual}</div></div>""",unsafe_allow_html=True)
+                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:#26a69a;font-weight:700;font-size:13px;">Entry</span><span style="color:#26a69a;font-family:'Courier New';font-size:17px;font-weight:900;">{entry_v:.4f}</span></div>
+                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:#ef5350;font-weight:700;font-size:13px;">Stop</span><span style="color:#ef5350;font-family:'Courier New';font-size:17px;font-weight:900;">{stop_v:.4f}</span></div>
+                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:#2962ff;">Target 1</span><span style="color:#2962ff;font-family:'Courier New';font-size:15px;font-weight:800;">{t1_v:.4f}</span></div>
+                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:#9c27b0;">Target 2</span><span style="color:#9c27b0;font-family:'Courier New';font-size:15px;font-weight:800;">{t2_v:.4f}</span></div>
+                    <div style="display:flex;justify-content:space-between;padding:10px 0 0;"><span style="color:#374151;font-size:12px;">R:R · Quality</span><span style="font-weight:900;font-size:22px;color:{bc3};">{rr}</span></div>
+                    <div style="text-align:right;font-size:11px;color:#374151;">{qual}</div></div>""", unsafe_allow_html=True)
                 with c2:
-                    th="".join([f'<div style="padding:5px 0 5px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;color:#c8cad0;position:relative;line-height:1.5;"><span style="position:absolute;left:0;color:#26a69a;font-weight:900;font-size:14px;">+</span>{t}</div>' for t in ai_res.get("thesis",[])])
-                    rk="".join([f'<div style="padding:5px 0 5px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;color:#c8cad0;position:relative;line-height:1.5;"><span style="position:absolute;left:0;color:#ef5350;font-weight:900;font-size:14px;">−</span>{r}</div>' for r in ai_res.get("risks",[])])
-                    st.markdown(f"""<div style="background:rgba(38,166,154,0.05);border:1px solid rgba(38,166,154,0.15);border-radius:10px;padding:12px;margin-bottom:6px;">
+                    th="".join([f'<div style="padding:5px 0 5px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;color:#c8cad0;position:relative;"><span style="position:absolute;left:0;color:#26a69a;font-weight:900;font-size:14px;">+</span>{t}</div>' for t in ai_res.get("thesis",[])])
+                    rk="".join([f'<div style="padding:5px 0 5px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;color:#c8cad0;position:relative;"><span style="position:absolute;left:0;color:#ef5350;font-weight:900;font-size:14px;">−</span>{r}</div>' for r in ai_res.get("risks",[])])
+                    st.markdown(f"""<div style="background:rgba(38,166,154,0.06);border:1px solid rgba(38,166,154,0.18);border-radius:10px;padding:12px;margin-bottom:6px;">
                     <div style="font-size:11px;color:#26a69a;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Bull Thesis</div>{th}</div>
-                    <div style="background:rgba(239,83,80,0.05);border:1px solid rgba(239,83,80,0.15);border-radius:10px;padding:12px;">
-                    <div style="font-size:11px;color:#ef5350;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Risk Factors</div>{rk}</div>""",unsafe_allow_html=True)
+                    <div style="background:rgba(239,83,80,0.06);border:1px solid rgba(239,83,80,0.18);border-radius:10px;padding:12px;">
+                    <div style="font-size:11px;color:#ef5350;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Risk Factors</div>{rk}</div>""", unsafe_allow_html=True)
                 with c3:
-                    mtf=ai_res.get("multi_tf",{})
-                    mtf_html="".join([f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;"><span style="color:#374151;text-transform:uppercase;font-size:10px;font-weight:700;min-width:50px;">{k}</span><span style="color:#c8cad0;line-height:1.4;">{v}</span></div>' for k,v in mtf.items()])
+                    mtf = ai_res.get("multi_tf",{})
+                    mtf_h = "".join([f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;"><span style="color:#374151;font-size:10px;font-weight:700;text-transform:uppercase;min-width:50px;">{k}</span><span style="color:#c8cad0;">{vv}</span></div>' for k,vv in mtf.items()])
                     st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;margin-bottom:6px;">
-                    <div style="font-size:11px;color:#374151;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Multi-Timeframe</div>{mtf_html}</div>
+                    <div style="font-size:11px;color:#374151;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Multi-Timeframe</div>{mtf_h}</div>
                     <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:10px;font-size:11px;color:#9598a1;line-height:1.7;">
                     <b style="color:#374151;">Catalyst:</b> {ai_res.get('catalyst','—')}<br>
-                    <b style="color:#374151;">Macro:</b> {ai_res.get('macro','—')[:60]}<br>
-                    <b style="color:#374151;">Fundamentals:</b> {ai_res.get('fundamental_snap','—')}</div>""",unsafe_allow_html=True)
+                    <b style="color:#374151;">Macro:</b> {ai_res.get('macro','—')[:60]}</div>""", unsafe_allow_html=True)
 
-            # ── Tab 8: FULL REPORT ────────────────────────────────────
             with tabs[7]:
                 try:
-                    wp=_full_report_html(sym,name,tech,fund,ai_res)
-                    components.html(wp,height=4200,scrolling=True)
+                    wp = _full_report_html(sym, name, tech, fund, ai_res)
+                    components.html(wp, height=4200, scrolling=True)
                 except Exception as e:
                     st.error(f"Report error: {e}")
-
-                c1,c2,c3=st.columns(3)
+                c1,c2,c3 = st.columns(3)
                 with c1:
-                    if st.button("🔄 Re-Analyse",key="pd_re2",type="primary"):
-                        st.session_state.pd_ai=None; st.rerun()
+                    if st.button("🔄 Re-Analyse", key="pd_re2", type="primary"):
+                        st.session_state.pd_ai = None; st.rerun()
                 with c2:
-                    if st.button("📺 Back to TradingView",key="pd_back_tv"):
-                        st.session_state.pd_mode="tv"; st.rerun()
+                    if st.button("📺 Back to TV", key="pd_btv"):
+                        st.session_state.pd_mode = "tv"; st.rerun()
                 with c3:
-                    txt=f"FinSage Personal Dashboard\n{name} ({sym})\n{datetime.now().strftime('%B %d, %Y')}\n\nRating: {ai_res.get('rating')} | Bias: {ai_res.get('bias')} | Conf: {ai_res.get('confidence')}%\nEntry: {ai_res.get('entry',0):.4f} | Stop: {ai_res.get('stop',0):.4f} | T1: {ai_res.get('t1',0):.4f}\nR:R: {ai_res.get('rr','—')}\n\n{ai_res.get('summary','')}\n\nDISCLAIMER: Educational only."
-                    st.download_button("📥 Download",txt,f"finsage_pd_{sym.replace('.','_').replace('^','')}.txt","text/plain",key="pd_dl")
+                    txt = f"FinSage Personal Dashboard\n{name} ({sym})\n{datetime.now().strftime('%B %d, %Y')}\n\nRating:{ai_res.get('rating')} Bias:{ai_res.get('bias')} Conf:{ai_res.get('confidence')}%\nEntry:{ai_res.get('entry',0):.4f} Stop:{ai_res.get('stop',0):.4f} T1:{ai_res.get('t1',0):.4f}\nR:R:{ai_res.get('rr','—')}\n\n{ai_res.get('summary','')}\n\nDISCLAIMER: Educational only."
+                    st.download_button("📥 Download", txt, f"finsage_pd_{sym.replace('.','_').replace('^','')}.txt","text/plain",key="pd_dl")
