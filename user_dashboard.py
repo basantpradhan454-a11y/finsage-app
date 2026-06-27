@@ -1063,6 +1063,424 @@ window.addEventListener('resize',function(){{chart.applyOptions({{width:el.clien
 </script></body></html>"""
 
 
+
+# ════════════════════════════════════════════════════════════════════════
+# 6-TRADER CHART GRID — Ek stock, 6 alag trader styles, ek screen
+# ════════════════════════════════════════════════════════════════════════
+def _six_trader_charts_html(df, tech, ai, sym, height=820):
+    """
+    6 charts of the SAME stock, each styled for a different trader type:
+    1. Price Action  — clean candles, S/R, trendlines, pattern arrows
+    2. SMC / ICT     — candles + OB zones + FVG + Liquidity levels
+    3. Quant         — Heikin-Ashi + EMA ribbon (9/20/50/200)
+    4. Indicator     — candles + RSI band + BB bands + VWAP + MACD color
+    5. Volume/Flow   — candles + Volume bars large + POC + VWAP
+    6. Elliott Wave  — candles + Fibonacci levels + Wave labels
+    """
+    # ── Prepare data ───────────────────────────────────────────────────
+    candles = []; ha_candles = []; vols = []
+    if df is not None and not df.empty:
+        prev_ha = None
+        for idx, row in df.tail(120).iterrows():
+            ts = int(pd.Timestamp(idx).timestamp())
+            o,h,l,c,v = float(row["Open"]),float(row["High"]),float(row["Low"]),float(row["Close"]),int(row["Volume"])
+            candles.append({"time":ts,"open":round(o,4),"high":round(h,4),"low":round(l,4),"close":round(c,4)})
+            vols.append({"time":ts,"value":v,"color":"rgba(38,166,154,0.5)" if c>=o else "rgba(239,83,80,0.5)"})
+            ha_c = (o+h+l+c)/4
+            ha_o = ((prev_ha["open"]+prev_ha["close"])/2) if prev_ha else (o+c)/2
+            ha_h = max(h,ha_o,ha_c); ha_l = min(l,ha_o,ha_c)
+            ha_candles.append({"time":ts,"open":round(ha_o,4),"high":round(ha_h,4),"low":round(ha_l,4),"close":round(ha_c,4)})
+            prev_ha = {"open":ha_o,"close":ha_c}
+
+    sup   = tech.get("supports",[]);    res   = tech.get("resistances",[])
+    fib   = tech.get("fib",{});         vwap_v= tech.get("vwap",0)
+    e9    = tech.get("ema9",0);         e20   = tech.get("ema20",0)
+    e50   = tech.get("ema50",0);        e200  = tech.get("ema200",0)
+    bb_u  = tech.get("bb_upper",0);     bb_l  = tech.get("bb_lower",0)
+    cur   = tech.get("price",0);        rsi_v = tech.get("rsi",50)
+    macd_h= tech.get("macd_h",0)
+    ob_list = tech.get("order_blocks",[])[:4]
+    fvg_list= tech.get("fvg",[])[:4]
+    poc_v = ai.get("key_levels",{}).get("poc", vwap_v)
+    entry_v= ai.get("entry",0); stop_v = ai.get("stop",0)
+    t1_v  = ai.get("t1",0);    t2_v   = ai.get("t2",0)
+    bias  = ai.get("bias","NEUTRAL"); bc = ai.get("bias_color","#f59e0b")
+    conf  = ai.get("confidence",65)
+
+    # Pattern markers
+    markers = []
+    for pt in tech.get("patterns",[])[:6]:
+        bi = min(pt.get("bar",len(candles)-1),len(candles)-1)
+        if 0 <= bi < len(candles):
+            cdl = candles[bi]
+            pc  = {"BULLISH":"#26a69a","BEARISH":"#ef5350","NEUTRAL":"#fbbf24"}.get(pt["type"],"#fbbf24")
+            ps  = {"BULLISH":"arrowUp","BEARISH":"arrowDown","NEUTRAL":"circle"}.get(pt["type"],"circle")
+            pp  = {"BULLISH":"belowBar","BEARISH":"aboveBar","NEUTRAL":"inBar"}.get(pt["type"],"inBar")
+            markers.append({"time":cdl["time"],"position":pp,"color":pc,"shape":ps,"text":pt["name"][:8]})
+
+    import json as _json
+    cj  = _json.dumps(candles)
+    haj = _json.dumps(ha_candles)
+    vj  = _json.dumps(vols)
+    mj  = _json.dumps(markers)
+    sj  = _json.dumps(sup[:4])
+    rj  = _json.dumps(res[:4])
+    fj  = _json.dumps(fib)
+    obj = _json.dumps(ob_list)
+    fvj = _json.dumps(fvg_list)
+
+    chart_h = (height - 60) // 2   # each chart height
+    card_h  = chart_h + 46          # chart + title + stats bar
+
+    # PA analysis text
+    pa   = ai.get("price_action",{}); smc_d = ai.get("smc",{}); q = ai.get("quant",{})
+    ind  = ai.get("indicator",{});    vol_d = ai.get("volume",{}); wave_d = ai.get("wave",{})
+
+    styles = [
+        ("📊 Price Action", "#1a237e", "#4a9eff",
+         pa.get("signal","—"), pa.get("signal_reason","S/R + Clean candles")[:55]),
+        ("🏦 SMC / ICT",    "#b71c1c", "#ef5350",
+         smc_d.get("signal","—"), smc_d.get("signal_reason","OB + Liquidity zones")[:55]),
+        ("🤖 Quant / Algo", "#1b5e20", "#26a69a",
+         f"{q.get('win_rate','—')} WR", q.get("statistical_edge","EMA ribbon + HA")[:55]),
+        ("📈 Indicators",   "#e65100", "#f59e0b",
+         f"RSI {rsi_v:.0f}", ind.get("overall_signal","RSI+MACD+BB+VWAP")[:55]),
+        ("📦 Volume Flow",  "#4a148c", "#a855f7",
+         f"Vol {tech.get('vol_ratio',1):.1f}x", vol_d.get("volume_delta","POC + VWAP")[:55]),
+        ("🌊 Elliott Wave", "#006064", "#26c6da",
+         wave_d.get("wave_count","—")[:20], wave_d.get("cycle_phase","Fib + Wave count")[:55]),
+    ]
+
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+html,body{{background:#060911;color:#d1d4dc;font-family:'Inter','Segoe UI',sans-serif;
+  width:100%;height:{height}px;overflow:hidden;}}
+
+/* HEADER */
+#hdr{{height:44px;background:rgba(13,17,28,0.97);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;
+  padding:0 14px;gap:10px;flex-shrink:0;}}
+.hdr-sym{{font-size:14px;font-weight:900;color:#fff;}}
+.hdr-pr{{font-size:18px;font-weight:900;color:{bc};font-family:'Courier New',monospace;}}
+.hdr-bias{{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;
+  background:{bc}18;color:{bc};border:1px solid {bc}33;}}
+.hdr-sub{{font-size:10px;color:#374151;}}
+.hdr-conf{{font-size:11px;color:#374151;margin-left:auto;}}
+
+/* GRID */
+#grid{{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);
+  gap:3px;padding:3px;flex:1;background:#060911;height:{height-47}px;}}
+
+/* CHART CARD */
+.cc{{display:flex;flex-direction:column;background:#080b12;border-radius:8px;
+  border:1px solid rgba(255,255,255,0.05);overflow:hidden;position:relative;}}
+.cc-title{{height:28px;display:flex;align-items:center;padding:0 8px;gap:6px;flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,0.04);}}
+.cc-icon{{font-size:12px;}}
+.cc-name{{font-size:10.5px;font-weight:800;letter-spacing:.02em;}}
+.cc-sig{{margin-left:auto;font-size:9.5px;font-weight:700;padding:1px 7px;
+  border-radius:8px;border:1px solid;}}
+.cc-chart{{flex:1;position:relative;min-height:0;}}
+.cc-bar{{height:18px;display:flex;align-items:center;padding:0 8px;gap:8px;
+  background:rgba(0,0,0,0.3);border-top:1px solid rgba(255,255,255,0.03);flex-shrink:0;}}
+.cc-stat{{font-size:9px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
+.cc-stat b{{color:#9598a1;}}
+</style></head><body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div class="hdr-sym">{sym.replace(".NS","").replace("-USD","").replace("^","")}</div>
+  <div class="hdr-pr">{cur:.4f if cur<100 else f"{cur:,.2f}"}</div>
+  <div class="hdr-bias">{bias}</div>
+  <div class="hdr-sub">6 Trader Views · Same Stock · Same Candles</div>
+  <div class="hdr-conf">{conf}% confidence · FinSage AI</div>
+</div>
+
+<!-- 6-CHART GRID -->
+<div id="grid">
+  <!-- 1: Price Action -->
+  <div class="cc" id="c0">
+    <div class="cc-title" style="background:rgba(26,35,126,0.15);border-bottom-color:rgba(26,35,126,0.3);">
+      <span class="cc-icon">📊</span>
+      <span class="cc-name" style="color:#4a9eff;">Price Action</span>
+      <span class="cc-sig" style="color:{('#26a69a' if styles[0][3]=='BUY' else '#ef5350' if styles[0][3]=='SELL' else '#f59e0b')};border-color:rgba(255,255,255,0.15);">{styles[0][3]}</span>
+    </div>
+    <div class="cc-chart" id="ch0"></div>
+    <div class="cc-bar"><span class="cc-stat">{styles[0][4]}</span></div>
+  </div>
+
+  <!-- 2: SMC/ICT -->
+  <div class="cc" id="c1">
+    <div class="cc-title" style="background:rgba(183,28,28,0.15);border-bottom-color:rgba(183,28,28,0.3);">
+      <span class="cc-icon">🏦</span>
+      <span class="cc-name" style="color:#ef5350;">SMC / ICT</span>
+      <span class="cc-sig" style="color:{('#26a69a' if styles[1][3]=='BUY' else '#ef5350' if styles[1][3]=='SELL' else '#f59e0b')};border-color:rgba(255,255,255,0.15);">{styles[1][3]}</span>
+    </div>
+    <div class="cc-chart" id="ch1"></div>
+    <div class="cc-bar"><span class="cc-stat">{styles[1][4]}</span></div>
+  </div>
+
+  <!-- 3: Quant -->
+  <div class="cc" id="c2">
+    <div class="cc-title" style="background:rgba(27,94,32,0.15);border-bottom-color:rgba(27,94,32,0.3);">
+      <span class="cc-icon">🤖</span>
+      <span class="cc-name" style="color:#26a69a;">Quant / Algo</span>
+      <span class="cc-sig" style="color:#26a69a;border-color:rgba(255,255,255,0.15);">{styles[2][3]}</span>
+    </div>
+    <div class="cc-chart" id="ch2"></div>
+    <div class="cc-bar"><span class="cc-stat">{styles[2][4]}</span></div>
+  </div>
+
+  <!-- 4: Indicators -->
+  <div class="cc" id="c3">
+    <div class="cc-title" style="background:rgba(230,81,0,0.15);border-bottom-color:rgba(230,81,0,0.3);">
+      <span class="cc-icon">📈</span>
+      <span class="cc-name" style="color:#f59e0b;">Indicators</span>
+      <span class="cc-sig" style="color:#f59e0b;border-color:rgba(255,255,255,0.15);">{styles[3][3]}</span>
+    </div>
+    <div class="cc-chart" id="ch3"></div>
+    <div class="cc-bar"><span class="cc-stat">{styles[3][4]}</span></div>
+  </div>
+
+  <!-- 5: Volume -->
+  <div class="cc" id="c4">
+    <div class="cc-title" style="background:rgba(74,20,140,0.15);border-bottom-color:rgba(74,20,140,0.3);">
+      <span class="cc-icon">📦</span>
+      <span class="cc-name" style="color:#a855f7;">Volume Flow</span>
+      <span class="cc-sig" style="color:#a855f7;border-color:rgba(255,255,255,0.15);">{styles[4][3]}</span>
+    </div>
+    <div class="cc-chart" id="ch4"></div>
+    <div class="cc-bar"><span class="cc-stat">{styles[4][4]}</span></div>
+  </div>
+
+  <!-- 6: Elliott Wave -->
+  <div class="cc" id="c5">
+    <div class="cc-title" style="background:rgba(0,96,100,0.15);border-bottom-color:rgba(0,96,100,0.3);">
+      <span class="cc-icon">🌊</span>
+      <span class="cc-name" style="color:#26c6da;">Elliott Wave</span>
+      <span class="cc-sig" style="color:#26c6da;border-color:rgba(255,255,255,0.15);">{styles[5][3]}</span>
+    </div>
+    <div class="cc-chart" id="ch5"></div>
+    <div class="cc-bar"><span class="cc-stat">{styles[5][4]}</span></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(function(){{
+var LWC = LightweightCharts;
+var candles={cj}, ha={haj}, vols={vj}, marks={mj};
+var sup={sj}, res={rj}, fib={fj};
+var ob_list={obj}, fvg_list={fvj};
+var e9={e9 or 0},e20={e20 or 0},e50={e50 or 0},e200={e200 or 0};
+var bb_u={bb_u or 0},bb_l={bb_l or 0},vwap_v={vwap_v or 0},poc_v={poc_v or 0};
+var entry_v={entry_v or 0},stop_v={stop_v or 0},t1_v={t1_v or 0},t2_v={t2_v or 0};
+var rsi_v={rsi_v:.1f},macd_h={macd_h:.6f};
+
+/* ── CHART FACTORY ─────────────────────────────────────── */
+function makeChart(elId){{
+  var el=document.getElementById(elId);
+  if(!el) return null;
+  var w=el.clientWidth||300, h=el.clientHeight||200;
+  var c=LWC.createChart(el,{{
+    width:w, height:h,
+    layout:{{background:{{type:'solid',color:'#080b12'}},textColor:'#4a5060',fontSize:9}},
+    grid:{{vertLines:{{color:'rgba(255,255,255,0.02)'}},horzLines:{{color:'rgba(255,255,255,0.02)'}}}},
+    rightPriceScale:{{borderColor:'rgba(255,255,255,0.04)',scaleMargins:{{top:0.06,bottom:0.04}}}},
+    timeScale:{{borderColor:'rgba(255,255,255,0.04)',timeVisible:false,
+      rightOffset:3,barSpacing:5,minBarSpacing:0.3}},
+    crosshair:{{mode:LWC.CrosshairMode.Normal,
+      vertLine:{{color:'rgba(255,255,255,0.12)',labelVisible:false}},
+      horzLine:{{color:'rgba(255,255,255,0.12)',labelVisible:true}}}},
+    handleScroll:{{mouseWheel:true,pressedMouseMove:true}},
+    handleScale:{{mouseWheel:true,pinch:true}},
+  }});
+  window.addEventListener('resize',function(){{
+    var nw=el.clientWidth||300,nh=el.clientHeight||200;
+    c.applyOptions({{width:nw,height:nh}});
+  }});
+  return c;
+}}
+
+function addCandle(chart, data, opts){{
+  opts=opts||{{}};
+  var s=chart.addCandlestickSeries({{
+    upColor:opts.up||'#26a69a',downColor:opts.dn||'#ef5350',
+    borderUpColor:opts.up||'#26a69a',borderDownColor:opts.dn||'#ef5350',
+    wickUpColor:opts.wup||'rgba(38,166,154,0.6)',wickDownColor:opts.wdn||'rgba(239,83,80,0.6)',
+  }});
+  s.setData(data); return s;
+}}
+
+function addVol(chart){{
+  chart.priceScale('vol').applyOptions({{scaleMargins:{{top:0.82,bottom:0}}}});
+  var v=chart.addHistogramSeries({{priceScaleId:'vol',scaleMargins:{{top:0.82,bottom:0}}}});
+  v.setData(vols); return v;
+}}
+
+function priceLine(s,price,color,style,title,width){{
+  if(!price) return;
+  return s.createPriceLine({{price:price,color:color,lineWidth:width||1,
+    lineStyle:style||LWC.LineStyle.Dashed,axisLabelVisible:true,title:title||''}});
+}}
+
+/* ─────────────────────────────────────────────────────────
+   CHART 0: PRICE ACTION
+   Clean candles | S/R | Trendlines | Pattern arrows
+   No indicators — price tells everything
+───────────────────────────────────────────────────────── */
+(function(){{
+  var c=makeChart('ch0'); if(!c) return;
+  var s=addCandle(c,candles);
+  if(marks.length) s.setMarkers(marks);
+  // Strong S/R only — clean look
+  sup.forEach(function(v,i){{priceLine(s,v,'rgba(38,166,154,'+(i===0?'0.85':'0.5')+')',
+    LWC.LineStyle.Dashed,i===0?'Key S':'S',i===0?2:1);}});
+  res.forEach(function(v,i){{priceLine(s,v,'rgba(239,83,80,'+(i===0?'0.85':'0.5')+')',
+    LWC.LineStyle.Dashed,i===0?'Key R':'R',i===0?2:1);}});
+  // Entry/Stop/Target — the PA trader's levels
+  priceLine(s,entry_v,'rgba(38,166,154,0.9)',LWC.LineStyle.Solid,'Entry',2);
+  priceLine(s,stop_v,'rgba(239,83,80,0.9)',LWC.LineStyle.Solid,'Stop',2);
+  priceLine(s,t1_v,'rgba(41,98,255,0.8)',LWC.LineStyle.Dashed,'T1',1);
+  c.timeScale().fitContent();
+}})();
+
+/* ─────────────────────────────────────────────────────────
+   CHART 1: SMC / ICT
+   Candles | Order Blocks | FVG | Liquidity | OB zones
+───────────────────────────────────────────────────────── */
+(function(){{
+  var c=makeChart('ch1'); if(!c) return;
+  var s=addCandle(c,candles);
+  // S/R (subtle for SMC — focus on OB)
+  sup.slice(0,2).forEach(function(v){{priceLine(s,v,'rgba(38,166,154,0.35)',LWC.LineStyle.Dotted,'',1);}});
+  res.slice(0,2).forEach(function(v){{priceLine(s,v,'rgba(239,83,80,0.35)',LWC.LineStyle.Dotted,'',1);}});
+  // Order Blocks
+  ob_list.forEach(function(ob){{
+    var isBull=ob.type&&ob.type.indexOf('BULL')>=0;
+    var col=isBull?'rgba(38,166,154,0.85)':'rgba(239,83,80,0.85)';
+    var top=ob.zone_top||ob.top||0, bot=ob.zone_bot||ob.bot||0;
+    priceLine(s,top,col,LWC.LineStyle.Solid,(isBull?'Bull':'Bear')+' OB▲',1);
+    priceLine(s,bot,col,LWC.LineStyle.Solid,(isBull?'Bull':'Bear')+' OB▼',1);
+  }});
+  // FVG zones
+  fvg_list.forEach(function(fv){{
+    var isBull=fv.type&&fv.type.indexOf('BULL')>=0;
+    var col=isBull?'rgba(38,166,154,0.6)':'rgba(239,83,80,0.6)';
+    if(fv.top) priceLine(s,fv.top,col,LWC.LineStyle.Dotted,'FVG'+(isBull?'▲':'▼'),1);
+    if(fv.bot) priceLine(s,fv.bot,col,LWC.LineStyle.Dotted,'',1);
+  }});
+  // Premium/Discount midline
+  if(sup.length&&res.length){{
+    var mid=(sup[0]+res[0])/2;
+    priceLine(s,mid,'rgba(251,191,36,0.5)',LWC.LineStyle.Dotted,'EQ',1);
+  }}
+  c.timeScale().fitContent();
+}})();
+
+/* ─────────────────────────────────────────────────────────
+   CHART 2: QUANT / ALGO
+   Heikin-Ashi candles | EMA 9/20/50/200 ribbon
+   Statistical lens — smooth trend, no noise
+───────────────────────────────────────────────────────── */
+(function(){{
+  var c=makeChart('ch2'); if(!c) return;
+  // HA candles (smoother for quant)
+  var s=addCandle(c,ha,{{up:'#26a69a',dn:'#ef5350',wup:'rgba(38,166,154,0.4)',wdn:'rgba(239,83,80,0.4)'}});
+  // EMA ribbon — the quant's core tool
+  var emas=[
+    [e9, 'rgba(255,255,255,0.5)','EMA9'],
+    [e20,'rgba(33,150,243,0.8)', 'EMA20'],
+    [e50,'rgba(255,152,0,0.8)',  'EMA50'],
+    [e200,'rgba(233,30,99,0.8)','EMA200'],
+  ];
+  emas.forEach(function(e){{
+    if(e[0]) priceLine(s,e[0],e[1],LWC.LineStyle.Solid,e[2],1);
+  }});
+  // Key statistical level
+  priceLine(s,entry_v,'rgba(38,166,154,0.7)',LWC.LineStyle.Dashed,'Entry',1);
+  c.timeScale().fitContent();
+}})();
+
+/* ─────────────────────────────────────────────────────────
+   CHART 3: INDICATOR TRADER
+   Candles | BB Bands | VWAP | RSI color overlay | MACD signal
+───────────────────────────────────────────────────────── */
+(function(){{
+  var c=makeChart('ch3'); if(!c) return;
+  var s=addCandle(c,candles);
+  // Bollinger Bands
+  if(bb_u) priceLine(s,bb_u,'rgba(156,39,176,0.75)',LWC.LineStyle.Solid,'BB+',1);
+  if(bb_l) priceLine(s,bb_l,'rgba(156,39,176,0.75)',LWC.LineStyle.Solid,'BB-',1);
+  var bbMid=bb_u&&bb_l?(bb_u+bb_l)/2:0;
+  if(bbMid) priceLine(s,bbMid,'rgba(156,39,176,0.35)',LWC.LineStyle.Dotted,'BB Mid',1);
+  // VWAP
+  if(vwap_v) priceLine(s,vwap_v,'rgba(251,191,36,0.85)',LWC.LineStyle.Solid,'VWAP',2);
+  // EMA20/50
+  if(e20) priceLine(s,e20,'rgba(33,150,243,0.7)',LWC.LineStyle.Dashed,'EMA20',1);
+  if(e50) priceLine(s,e50,'rgba(255,152,0,0.7)',LWC.LineStyle.Dashed,'EMA50',1);
+  // RSI overbought/oversold zones as price context
+  var rsiCol=rsi_v>70?'rgba(239,83,80,0.6)':rsi_v<30?'rgba(38,166,154,0.6)':'rgba(251,191,36,0.4)';
+  if(entry_v) priceLine(s,entry_v,rsiCol,LWC.LineStyle.Solid,'RSI '+(rsi_v>70?'OB':rsi_v<30?'OS':'Ntrl'),1);
+  c.timeScale().fitContent();
+}})();
+
+/* ─────────────────────────────────────────────────────────
+   CHART 4: VOLUME / ORDER FLOW
+   Candles | Large volume bars | POC | VWAP | S/R
+   Money flow perspective — volume tells truth
+───────────────────────────────────────────────────────── */
+(function(){{
+  var c=makeChart('ch4'); if(!c) return;
+  var s=addCandle(c,candles);
+  // POC — Point of Control (most traded price)
+  if(poc_v) priceLine(s,poc_v,'rgba(41,98,255,0.9)',LWC.LineStyle.Solid,'POC',2);
+  // VWAP
+  if(vwap_v) priceLine(s,vwap_v,'rgba(251,191,36,0.8)',LWC.LineStyle.Dotted,'VWAP',1);
+  // Volume profile levels
+  sup.slice(0,2).forEach(function(v){{priceLine(s,v,'rgba(38,166,154,0.6)',LWC.LineStyle.Dashed,'HVN S',1);}});
+  res.slice(0,2).forEach(function(v){{priceLine(s,v,'rgba(239,83,80,0.6)',LWC.LineStyle.Dashed,'HVN R',1);}});
+  // Large volume bars
+  c.priceScale('vol').applyOptions({{scaleMargins:{{top:0.75,bottom:0}}}});
+  var vs=c.addHistogramSeries({{priceScaleId:'vol',scaleMargins:{{top:0.75,bottom:0}}}});
+  vs.setData(vols);
+  c.timeScale().fitContent();
+}})();
+
+/* ─────────────────────────────────────────────────────────
+   CHART 5: ELLIOTT WAVE / GANN
+   Candles | Fibonacci levels | Wave zones
+   Cycle & ratio perspective
+───────────────────────────────────────────────────────── */
+(function(){{
+  var c=makeChart('ch5'); if(!c) return;
+  var s=addCandle(c,candles);
+  // Fibonacci levels — the wave trader's key tool
+  var fibColors={{
+    '0.236':'rgba(121,134,203,0.85)',
+    '0.382':'rgba(38,166,154,0.85)',
+    '0.500':'rgba(251,191,36,0.85)',
+    '0.618':'rgba(239,83,80,0.85)',
+    '0.786':'rgba(224,64,251,0.85)',
+  }};
+  Object.keys(fib).forEach(function(k){{
+    var v=fib[k]; if(!v) return;
+    var col=fibColors[k]||'rgba(200,200,200,0.6)';
+    priceLine(s,v,col,LWC.LineStyle.Dotted,'Fib '+k,1);
+  }});
+  // Key S/R with wave label
+  if(sup[0]) priceLine(s,sup[0],'rgba(38,166,154,0.8)',LWC.LineStyle.Dashed,'W-Sup',1);
+  if(res[0]) priceLine(s,res[0],'rgba(239,83,80,0.8)',LWC.LineStyle.Dashed,'W-Res',1);
+  // Wave extension target
+  if(t1_v) priceLine(s,t1_v,'rgba(41,98,255,0.7)',LWC.LineStyle.Solid,'Wave Tgt',1);
+  c.timeScale().fitContent();
+}})();
+
+}})(); // end IIFE
+</script></body></html>"""
+
+
+
 def _to_tv(sym):
     """TV symbol converter — covers NSE/BSE/crypto/US/indices"""
     s = sym.upper()
@@ -1320,7 +1738,7 @@ def render_user_dashboard():
                     "indicator":"📈 Ind","volume":"📦 Vol","wave":"🌊 Wave","quant":"🤖 Quant"}[x],
                 key="pd_trader_sel", label_visibility="collapsed")
         with v4:
-            mode = st.radio("", ["📺 TV","🤖 AI"],
+            mode = st.radio("", ["📺 TV","🤖 AI","🔲 6 Views"],
                             horizontal=True, key="pd_mode_r", label_visibility="collapsed")
         with v5:
             run_ai = st.button("🤖 Analyse", key="pd_run", type="primary", use_container_width=True)
@@ -1429,7 +1847,8 @@ def render_user_dashboard():
         if df.empty:
             st.error(f"❌ No data for `{sym}` — try a different symbol"); return
 
-        use_ai = "🤖 AI" in mode or st.session_state.pd_mode == "ai"
+        use_ai   = "🤖 AI"    in mode or st.session_state.pd_mode == "ai"
+        use_6v   = "🔲 6 Views" in mode
 
         # ── TradingView Mode ─────────────────────────────────────────
         if not use_ai:
@@ -1492,6 +1911,47 @@ new TradingView.widget({{
               <span style="color:#6a6e7a;font-size:12px;">1M <b style="color:{'#26a69a' if perf1m>0 else '#ef5350'};">{perf1m:+.1f}%</b></span>
               <span style="margin-left:auto;color:#374151;font-size:11px;">👆 Click <b style="color:#2962ff;">🤖 Analyse</b> for AI chart with drawings</span>
             </div>""", unsafe_allow_html=True)
+
+        # ── 6 Trader Views Grid ──────────────────────────────────────────
+        if use_6v:
+            if st.session_state.pd_ai is None:
+                with st.spinner(f"🤖 SAGE AI: Analysing {name} for all 6 trader views..."):
+                    fund   = _fundamental(sym)
+                    ai_res = _master_analysis(sym, name, tech, fund)
+                st.session_state.pd_ai   = ai_res
+                st.session_state.pd_fund = fund
+            else:
+                ai_res = st.session_state.pd_ai
+                fund   = st.session_state.pd_fund
+
+            six_html = _six_trader_charts_html(df, tech, ai_res, sym, height=840)
+            components.html(six_html, height=856, scrolling=False)
+
+            # Quick summary below
+            bc2 = ai_res.get("bias_color","#f59e0b")
+            rat = ai_res.get("rating","HOLD")
+            bias2 = ai_res.get("bias","NEUTRAL")
+            conf2 = ai_res.get("confidence",65)
+            summ2 = ai_res.get("summary","")[:140]
+            bar_html = (
+                f"<div style='background:rgba(13,17,28,0.85);backdrop-filter:blur(18px);"
+                f"border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 14px;"
+                f"display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;'>"
+                f"<span style='background:{bc2}18;color:{bc2};border:1px solid {bc2}33;"
+                f"border-radius:16px;padding:3px 12px;font-weight:800;'>{rat}</span>"
+                f"<span style='color:{bc2};font-weight:800;'>{bias2} · {conf2}% conf</span>"
+                f"<span style='color:#9598a1;'>{summ2}</span>"
+                f"<span style='margin-left:auto;font-size:11px;color:#6a6e7a;'>"
+                f"<b style='color:#4a9eff;'>1</b>PA "
+                f"<b style='color:#ef5350;'>2</b>SMC "
+                f"<b style='color:#26a69a;'>3</b>Quant "
+                f"<b style='color:#f59e0b;'>4</b>Ind "
+                f"<b style='color:#a855f7;'>5</b>Vol "
+                f"<b style='color:#26c6da;'>6</b>Wave"
+                f"</span></div>"
+            )
+            st.markdown(bar_html, unsafe_allow_html=True)
+            return
 
         # ── AI Chart Mode ─────────────────────────────────────────────
         else:
