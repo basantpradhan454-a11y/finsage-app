@@ -12,7 +12,7 @@ import json, os, requests
 from datetime import datetime
 
 try:
-    from pro_chart import _price_fast, _ohlcv, _compute_tech, _ai_full, _to_tv, _global_search as _srch
+    from pro_chart import _price_fast, _ohlcv, _compute_tech, _global_search as _srch
 except Exception as e:
     st.error(f"Import error: {e}"); st.stop()
 
@@ -997,7 +997,7 @@ FinSage AI · Personal Dashboard · For educational use only.
 
 def _mini_chart_html(sym, name, price, chg, trend, sup, res, height=180):
     """6-mini-chart: small LightweightCharts candle chart for watchlist overview"""
-    from pro_chart import _ohlcv, _compute_tech
+    from pro_chart import _ohlcv
     import json
     try:
         df = _ohlcv(sym, "1mo", "1d")
@@ -1365,7 +1365,7 @@ def render_user_dashboard():
                         try:
                             from pro_chart import _ohlcv as _ov2, _compute_tech as _ct2
                             df5   = _ov2(item["sym"], "1mo", "1d")
-                            tech5 = _ct2(df5) if not df5.empty else {}
+                            tech5 = _ct2(df5) if df5 is not None and not df5.empty else {}
                         except:
                             tech5 = {}
 
@@ -1424,7 +1424,7 @@ def render_user_dashboard():
         with st.spinner(f"Loading {name}..."):
             from pro_chart import _ohlcv, _compute_tech
             df   = _ohlcv(sym, period, interval)
-            tech = _compute_tech(df) if not df.empty else {}
+            tech = _compute_tech(df) if df is not None and not df.empty else {}
 
         if df.empty:
             st.error(f"❌ No data for `{sym}` — try a different symbol"); return

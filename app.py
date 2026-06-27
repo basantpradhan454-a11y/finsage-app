@@ -907,28 +907,6 @@ def render_live_ticker():
     for it in meme_items:   html += _tk_item(it)
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
-    with st.expander('📊 Click any asset to open live candlestick chart', expanded=False):
-        all_items = (crypto_items[:6]+stock_items[:6]+meme_items[:4])[:10]
-        if all_items:
-            bc2 = st.columns(len(all_items))
-            for idx, item in enumerate(all_items):
-                sym   = item['symbol']
-                chg   = item.get('change',0) or 0
-                price = item.get('price',0) or 0
-                ps2   = (f'${price:.4f}' if price<1 else f'${price:,.2f}')
-                col2  = '#00ff88' if chg>=0 else '#ff4466'
-                arr2  = '▲' if chg>=0 else '▼'
-                with bc2[idx]:
-                    st.markdown(
-                        f'<div style="text-align:center;font-size:0.68rem;color:{col2};'
-                        f'font-weight:700;">{arr2}{abs(chg):.1f}%</div>'
-                        f'<div style="text-align:center;font-size:0.65rem;color:#8b949e;">{ps2}</div>',
-                        unsafe_allow_html=True)
-                    if st.button(sym, key=f'tc_btn_{sym}', use_container_width=True):
-                        st.session_state.ticker_chart_symbol = sym
-                        st.session_state.ticker_chart_type   = item.get('type','crypto')
-                        st.session_state.active_page         = '📊 Ticker Chart'
-                        st.rerun()
 
 render_live_ticker()
 
