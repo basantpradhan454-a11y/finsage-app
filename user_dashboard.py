@@ -102,17 +102,17 @@ Return ONLY valid JSON (no markdown fences):
 
   "quant":{{
     "view":"Quant perspective: win-rate probability of current setup, expected value, statistical edge, z-score, correlation. 3-4 sentences.",
-    "win_rate":"{round(55+conf*0.15,0):.0f}%",
-    "expected_value":"{round((t1-entry)*0.6-(entry-sl)*0.4,4):.4f}",
+    "win_rate":"~60%",
+    "expected_value":"computed_value",
     "setup_quality":"A+/A/B/C grade",
-    "probability_bullish":"{conf}%",
+    "probability_bullish":"65%",
     "statistical_edge":"describe edge in numbers"
   }},
 
   "indicator":{{
     "view":"All indicator confluence: RSI+StochRSI+MACD+BB+EMA+VWAP — what they ALL say together. 4-5 sentences.",
-    "rsi_read":"RSI {rsi:.0f} — full interpretation with overbought/oversold context",
-    "macd_read":"MACD histogram at {tech.get('macd_h',0):.4f} — direction and momentum",
+    "rsi_read":"RSI <value> — full interpretation with overbought/oversold context",
+    "macd_read":"MACD histogram at <value> — direction and momentum",
     "bb_read":"BB width {tech.get('bb_width',0):.2f}% — squeeze or expansion, price position",
     "ema_structure":"price vs EMA9/20/50/200 stack — bullish/bearish alignment",
     "vwap_read":"above/below VWAP significance at {tech.get('vwap',0):.4f}",
@@ -995,6 +995,676 @@ FinSage AI · Personal Dashboard · For educational use only.
 # MAIN RENDER
 # ════════════════════════════════════════════════════════════════════════
 
+
+def _render_inbuilt_chart(sym, name, tech, df, tf="1D", period="3mo"):
+    """
+    FinSage Inbuilt Pro Chart — 3D candlestick, indicators, fullscreen, drawing tools.
+    Uses Lightweight Charts v4 (self-hosted CDN) — no TradingView dependency.
+    """
+    import json as _json
+
+    # Build OHLCV data
+    candle_data, vol_data = [], []
+    if df is not None and not df.empty:
+        for idx, row in df.tail(300).iterrows():
+            ts = int(pd.Timestamp(idx).timestamp())
+            o  = round(float(row["Open"]),  4)
+            h  = round(float(row["High"]),  4)
+            l  = round(float(row["Low"]),   4)
+            c  = round(float(row["Close"]), 4)
+            v  = int(row["Volume"])
+            candle_data.append({"time":ts,"open":o,"high":h,"low":l,"close":c})
+            vol_data.append({"time":ts,"value":v,
+                "color":"rgba(38,166,154,0.55)" if c>=o else "rgba(239,83,80,0.55)"})
+
+    # S/R levels
+    sup = tech.get("supports",   [])
+    res = tech.get("resistances",[])
+    fib = tech.get("fib", {})
+
+    # Key levels from tech
+    vwap_p  = tech.get("vwap", 0)
+    ema20_p = tech.get("ema20",0)
+    ema50_p = tech.get("ema50",0)
+    ema200_p= tech.get("ema200",0) or tech.get("ema_200",0)
+    cur_p   = tech.get("price",  candle_data[-1]["close"] if candle_data else 0)
+    rsi_v   = tech.get("rsi",   50)
+    trend   = tech.get("trend", "NEUTRAL")
+    tc      = "#26a69a" if trend=="BULLISH" else "#ef5350" if trend=="BEARISH" else "#f59e0b"
+    atr_v   = tech.get("atr",   0)
+    vol_r   = tech.get("vol_ratio",1)
+
+    cj  = _json.dumps(candle_data)
+    vj  = _json.dumps(vol_data)
+    sj  = _json.dumps(sup[:4])
+    rj  = _json.dumps(res[:4])
+    fj  = _json.dumps(fib)
+    CHT = 660
+
+    html = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:#060b14;font-family:'Inter',-apple-system,sans-serif;color:#d1d4dc;width:100%;height:__CHT__px;overflow:hidden;}
+#root{display:flex;flex-direction:column;width:100%;height:__CHT__px;position:relative;}
+
+/* TOOLBAR */
+#toolbar{
+  display:flex;align-items:center;gap:7px;padding:0 12px;height:42px;min-height:42px;flex-shrink:0;
+  background:linear-gradient(180deg,#0e1520 0%,#0a1018 100%);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  overflow-x:auto;
+}
+#toolbar::-webkit-scrollbar{display:none;}
+.brand{font-weight:800;font-size:13px;color:#d1d4dc;flex-shrink:0;letter-spacing:.2px;}
+.brand b{color:#3d8eff;}
+.sym-lbl{font-family:monospace;font-size:13px;font-weight:700;color:#e2e8f2;background:rgba(255,255,255,0.06);padding:4px 10px;border-radius:6px;flex-shrink:0;}
+.price-disp{font-family:monospace;font-size:14px;font-weight:800;flex-shrink:0;}
+.tf-row{display:flex;gap:2px;background:rgba(255,255,255,0.04);padding:2px;border-radius:7px;flex-shrink:0;}
+.tf-b{font-family:monospace;font-size:10.5px;padding:4px 8px;border-radius:5px;color:#6a7585;cursor:pointer;transition:.12s;white-space:nowrap;}
+.tf-b:hover{color:#e2e8f2;}
+.tf-b.on{background:#3d8eff;color:#fff;font-weight:700;}
+.ct-row{display:flex;gap:2px;background:rgba(255,255,255,0.04);padding:2px;border-radius:7px;flex-shrink:0;}
+.ct-b{font-family:monospace;font-size:10px;padding:3px 7px;border-radius:5px;color:#6a7585;cursor:pointer;transition:.12s;white-space:nowrap;}
+.ct-b:hover{color:#e2e8f2;}
+.ct-b.on{background:rgba(61,142,255,.22);color:#3d8eff;font-weight:700;}
+.sp{flex:1;}
+.icon-b{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6a7585;border:1px solid transparent;transition:.12s;flex-shrink:0;}
+.icon-b:hover{background:rgba(255,255,255,0.07);color:#e2e8f2;border-color:rgba(255,255,255,0.1);}
+.icon-b.on{background:rgba(61,142,255,.15);color:#3d8eff;border-color:rgba(61,142,255,.3);}
+.ind-tog{font-family:monospace;font-size:10px;padding:4px 9px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,0.05);color:#6a7585;border:1px solid rgba(255,255,255,0.07);transition:.12s;white-space:nowrap;}
+.ind-tog:hover{color:#e2e8f2;border-color:rgba(255,255,255,0.15);}
+.ind-tog.on{background:rgba(61,142,255,.15);color:#3d8eff;border-color:rgba(61,142,255,.35);}
+
+/* CHART AREA */
+#chart-area{flex:1;position:relative;min-height:0;}
+#chart-div{width:100%;height:100%;}
+
+/* CROSSHAIR READOUT */
+#ohlcv-bar{
+  position:absolute;top:7px;left:8px;z-index:20;
+  font-family:monospace;font-size:11px;line-height:1.6;
+  background:rgba(6,11,20,.82);padding:6px 10px;border-radius:8px;
+  border:1px solid rgba(255,255,255,0.07);backdrop-filter:blur(8px);
+  pointer-events:none;min-width:280px;
+}
+#ohlcv-bar span{color:#6a7585;}
+#ohlcv-bar b{color:#e2e8f2;}
+#ohlcv-bar .bu{color:#26a69a;} #ohlcv-bar .be{color:#ef5350;}
+
+/* LEGEND TOP-RIGHT */
+#legend{position:absolute;top:7px;right:8px;z-index:20;display:flex;flex-direction:column;gap:3px;align-items:flex-end;pointer-events:none;}
+.leg-r{display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10.5px;background:rgba(6,11,20,.72);padding:3px 8px;border-radius:5px;}
+.leg-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
+
+/* STATS FOOTER */
+#stats-bar{
+  display:flex;align-items:center;gap:12px;padding:0 12px;height:34px;flex-shrink:0;
+  background:#0a1018;border-top:1px solid rgba(255,255,255,0.05);
+  font-family:monospace;font-size:11px;overflow-x:auto;
+}
+#stats-bar::-webkit-scrollbar{display:none;}
+.stat-item{display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;}
+.stat-lbl{color:#3f4d5e;}
+.stat-val{font-weight:700;}
+
+/* DRAWING TOOL RAIL */
+#tool-rail{
+  position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:30;
+  display:flex;flex-direction:column;gap:4px;
+  background:rgba(10,16,24,.92);border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;padding:6px 4px;
+}
+.drw-b{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4a5568;transition:.12s;font-size:14px;}
+.drw-b:hover{background:rgba(255,255,255,0.07);color:#e2e8f2;}
+.drw-b.on{background:rgba(61,142,255,.15);color:#3d8eff;}
+.drw-sep{width:22px;height:1px;background:rgba(255,255,255,0.06);margin:3px auto;}
+
+/* FULLSCREEN */
+:fullscreen #root{height:100vh!important;}
+:fullscreen #chart-area{flex:1;}
+
+/* 3D GLOW effect on container */
+#chart-area::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:
+    radial-gradient(ellipse 60% 30% at 50% 0%, rgba(61,142,255,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 20% at 50% 100%, rgba(38,166,154,0.03) 0%, transparent 60%);
+}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="brand">Fin<b>Sage</b></div>
+  <div class="sym-lbl" id="sym-lbl">__SYM__</div>
+  <div class="price-disp" id="price-disp" style="color:__TC__;">__PRICE__</div>
+
+  <div class="tf-row" id="tf-row">
+    <div class="tf-b" data-tf="1D" data-p="3mo" data-i="1d">1D</div>
+    <div class="tf-b on" data-tf="1W" data-p="1y" data-i="1wk">1W</div>
+    <div class="tf-b" data-tf="1M" data-p="2y" data-i="1mo">1M</div>
+    <div class="tf-b" data-tf="1H" data-p="5d" data-i="1h">1H</div>
+    <div class="tf-b" data-tf="15m" data-p="1mo" data-i="15m">15m</div>
+  </div>
+
+  <div class="ct-row" id="ct-row">
+    <div class="ct-b on" data-ct="candle">Candles</div>
+    <div class="ct-b" data-ct="hollow">Hollow</div>
+    <div class="ct-b" data-ct="heikinashi">HA</div>
+    <div class="ct-b" data-ct="bar">Bars</div>
+    <div class="ct-b" data-ct="line">Line</div>
+    <div class="ct-b" data-ct="area">Area</div>
+    <div class="ct-b" data-ct="baseline">Baseline</div>
+  </div>
+
+  <!-- Indicator toggles -->
+  <div class="ind-tog on" id="tog-ema" data-ind="ema">EMA</div>
+  <div class="ind-tog on" id="tog-vwap" data-ind="vwap">VWAP</div>
+  <div class="ind-tog" id="tog-bb" data-ind="bb">BB</div>
+  <div class="ind-tog" id="tog-vol" data-ind="vol">Vol%</div>
+  <div class="ind-tog on" id="tog-sr" data-ind="sr">S/R</div>
+  <div class="ind-tog" id="tog-fib" data-ind="fib">Fib</div>
+
+  <div class="sp"></div>
+
+  <!-- Right icons -->
+  <div class="icon-b on" id="btn-sr" title="Auto S/R">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 17h18"/></svg>
+  </div>
+  <div class="icon-b" id="btn-reset" title="Fit view">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+  </div>
+  <div class="icon-b" id="btn-screenshot" title="Snapshot">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  </div>
+  <div class="icon-b" id="btn-full" title="Fullscreen (F)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+  </div>
+</div>
+
+<!-- CHART -->
+<div id="chart-area">
+  <div id="chart-div"></div>
+
+  <!-- OHLCV readout -->
+  <div id="ohlcv-bar">
+    <span>Open</span> <b id="r-o">—</b>&nbsp;
+    <span>High</span> <b class="bu" id="r-h">—</b>&nbsp;
+    <span>Low</span>  <b class="be" id="r-l">—</b>&nbsp;
+    <span>Close</span><b id="r-c">—</b>&nbsp;
+    <span>Vol</span>  <b id="r-v">—</b>&nbsp;
+    <span id="r-chg" style="margin-left:4px;"></span>
+  </div>
+
+  <!-- Legend -->
+  <div id="legend"></div>
+
+  <!-- Drawing tool rail -->
+  <div id="tool-rail">
+    <div class="drw-b on" data-drw="cursor" title="Cursor">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l16 6-7 2-2 7z"/></svg>
+    </div>
+    <div class="drw-b" data-drw="hline" title="H-Line (H)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/></svg>
+    </div>
+    <div class="drw-b" data-drw="trend" title="Trendline (T)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19L20 5"/></svg>
+    </div>
+    <div class="drw-b" data-drw="fib" title="Fibonacci">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h18M3 10h13M3 15h9"/></svg>
+    </div>
+    <div class="drw-sep"></div>
+    <div class="drw-b" data-drw="undo" title="Undo (Z)" id="drw-undo">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    </div>
+    <div class="drw-b" data-drw="clear" title="Clear">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div id="stats-bar">
+  <div class="stat-item"><span class="stat-lbl">RSI</span><span class="stat-val" style="color:__RSIC__;">__RSI__</span></div>
+  <div class="stat-item"><span class="stat-lbl">Trend</span><span class="stat-val" style="color:__TC__;">__TREND__</span></div>
+  <div class="stat-item"><span class="stat-lbl">Vol</span><span class="stat-val">__VOLR__x</span></div>
+  <div class="stat-item"><span class="stat-lbl">ATR</span><span class="stat-val">__ATR__</span></div>
+  <div class="stat-item"><span class="stat-lbl">Support</span><span class="stat-val" style="color:#26a69a;">__SUP__</span></div>
+  <div class="stat-item"><span class="stat-lbl">Resist</span><span class="stat-val" style="color:#ef5350;">__RES__</span></div>
+  <div class="stat-item"><span class="stat-lbl">VWAP</span><span class="stat-val">__VWAP__</span></div>
+  <div style="margin-left:auto;font-size:10px;color:#2a3244;">Drag to pan · Scroll to zoom · F = fullscreen</div>
+</div>
+
+</div><!-- /root -->
+
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(function(){
+'use strict';
+
+var CANDLES = __CANDLES__;
+var VOLS    = __VOLS__;
+var SUPP    = __SUPP__;
+var RES     = __RES__;
+var FIBS    = __FIBS__;
+
+var EMA20_P  = __EMA20P__;
+var EMA50_P  = __EMA50P__;
+var EMA200_P = __EMA200P__;
+var VWAP_P   = __VWAPP__;
+
+var showSR   = true;
+var showFib  = false;
+var showEMA  = true;
+var showVWAP = true;
+var showBB   = false;
+var chartType = 'candle';
+
+/* ── CHART INIT ────────────────────────────── */
+var container = document.getElementById('chart-div');
+var W = container.clientWidth  || window.innerWidth;
+var H = container.clientHeight || (window.innerHeight - 76);
+
+var chart = LightweightCharts.createChart(container, {
+  width:  W,
+  height: H,
+  layout: {
+    background:  { type:'solid', color:'#060b14' },
+    textColor:   '#6a7585',
+    fontSize:    11,
+    fontFamily:  'monospace',
+  },
+  grid: {
+    vertLines:  { color:'rgba(255,255,255,0.03)', style:0 },
+    horzLines:  { color:'rgba(255,255,255,0.04)', style:0 },
+  },
+  crosshair: {
+    mode:         LightweightCharts.CrosshairMode.Normal,
+    vertLine:     { color:'rgba(61,142,255,0.5)', labelBackgroundColor:'#3d8eff', width:1, style:3 },
+    horzLine:     { color:'rgba(61,142,255,0.5)', labelBackgroundColor:'#3d8eff', width:1, style:3 },
+  },
+  rightPriceScale: {
+    borderColor:    'rgba(255,255,255,0.06)',
+    textColor:      '#4a5568',
+    scaleMargins:   { top:0.08, bottom:0.25 },
+  },
+  timeScale: {
+    borderColor:    'rgba(255,255,255,0.06)',
+    textColor:      '#4a5568',
+    timeVisible:    true,
+    secondsVisible: false,
+    fixLeftEdge:    false,
+    fixRightEdge:   false,
+  },
+  handleScroll: { mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true },
+  handleScale:  { mouseWheel:true, pinch:true, axisPressedMouseMove:true },
+  localization: { priceFormatter: function(p){ return p>=1000 ? p.toFixed(2) : p.toFixed(4); } },
+});
+
+/* ── SERIES ────────────────────────────────── */
+var mainSeries = null;
+
+function makeCandles(){
+  return chart.addCandlestickSeries({
+    upColor:         '#26a69a',
+    downColor:       '#ef5350',
+    borderUpColor:   '#26a69a',
+    borderDownColor: '#ef5350',
+    wickUpColor:     'rgba(38,166,154,0.75)',
+    wickDownColor:   'rgba(239,83,80,0.75)',
+    wickVisible:     true,
+    borderVisible:   true,
+    // 3D shadow effect via per-bar color overrides below
+  });
+}
+function makeHollow(){
+  return chart.addCandlestickSeries({
+    upColor:         'transparent',
+    downColor:       'rgba(239,83,80,0.25)',
+    borderUpColor:   '#26a69a',
+    borderDownColor: '#ef5350',
+    wickUpColor:     'rgba(38,166,154,0.75)',
+    wickDownColor:   'rgba(239,83,80,0.75)',
+  });
+}
+function makeHA(){
+  // Compute Heikin-Ashi
+  var ha = [];
+  for(var i=0;i<CANDLES.length;i++){
+    var c=CANDLES[i];
+    var haC=(c.open+c.high+c.low+c.close)/4;
+    var haO=i===0?(c.open+c.close)/2:(ha[i-1].open+ha[i-1].close)/2;
+    var haH=Math.max(c.high,haO,haC), haL=Math.min(c.low,haO,haC);
+    ha.push({time:c.time,open:haO,high:haH,low:haL,close:haC});
+  }
+  var s=chart.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borderUpColor:'#26a69a',borderDownColor:'#ef5350',wickUpColor:'rgba(38,166,154,0.75)',wickDownColor:'rgba(239,83,80,0.75)'});
+  s.setData(ha); return s;
+}
+function makeBar(){
+  return chart.addBarSeries({upColor:'#26a69a',downColor:'#ef5350'});
+}
+function makeLine(){
+  return chart.addLineSeries({color:'#3d8eff',lineWidth:2,crosshairMarkerVisible:true,crosshairMarkerRadius:4,crosshairMarkerBackgroundColor:'#3d8eff'});
+}
+function makeArea(){
+  return chart.addAreaSeries({topColor:'rgba(61,142,255,0.25)',bottomColor:'rgba(61,142,255,0.02)',lineColor:'#3d8eff',lineWidth:2});
+}
+function makeBaseline(){
+  var mid=CANDLES.length?((CANDLES[0].close+CANDLES[CANDLES.length-1].close)/2):0;
+  return chart.addBaselineSeries({baseValue:{type:'price',price:mid},topLineColor:'#26a69a',topFillColor1:'rgba(38,166,154,0.25)',topFillColor2:'rgba(38,166,154,0.02)',bottomLineColor:'#ef5350',bottomFillColor1:'rgba(239,83,80,0.02)',bottomFillColor2:'rgba(239,83,80,0.25)',lineWidth:2});
+}
+
+function buildMain(type){
+  if(mainSeries) chart.removeSeries(mainSeries);
+  switch(type){
+    case 'hollow':     mainSeries=makeHollow();   break;
+    case 'heikinashi': mainSeries=makeHA();        return; // HA sets own data
+    case 'bar':        mainSeries=makeBar();       break;
+    case 'line':       mainSeries=makeLine();      break;
+    case 'area':       mainSeries=makeArea();      break;
+    case 'baseline':   mainSeries=makeBaseline();  break;
+    default:           mainSeries=makeCandles();   break;
+  }
+  if(type==='line'||type==='area'||type==='baseline'){
+    mainSeries.setData(CANDLES.map(function(c){ return {time:c.time,value:c.close}; }));
+  } else {
+    mainSeries.setData(CANDLES);
+  }
+
+  // 3D candlestick glow — add shadow-like lighter wick color for up candles
+  if(type==='candle'){
+    var coloredData = CANDLES.map(function(c){
+      var bull = c.close >= c.open;
+      return {
+        time:  c.time,
+        open:  c.open,
+        high:  c.high,
+        low:   c.low,
+        close: c.close,
+        color:          bull ? '#26a69a' : '#ef5350',
+        wickColor:      bull ? 'rgba(38,200,154,0.6)' : 'rgba(239,83,80,0.5)',
+        borderColor:    bull ? '#1de9b6' : '#ff5252',
+      };
+    });
+    mainSeries.setData(coloredData);
+  }
+}
+
+/* ── VOLUME ────────────────────────────────── */
+var volSeries = chart.addHistogramSeries({
+  priceScaleId:  'vol',
+  scaleMargins:  { top:0.78, bottom:0 },
+});
+chart.priceScale('vol').applyOptions({ scaleMargins:{top:0.78,bottom:0} });
+if(VOLS.length) volSeries.setData(VOLS);
+
+/* ── INDICATORS ────────────────────────────── */
+var emaSeries=null, ema50Series=null, ema200Series=null, vwapSeries=null, bbU=null, bbL=null, bbM=null;
+
+function calcEMA(data,period){
+  var k=2/(period+1),prev,out=[];
+  data.forEach(function(d,i){
+    if(i<period-1){out.push({time:d.time,value:null});return;}
+    if(i===period-1){var s=0;for(var j=0;j<period;j++)s+=data[j].value;prev=s/period;out.push({time:d.time,value:prev});return;}
+    prev=d.value*k+prev*(1-k);out.push({time:d.time,value:prev});
+  });
+  return out.filter(function(d){return d.value!=null;});
+}
+function calcBB(data,period,mult){
+  var sma=[],sd=[];
+  for(var i=period-1;i<data.length;i++){
+    var s=0;for(var j=i-period+1;j<=i;j++)s+=data[j].value;var m=s/period;sma.push({t:data[i].time,v:m});
+    var v2=0;for(var j2=i-period+1;j2<=i;j2++)v2+=Math.pow(data[j2].value-m,2);sd.push(Math.sqrt(v2/period));
+  }
+  return {upper:sma.map(function(d,i){return{time:d.t,value:d.v+mult*sd[i]};}),
+          mid:sma.map(function(d){return{time:d.t,value:d.v};}),
+          lower:sma.map(function(d,i){return{time:d.t,value:d.v-mult*sd[i]};})};
+}
+
+var closeData = CANDLES.map(function(c){return{time:c.time,value:c.close};});
+
+function buildIndicators(){
+  // EMA 20
+  if(showEMA){
+    if(!emaSeries){ emaSeries=chart.addLineSeries({color:'#3d8eff',lineWidth:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false}); }
+    emaSeries.setData(calcEMA(closeData,20));
+    if(!ema50Series){ ema50Series=chart.addLineSeries({color:'#f0a93c',lineWidth:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false}); }
+    ema50Series.setData(calcEMA(closeData,50));
+    if(!ema200Series){ ema200Series=chart.addLineSeries({color:'#ef5350',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false}); }
+    ema200Series.setData(calcEMA(closeData,200));
+  } else {
+    if(emaSeries){try{chart.removeSeries(emaSeries);}catch(e){}emaSeries=null;}
+    if(ema50Series){try{chart.removeSeries(ema50Series);}catch(e){}ema50Series=null;}
+    if(ema200Series){try{chart.removeSeries(ema200Series);}catch(e){}ema200Series=null;}
+  }
+  // VWAP
+  if(showVWAP){
+    if(!vwapSeries){ vwapSeries=chart.addLineSeries({color:'#e040fb',lineWidth:1.5,lineStyle:LightweightCharts.LineStyle.Dashed,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false}); }
+    var pv=0,v2=0, vwD=[];
+    CANDLES.forEach(function(c){ var tp=(c.high+c.low+c.close)/3; pv+=tp*VOLS.find(function(vv){return vv.time===c.time;}).value; v2+=VOLS.find(function(vv){return vv.time===c.time;}).value; vwD.push({time:c.time,value:pv/v2}); });
+    vwapSeries.setData(vwD);
+  } else {
+    if(vwapSeries){try{chart.removeSeries(vwapSeries);}catch(e){}vwapSeries=null;}
+  }
+  // BB
+  if(showBB){
+    var bb=calcBB(closeData,20,2);
+    if(!bbU){ bbU=chart.addLineSeries({color:'rgba(155,140,255,0.6)',lineWidth:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false}); }
+    if(!bbM){ bbM=chart.addLineSeries({color:'rgba(155,140,255,0.3)',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false}); }
+    if(!bbL){ bbL=chart.addLineSeries({color:'rgba(155,140,255,0.6)',lineWidth:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false}); }
+    bbU.setData(bb.upper); bbM.setData(bb.mid); bbL.setData(bb.lower);
+  } else {
+    [bbU,bbM,bbL].forEach(function(s){if(s){try{chart.removeSeries(s);}catch(e){}}}); bbU=bbM=bbL=null;
+  }
+}
+
+/* ── S/R PRICE LINES ───────────────────────── */
+var srLines=[];
+function buildSR(){
+  srLines.forEach(function(l){try{mainSeries.removePriceLine(l);}catch(e){}});
+  srLines=[];
+  if(!showSR||!mainSeries) return;
+  SUPP.forEach(function(s,i){
+    srLines.push(mainSeries.createPriceLine({price:s,color:i===0?'#26a69a':'rgba(38,166,154,0.45)',lineWidth:i===0?1.5:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:'S '+s.toFixed(2)}));
+  });
+  RES.forEach(function(r,i){
+    srLines.push(mainSeries.createPriceLine({price:r,color:i===0?'#ef5350':'rgba(239,83,80,0.45)',lineWidth:i===0?1.5:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:'R '+r.toFixed(2)}));
+  });
+}
+
+/* ── FIBONACCI PRICE LINES ─────────────────── */
+var fibLines=[];
+function buildFib(){
+  fibLines.forEach(function(l){try{mainSeries.removePriceLine(l);}catch(e){}});
+  fibLines=[];
+  if(!showFib||!mainSeries) return;
+  var fibColors={'0.236':'#7986cb','0.382':'#26a69a','0.500':'#fbbf24','0.618':'#ef5350','0.786':'#e040fb'};
+  Object.keys(FIBS).forEach(function(k){
+    if(!FIBS[k]) return;
+    fibLines.push(mainSeries.createPriceLine({price:FIBS[k],color:fibColors[k]||'#aaa',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dotted,axisLabelVisible:true,title:'Fib '+k}));
+  });
+}
+
+/* ── LEGEND ────────────────────────────────── */
+function updateLegend(){
+  var el=document.getElementById('legend'), html='';
+  if(showEMA){ html+='<div class="leg-r"><div class="leg-dot" style="background:#3d8eff;"></div><span style="color:#3d8eff;">EMA20</span></div>'; html+='<div class="leg-r"><div class="leg-dot" style="background:#f0a93c;"></div><span style="color:#f0a93c;">EMA50</span></div>'; }
+  if(showVWAP){ html+='<div class="leg-r"><div class="leg-dot" style="background:#e040fb;"></div><span style="color:#e040fb;">VWAP</span></div>'; }
+  if(showBB){ html+='<div class="leg-r"><div class="leg-dot" style="background:#9b8cff;"></div><span style="color:#9b8cff;">BB(20)</span></div>'; }
+  el.innerHTML=html;
+}
+
+/* ── CROSSHAIR READOUT ─────────────────────── */
+chart.subscribeCrosshairMove(function(param){
+  if(!param.time) return;
+  var d=param.seriesData.get(mainSeries);
+  if(!d) return;
+  var o=d.open||d.value, h=d.high||d.value, l=d.low||d.value, c=d.close||d.value;
+  var v=0; if(param.seriesData.get(volSeries)) v=param.seriesData.get(volSeries).value;
+  var bull=c>=o, chgPct=o?((c-o)/o*100):0;
+  document.getElementById('r-o').textContent = o>=100?o.toFixed(2):o.toFixed(4);
+  document.getElementById('r-h').textContent = h>=100?h.toFixed(2):h.toFixed(4);
+  document.getElementById('r-l').textContent = l>=100?l.toFixed(2):l.toFixed(4);
+  document.getElementById('r-c').textContent = c>=100?c.toFixed(2):c.toFixed(4);
+  document.getElementById('r-c').style.color  = bull?'#26a69a':'#ef5350';
+  document.getElementById('r-v').textContent  = (v/1e6).toFixed(2)+'M';
+  var chgEl=document.getElementById('r-chg');
+  chgEl.textContent = (chgPct>=0?'+':'')+chgPct.toFixed(2)+'%';
+  chgEl.style.color = bull?'#26a69a':'#ef5350';
+});
+
+/* ── TOOLBAR EVENTS ────────────────────────── */
+document.querySelectorAll('.tf-b').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.tf-b').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');
+    // TF change note
+    showToast('TF: '+b.dataset.tf+' — loading live data...');
+    // In production: fetch new OHLCV via postMessage to parent Streamlit
+    if(window.parent && window.parent.postMessage){
+      window.parent.postMessage({type:'chart_tf',tf:b.dataset.tf,period:b.dataset.p,interval:b.dataset.i},'*');
+    }
+  });
+});
+document.querySelectorAll('.ct-b').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.ct-b').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');
+    chartType=b.dataset.ct; buildMain(chartType);
+    buildSR(); buildFib(); buildIndicators(); updateLegend();
+    chart.timeScale().fitContent();
+  });
+});
+document.querySelectorAll('.ind-tog').forEach(function(b){
+  b.addEventListener('click',function(){
+    var ind=b.dataset.ind;
+    b.classList.toggle('on');
+    if(ind==='ema')  showEMA  =b.classList.contains('on');
+    if(ind==='vwap') showVWAP =b.classList.contains('on');
+    if(ind==='bb')   showBB   =b.classList.contains('on');
+    if(ind==='sr')   { showSR  =b.classList.contains('on'); buildSR(); }
+    if(ind==='fib')  { showFib =b.classList.contains('on'); buildFib(); }
+    if(ind!=='sr'&&ind!=='fib') buildIndicators();
+    updateLegend();
+  });
+});
+document.getElementById('btn-reset').addEventListener('click',function(){ chart.timeScale().fitContent(); });
+document.getElementById('btn-full').addEventListener('click',function(){
+  var el=document.getElementById('root');
+  if(!document.fullscreenElement){ el.requestFullscreen&&el.requestFullscreen(); }
+  else { document.exitFullscreen&&document.exitFullscreen(); }
+});
+document.getElementById('btn-sr').addEventListener('click',function(){
+  showSR=!showSR; this.classList.toggle('on',showSR); buildSR();
+});
+
+/* ── DRAWING TOOLS ─────────────────────────── */
+var activeDrw='cursor', drawLines=[], undoStack=[], inProgLine=null, drwColor='#3d8eff';
+document.querySelectorAll('.drw-b[data-drw]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var d=b.dataset.drw;
+    if(d==='undo'){ if(undoStack.length){ var l=undoStack.pop(); try{chart.removeSeries(l);}catch(e){} } return; }
+    if(d==='clear'){ drawLines.forEach(function(l){try{chart.removeSeries(l);}catch(e){}});drawLines=[];undoStack=[];return; }
+    activeDrw=d;
+    document.querySelectorAll('.drw-b[data-drw]').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');
+    showToast(d==='hline'?'Click to place horizontal line':d==='trend'?'Click 2 points for trendline':d==='fib'?'Click 2 points for Fibonacci':'Cursor mode');
+  });
+});
+
+var drwPts=[];
+container.addEventListener('click',function(e){
+  if(activeDrw==='cursor') return;
+  var rect=container.getBoundingClientRect(), x=e.clientX-rect.left, y=e.clientY-rect.top;
+  var p=chart.coordsToPrice(y);
+  if(isNaN(p)||p==null) return;
+  if(activeDrw==='hline'){
+    var hl=mainSeries.createPriceLine({price:p,color:drwColor,lineWidth:1.5,lineStyle:LightweightCharts.LineStyle.Solid,axisLabelVisible:true,title:p>=100?p.toFixed(2):p.toFixed(4)});
+    undoStack.push({type:'priceline',line:hl,series:mainSeries});
+    showToast('H-Line at '+(p>=100?p.toFixed(2):p.toFixed(4)));
+    return;
+  }
+  if(activeDrw==='trend'||activeDrw==='fib'){
+    drwPts.push({x:x,y:y,p:p});
+    if(drwPts.length===2){
+      var t=chart.coordsToTime(drwPts[0].x);
+      var ls=chart.addLineSeries({color:drwColor,lineWidth:1.5,lastValueVisible:false,priceLineVisible:false});
+      ls.setData([{time:t||CANDLES[0].time,value:drwPts[0].p},{time:chart.coordsToTime(drwPts[1].x)||CANDLES[CANDLES.length-1].time,value:drwPts[1].p}]);
+      drawLines.push(ls); undoStack.push({type:'series',series:ls});
+      if(activeDrw==='fib'){
+        var p1=drwPts[0].p, p2=drwPts[1].p, fibR=[0.236,0.382,0.5,0.618,0.786], fibC=['#7986cb','#26a69a','#fbbf24','#ef5350','#e040fb'];
+        fibR.forEach(function(r,ri){
+          var fp=p2+r*(p1-p2);
+          var fl=mainSeries.createPriceLine({price:fp,color:fibC[ri],lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dotted,axisLabelVisible:true,title:'Fib '+(r*100).toFixed(1)+'%'});
+          undoStack.push({type:'priceline',line:fl,series:mainSeries});
+        });
+      }
+      drwPts=[];
+    } else {
+      showToast('Click second point...');
+    }
+  }
+});
+
+/* Keyboard */
+window.addEventListener('keydown',function(e){
+  if(e.key==='f'||e.key==='F'){ var el2=document.getElementById('root'); if(!document.fullscreenElement) el2.requestFullscreen&&el2.requestFullscreen(); else document.exitFullscreen&&document.exitFullscreen(); }
+  if(e.key==='h'||e.key==='H') document.querySelector('.drw-b[data-drw="hline"]').click();
+  if(e.key==='t'||e.key==='T') document.querySelector('.drw-b[data-drw="trend"]').click();
+  if(e.key==='z'||e.key==='Z'){ if(undoStack.length){ var it=undoStack.pop(); if(it.type==='priceline'){try{it.series.removePriceLine(it.line);}catch(ex){}}else{try{chart.removeSeries(it.series);}catch(ex){}}}}
+  if(e.key==='Escape') document.querySelector('.drw-b[data-drw="cursor"]').click();
+});
+
+/* Toast */
+function showToast(msg){ var t=document.getElementById('toast-el'); if(!t){t=document.createElement('div');t.id='toast-el';t.style.cssText='position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:#1e2533;border:1px solid rgba(255,255,255,0.12);color:#e2e8f2;padding:7px 16px;border-radius:8px;font-size:11.5px;z-index:999;font-family:monospace;pointer-events:none;transition:opacity .25s;';document.body.appendChild(t);} t.textContent=msg;t.style.opacity='1';clearTimeout(t._tid);t._tid=setTimeout(function(){t.style.opacity='0';},2000); }
+
+/* ── RESIZE ────────────────────────────────── */
+window.addEventListener('resize',function(){ chart.applyOptions({width:container.clientWidth,height:container.clientHeight}); });
+document.addEventListener('fullscreenchange',function(){ setTimeout(function(){ chart.applyOptions({width:container.clientWidth,height:container.clientHeight}); chart.timeScale().fitContent(); },100); });
+
+/* ── INIT ──────────────────────────────────── */
+buildMain('candle');
+buildIndicators();
+buildSR();
+buildFib();
+updateLegend();
+chart.timeScale().fitContent();
+
+})();
+</script>
+</body>
+</html>"""
+
+    # String substitutions — safe, no f-string confusion
+    html = html.replace("__CHT__",    str(CHT))
+    html = html.replace("__SYM__",    sym.replace(".NS","").replace("-USD","").replace("^",""))
+    html = html.replace("__PRICE__",  f"{cur_p:,.2f}" if cur_p>=100 else f"{cur_p:,.4f}")
+    html = html.replace("__TC__",     tc)
+    html = html.replace("__RSIC__",   "#ef5350" if rsi_v>70 else "#26a69a" if rsi_v<30 else "#d1d4dc")
+    html = html.replace("__RSI__",    f"{rsi_v:.1f}")
+    html = html.replace("__TREND__",  trend)
+    html = html.replace("__VOLR__",   f"{vol_r:.2f}")
+    html = html.replace("__ATR__",    f"{atr_v:.4f}" if atr_v else "—")
+    html = html.replace("__SUP__",    f"{round(sup[0],2)}" if sup else "—")
+    html = html.replace("__RES__",    f"{round(res[0],2)}" if res else "—")
+    html = html.replace("__VWAP__",   f"{vwap_p:.2f}" if vwap_p else "—")
+    html = html.replace("__CANDLES__",cj)
+    html = html.replace("__VOLS__",   vj)
+    html = html.replace("__SUPP__",   sj)
+    html = html.replace("__RES__",    rj)   # overwrite second __RES__
+    html = html.replace("__FIBS__",   fj)
+    html = html.replace("__EMA20P__", str(ema20_p or 0))
+    html = html.replace("__EMA50P__", str(ema50_p or 0))
+    html = html.replace("__EMA200P__",str(ema200_p or 0))
+    html = html.replace("__VWAPP__",  str(vwap_p or 0))
+
+    components.html(html, height=CHT+16, scrolling=False)
+
 def _mini_chart_html(sym, name, price, chg, trend, sup, res, height=180):
     """6-mini-chart: small LightweightCharts candle chart for watchlist overview"""
     from pro_chart import _ohlcv
@@ -1738,7 +2408,7 @@ def render_user_dashboard():
                     "indicator":"📈 Ind","volume":"📦 Vol","wave":"🌊 Wave","quant":"🤖 Quant"}[x],
                 key="pd_trader_sel", label_visibility="collapsed")
         with v4:
-            mode = st.radio("", ["📺 TV","🤖 AI","🔲 6 Views"],
+            mode = st.radio("", ["📊 Chart","🤖 AI","🔲 6 Views"],
                             horizontal=True, key="pd_mode_r", label_visibility="collapsed")
         with v5:
             run_ai = st.button("🤖 Analyse", key="pd_run", type="primary", use_container_width=True)
@@ -1746,8 +2416,8 @@ def render_user_dashboard():
             if st.button("🔄", key="pd_ref", use_container_width=True):
                 st.session_state.pd_ai = None; st.rerun()
         with v7:
-            if st.button("📺 TV", key="pd_tv_btn", use_container_width=True):
-                st.session_state.pd_mode = "tv"; st.rerun()
+            if st.button("⛶ Full", key="pd_full_btn", use_container_width=True):
+                st.session_state.pd_fullscreen = not st.session_state.get("pd_fullscreen", False); st.rerun()
 
         if run_ai:
             st.session_state.pd_ai    = None
@@ -1844,73 +2514,16 @@ def render_user_dashboard():
             df   = _ohlcv(sym, period, interval)
             tech = _compute_tech(df) if df is not None and not df.empty else {}
 
-        if df.empty:
+        if df is None or df.empty:
             st.error(f"❌ No data for `{sym}` — try a different symbol"); return
 
-        use_ai   = "🤖 AI"    in mode or st.session_state.pd_mode == "ai"
-        use_6v   = "🔲 6 Views" in mode
+        use_ai    = "🤖 AI"      in mode or st.session_state.pd_mode == "ai"
+        use_6v    = "🔲 6 Views"  in mode
+        use_chart = "📊 Chart"    in mode or (not use_ai and not use_6v)
 
-        # ── TradingView Mode ─────────────────────────────────────────
-        if not use_ai:
-            tv_s  = _to_tv(sym)
-            tv_tf = {"1D":"D","1H":"60","15m":"15","4H":"240","1W":"W","1M":"M"}.get(tf,"D")
-            tv_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>*{{margin:0;padding:0;box-sizing:border-box;}}
-html,body{{background:#080b12;width:100%;height:640px;overflow:hidden;}}
-</style></head><body>
-<div id="tc" style="width:100%;height:640px;"></div>
-<script src="https://s3.tradingview.com/tv.js"></script>
-<script>
-try{{
-new TradingView.widget({{
-  "autosize":false,"width":"100%","height":640,
-  "symbol":"{tv_s}","interval":"{tv_tf}",
-  "timezone":"Asia/Kolkata","theme":"dark","style":"1","locale":"en",
-  "toolbar_bg":"#080b12","enable_publishing":false,
-  "container_id":"tc","allow_symbol_change":true,"withdateranges":true,
-  "studies":["RSI@tv-basicstudies","MACD@tv-basicstudies","Volume@tv-basicstudies","BB@tv-basicstudies"],
-  "overrides":{{
-    "mainSeriesProperties.candleStyle.upColor":"#26a69a",
-    "mainSeriesProperties.candleStyle.downColor":"#ef5350",
-    "mainSeriesProperties.candleStyle.borderUpColor":"#26a69a",
-    "mainSeriesProperties.candleStyle.borderDownColor":"#ef5350",
-    "mainSeriesProperties.candleStyle.wickUpColor":"rgba(38,166,154,0.7)",
-    "mainSeriesProperties.candleStyle.wickDownColor":"rgba(239,83,80,0.7)",
-    "paneProperties.background":"#080b12",
-    "paneProperties.backgroundType":"solid",
-    "paneProperties.vertGridProperties.color":"rgba(255,255,255,0.025)",
-    "paneProperties.horzGridProperties.color":"rgba(255,255,255,0.025)"
-  }},
-  "studies_overrides":{{
-    "volume.volume.color.0":"#ef535044","volume.volume.color.1":"#26a69a44",
-    "RSI.plot.color":"#2962ff"
-  }}
-}});
-}}catch(e){{
-  document.getElementById('tc').innerHTML=
-    '<div style="color:#ef5350;padding:20px;font-family:monospace;">TV Error: '+e.message+'<br>Symbol: {tv_s}</div>';
-}}
-</script></body></html>"""
-            components.html(tv_html, height=654, scrolling=False)
-
-            # Stats bar
-            rsi_v  = tech.get("rsi", 50); trend = tech.get("trend","—")
-            tc_    = "#26a69a" if trend=="BULLISH" else "#ef5350" if trend=="BEARISH" else "#f59e0b"
-            sup    = tech.get("supports",[]); res = tech.get("resistances",[]); vr = tech.get("vol_ratio",1)
-            perf1m = tech.get("perf1m",0); atr_v = tech.get("atr",0)
-            st.markdown(f"""<div style="background:rgba(13,17,28,0.85);backdrop-filter:blur(18px);
-            border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;margin:4px 0;
-            display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
-              <span style="color:#fff;font-weight:800;font-size:13px;">{name}</span>
-              <span style="color:{tc_};background:{tc_}18;padding:2px 10px;border-radius:16px;font-size:11px;font-weight:700;">{trend}</span>
-              <span style="color:#6a6e7a;font-size:12px;">RSI <b style="color:#d1d4dc;">{rsi_v:.1f}</b></span>
-              <span style="color:#6a6e7a;font-size:12px;">Vol <b style="color:#d1d4dc;">{vr:.2f}x</b></span>
-              <span style="color:#6a6e7a;font-size:12px;">ATR <b style="color:#d1d4dc;">{atr_v:.4f}</b></span>
-              <span style="color:#6a6e7a;font-size:12px;">Sup <b style="color:#26a69a;">{round(sup[0],2) if sup else '—'}</b></span>
-              <span style="color:#6a6e7a;font-size:12px;">Res <b style="color:#ef5350;">{round(res[0],2) if res else '—'}</b></span>
-              <span style="color:#6a6e7a;font-size:12px;">1M <b style="color:{'#26a69a' if perf1m>0 else '#ef5350'};">{perf1m:+.1f}%</b></span>
-              <span style="margin-left:auto;color:#374151;font-size:11px;">👆 Click <b style="color:#2962ff;">🤖 Analyse</b> for AI chart with drawings</span>
-            </div>""", unsafe_allow_html=True)
+        # ── Inbuilt FinSage Chart ────────────────────────────────────
+        if use_chart:
+            _render_inbuilt_chart(sym, name, tech, df, tf, period)
 
         # ── 6 Trader Views Grid ──────────────────────────────────────────
         if use_6v:
