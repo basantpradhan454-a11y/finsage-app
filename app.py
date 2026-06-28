@@ -33,6 +33,9 @@ try:
 except Exception:
     render_user_dashboard=None
 from tradingview_page import render_tradingview_page
+try:
+    from finsage_chart import render_finsage_chart
+except Exception: render_finsage_chart = None
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
 from ticker_resolver import resolve_ticker
@@ -816,6 +819,7 @@ with nb_right:
             ("🤖 AI Analyser", [
                 ("👤 Personal Dashboard","👤 User Dashboard",    "Favourites · AI auto-draws all levels · 6 trader styles"),
                 ("🔬 Pro Chart Studio",  "🔬 Pro Chart Studio",  "Glass UI · 200+ indicators · SMC · Elliott Wave · All trader types"),
+                ("📊 FinSage Chart",     "📊 FinSage Chart",     "TradingView-style chart · 14 types · 200+ indicators · Draw tools"),
                 ("🧠 SAGE Analyst",      "🧠 SAGE Analyst",      "Multi-timeframe AI chart analysis"),
                 ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow & volume profile"),
                 ("🔬 Pro Analyser",      "🔬 Pro Analyser",      "Advanced AI analysis"),
@@ -1112,6 +1116,9 @@ if _ap == "👤 User Dashboard":
 elif _ap == "🔬 Pro Chart Studio":
     if render_pro_chart: render_pro_chart()
     else: st.error("Pro Chart loading... refresh in 10s")
+elif _ap == "📊 FinSage Chart":
+    if render_finsage_chart: render_finsage_chart(); st.stop()
+    else: st.error("FinSage Chart loading...")
 elif _ap == "🤖 AI Assistant":
     _back_btn("back_ai"); render_ai_chat_assistant(); st.stop()
 elif _ap == "🤖 AI Strategy Bot":
