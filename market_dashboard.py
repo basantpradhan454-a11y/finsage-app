@@ -788,6 +788,14 @@ def _white_paper_html(sym, name, tech, fund, ai):
     catalyst_rows= "".join([f'<div style="padding:4px 0 4px 14px;border-bottom:1px solid #eee;font-size:14px;position:relative;"><span style="position:absolute;left:2px;">•</span>{c}</div>' for c in ai.get("catalyst_events", [])])
     pat_tags     = "".join([f'<span style="display:inline-block;border:1.5px solid #1a1a1a;border-radius:3px;padding:2px 8px;font-size:12px;font-weight:700;margin:2px;font-family:Arial,sans-serif;">{p["name"]}</span>' for p in pats[:6]])
 
+    # Pre-compute nested lookups to avoid f-string parse errors
+    fib_dict     = tech.get("fib", {})
+    multitf_dict = ai.get("multi_tf", {})
+    multitf_rows = "".join(
+        f'<div class="row"><span class="rl">{k.upper()}</span>'
+        f'<span style="font-size:13px;">{v}</span></div>'
+        for k, v in multitf_dict.items()
+    )
     html = f"""
 <style>
 .wp{{background:#ffffff;color:#1a1a1a;font-family:Georgia,'Times New Roman',serif;
@@ -940,8 +948,8 @@ def _white_paper_html(sym, name, tech, fund, ai):
 <div style="display:flex;gap:30px;font-size:14px;flex-wrap:wrap;">
   <span><b>Supports:</b> {', '.join([str(round(x,4)) for x in tech.get('supports',[])[:4]])}</span>
   <span><b>Resistances:</b> {', '.join([str(round(x,4)) for x in tech.get('resistances',[])[:4]])}</span>
-  <span><b>Fib 0.618:</b> {tech.get('fib',{{}}).get('0.618','—')}</span>
-  <span><b>Fib 0.382:</b> {tech.get('fib',{{}}).get('0.382','—')}</span>
+  <span><b>Fib 0.618:</b> {fib_dict.get('0.618','—')}</span>
+  <span><b>Fib 0.382:</b> {fib_dict.get('0.382','—')}</span>
   <span><b>VWAP:</b> {tech.get('vwap',0):.4f}</span>
 </div>
 
@@ -988,7 +996,7 @@ def _white_paper_html(sym, name, tech, fund, ai):
   </div>
   <div>
     <div style="font-size:13px;font-weight:900;font-family:Arial;margin-bottom:6px;">Multi-Timeframe View</div>
-    {''.join([f'<div class="row"><span class="rl">{k.upper()}</span><span style="font-size:13px;">{v}</span></div>' for k,v in ai.get('multi_tf',{{}}).items()])}
+    {multitf_rows}
   </div>
 </div>
 
