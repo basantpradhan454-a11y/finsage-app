@@ -84,6 +84,58 @@ def _to_tv(sym: str) -> str:
     if s in NYSE:           return f"NYSE:{s}"
     return f"NASDAQ:{s}"  # default US
 
+# ─── ASSET LOGO HELPER ────────────────────────────────────────────
+EXCHANGE_COLORS = {
+    "NSE":    "#1a237e", "BSE":    "#0d47a1", "NASDAQ": "#1565c0",
+    "NYSE":   "#283593", "CRYPTO": "#e65100", "FOREX":  "#2e7d32",
+    "DERIV":  "#4a148c", "INDEX":  "#37474f",
+}
+
+ASSET_LOGOS = {
+    # Indian
+    "RELIANCE.NS":"https://logo.clearbit.com/ril.com",
+    "TCS.NS":     "https://logo.clearbit.com/tcs.com",
+    "HDFCBANK.NS":"https://logo.clearbit.com/hdfcbank.com",
+    "INFY.NS":    "https://logo.clearbit.com/infosys.com",
+    "ICICIBANK.NS":"https://logo.clearbit.com/icicibank.com",
+    "SBIN.NS":    "https://logo.clearbit.com/onlinesbi.com",
+    "WIPRO.NS":   "https://logo.clearbit.com/wipro.com",
+    "TATAMOTORS.NS":"https://logo.clearbit.com/tatamotors.com",
+    "BAJFINANCE.NS":"https://logo.clearbit.com/bajajfinserv.in",
+    "ADANIENT.NS":"https://logo.clearbit.com/adani.com",
+    # US
+    "AAPL":  "https://logo.clearbit.com/apple.com",
+    "TSLA":  "https://logo.clearbit.com/tesla.com",
+    "NVDA":  "https://logo.clearbit.com/nvidia.com",
+    "MSFT":  "https://logo.clearbit.com/microsoft.com",
+    "GOOGL": "https://logo.clearbit.com/google.com",
+    "META":  "https://logo.clearbit.com/meta.com",
+    "AMZN":  "https://logo.clearbit.com/amazon.com",
+    "NFLX":  "https://logo.clearbit.com/netflix.com",
+    "JPM":   "https://logo.clearbit.com/jpmorganchase.com",
+    "UBER":  "https://logo.clearbit.com/uber.com",
+    # Crypto — CoinGecko icons
+    "BTC-USD": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
+    "ETH-USD": "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
+    "SOL-USD": "https://assets.coingecko.com/coins/images/4128/large/solana.png",
+    "BNB-USD": "https://assets.coingecko.com/coins/images/825/large/binance-coin-logo.png",
+    "XRP-USD": "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png",
+    "ADA-USD": "https://assets.coingecko.com/coins/images/975/large/cardano.png",
+    "DOGE-USD":"https://assets.coingecko.com/coins/images/5/large/dogecoin.png",
+    "LINK-USD":"https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png",
+    "MATIC-USD":"https://assets.coingecko.com/coins/images/4713/large/matic-token-icon.png",
+}
+
+def _asset_logo(sym: str) -> str:
+    """Return logo URL for a symbol, or empty string."""
+    return ASSET_LOGOS.get(sym, "")
+
+def _exchange_badge(ex: str) -> str:
+    col = EXCHANGE_COLORS.get(ex.upper(), "#37474f")
+    return (f'<span style="background:{col};color:#fff;font-size:8px;font-weight:800;'
+            f'padding:1px 5px;border-radius:3px;font-family:monospace;letter-spacing:.03em;">{ex}</span>')
+
+
 # ─── GLOBAL SEARCH ────────────────────────────────────────────────
 @st.cache_data(ttl=300, show_spinner=False)
 def _global_search(query: str):
@@ -796,6 +848,63 @@ def _white_paper_html(sym, name, tech, fund, ai):
         f'<span style="font-size:13px;">{v}</span></div>'
         for k, v in multitf_dict.items()
     )
+    # ── Pre-compute quant section ────────────────────────────────────
+    quant_res = fund.get("quant", {})
+    tech2_res = fund.get("tech2", {})
+    fund2_res = fund.get("fund2", {})
+
+    # Quant HTML block
+    if quant_res.get("ok"):
+        qv   = quant_res.get("volatility", {})
+        qt   = quant_res.get("trend",      {})
+        qb   = quant_res.get("beta")
+        prob_up   = qt.get("prob_up_5d",   "—") if qt.get("ok") else "—"
+        prob_down = qt.get("prob_down_5d", "—") if qt.get("ok") else "—"
+        ann_vol   = qv.get("annualized_volatility_pct", "—")
+        rec_vol   = qv.get("recent_20d_volatility_pct", "—")
+        tr_acc    = qt.get("train_accuracy_pct", "—") if qt.get("ok") else "—"
+        prob_col  = "#1b5e20" if isinstance(prob_up,float) and prob_up>=55 else "#b71c1c" if isinstance(prob_up,float) and prob_up<=45 else "#e65100"
+        _quant_html = f"""
+<h2>Quantitative Engine Analysis (Real Math Model)</h2>
+<p class="txt">Logistic Regression trained on {qt.get('rows_used','—') if qt.get('ok') else 'N/A'} historical data points.
+Volatility, Beta, and Trend Probability computed via statistical methods (not AI guesses).</p>
+<div class="grid3">
+  <div class="cell"><div class="cl">5-Day Up Probability</div><div class="cv" style="color:{prob_col}!important;">{prob_up}%</div></div>
+  <div class="cell"><div class="cl">Annualised Volatility</div><div class="cv">{ann_vol}%</div></div>
+  <div class="cell"><div class="cl">20-Day Volatility</div><div class="cv">{rec_vol}%</div></div>
+</div>
+<div class="grid3">
+  <div class="cell"><div class="cl">5-Day Down Probability</div><div class="cv" style="color:#b71c1c!important;">{prob_down}%</div></div>
+  <div class="cell"><div class="cl">Beta vs Market</div><div class="cv">{qb if qb else '—'}</div></div>
+  <div class="cell"><div class="cl">Model Train Accuracy</div><div class="cv">{tr_acc}%</div></div>
+</div>
+<p class="txt" style="font-size:12.5px;font-style:italic;">Note: ML probability model is based on historical pattern frequency, not a guarantee. Use alongside fundamental and technical analysis for best results.</p>"""
+    else:
+        _quant_html = ""
+
+    # Fundamental health score block
+    if fund2_res.get("ok"):
+        fhs   = fund2_res.get("score", {})
+        fdata = fund2_res.get("data",  {})
+        hs    = fhs.get("health_score", 0)
+        verd  = fhs.get("verdict","—")
+        fbd   = fhs.get("breakdown",{})
+        hs_col= "#1b5e20" if hs>=75 else "#e65100" if hs>=50 else "#b71c1c"
+        bd_rows = "".join([f"<div class=\'row\'><span class=\'rl\'>{k}</span><span class=\'rv\'>{v}/100</span></div>" for k,v in fbd.items()])
+        _fund_extra = f"""
+<div style="margin:14px 0;">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div class="cell" style="min-width:140px;">
+      <div class="cl">Fundamental Health Score</div>
+      <div class="cv" style="color:{hs_col}!important;">{hs}/100</div>
+      <div style="font-size:12px;margin-top:4px;">{verd}</div>
+    </div>
+    <div style="flex:1;min-width:200px;">{bd_rows}</div>
+  </div>
+</div>"""
+        _quant_html = _fund_extra + _quant_html
+    # ── End quant pre-computation ─────────────────────────────────────────
+
     html = f"""
 <style>
 .wp{{background:#ffffff;color:#1a1a1a;font-family:Georgia,'Times New Roman',serif;
@@ -1002,6 +1111,7 @@ def _white_paper_html(sym, name, tech, fund, ai):
 
 {'<h2>About ' + name + '</h2><p class="txt">' + fund.get("desc","") + '</p>' if fund.get("desc") else ''}
 
+{_quant_html}
 <div class="disclaimer">
 <b>DISCLAIMER:</b> This report is prepared by FinSage AI for educational and informational purposes only.
 It does NOT constitute financial advice, investment recommendation, or solicitation to buy or sell any security.
@@ -1016,6 +1126,35 @@ FinSage AI Research · finsage.streamlit.app
 # ═══════════════════════════════════════════════════════════════════
 # MAIN RENDER
 # ═══════════════════════════════════════════════════════════════════
+
+def _render_lwc_fallback(df, tech, sym, height=650):
+    import json as _j
+    cd = []
+    if df is not None and not df.empty:
+        for idx, row in df.tail(200).iterrows():
+            ts = int(pd.Timestamp(idx).timestamp())
+            cd.append({"time":ts,"open":round(float(row["Open"]),4),
+                       "high":round(float(row["High"]),4),"low":round(float(row["Low"]),4),
+                       "close":round(float(row["Close"]),4)})
+    cj    = _j.dumps(cd)
+    h_str = str(height)
+    parts = [
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>",
+        "<style>*{margin:0;padding:0}html,body{background:#060b14;width:100%;height:" + h_str + "px;overflow:hidden;}</style></head><body>",
+        "<div id='cd' style='width:100%;height:" + h_str + "px;'></div>",
+        "<script src='https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js'></script>",
+        "<script>(function(){",
+        "var c=LightweightCharts.createChart(document.getElementById('cd'),{width:window.innerWidth,height:" + h_str + ",",
+        "layout:{background:{type:'solid',color:'#060b14'},textColor:'#6a7585'},",
+        "grid:{vertLines:{color:'rgba(255,255,255,0.03)'},horzLines:{color:'rgba(255,255,255,0.04)'}},",
+        "timeScale:{timeVisible:true}});",
+        "var s=c.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borderUpColor:'#1de9b6',borderDownColor:'#ff5252',wickUpColor:'rgba(38,200,154,0.7)',wickDownColor:'rgba(239,83,80,0.6)'});",
+        "s.setData(" + cj + ");c.timeScale().fitContent();",
+        "window.addEventListener('resize',function(){c.applyOptions({width:window.innerWidth});});",
+        "})();</script></body></html>",
+    ]
+    components.html("".join(parts), height=height+12, scrolling=False)
+
 def render_market_dashboard():
     st.markdown("""<style>
     header[data-testid="stHeader"],footer,div[data-testid="stDecoration"],
@@ -1107,35 +1246,49 @@ def render_market_dashboard():
 
         sel = st.session_state.get("mkt_sel") or DEFAULT_WL[0]
 
-        for item in wl[:28]:
-            d  = _price(item["sym"])
-            pr = d.get("price", 0)
-            chg= d.get("chg",   0)
-            cc = "#26a69a" if chg >= 0 else "#ef5350"
+        for item in wl[:35]:
+            d   = _price(item["sym"])
+            pr  = d.get("price", 0)
+            chg = d.get("chg",   0)
+            cc  = "#26a69a" if chg >= 0 else "#ef5350"
             is_sel = sel["sym"] == item["sym"]
             is_fav = any(f["sym"] == item["sym"] for f in favs)
-            btn_lbl = ("⭐" if is_fav else "") + item["name"][:16]
-
-            # Button
-            if st.button(btn_lbl, key=f"wl_{item['sym']}", use_container_width=True,
-                          type="primary" if is_sel else "secondary"):
+            logo   = _asset_logo(item["sym"])
+            ex     = item.get("ex","")
+            ex_col = EXCHANGE_COLORS.get(ex.upper(), "#37474f")
+            pr_str  = f"{pr:,.4f}" if 0 < pr < 10 else f"{pr:,.2f}" if pr > 0 else "—"
+            chg_str = f"{chg:+.2f}%" if pr > 0 else "—"
+            fav_star = "⭐ " if is_fav else ""
+            sel_bg   = "rgba(41,98,255,0.15)" if is_sel else "rgba(255,255,255,0.015)"
+            sel_bdr  = "#2962ff55" if is_sel else "rgba(255,255,255,0.05)"
+            if logo:
+                logo_html = f'<img src="{logo}" width="22" height="22" style="border-radius:50%;object-fit:cover;flex-shrink:0;" />' 
+            else:
+                ini = item["name"][:2].upper()
+                logo_html = f'<div style="width:22px;height:22px;border-radius:50%;background:{ex_col};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;flex-shrink:0;">{ini}</div>'
+            card = (
+                f'<div style="display:flex;align-items:center;gap:7px;padding:6px 8px;' 
+                f'background:{sel_bg};border:1px solid {sel_bdr};border-radius:8px;margin-bottom:2px;">' 
+                f'{logo_html}'
+                f'<div style="flex:1;min-width:0;overflow:hidden;">' 
+                f'<div style="display:flex;align-items:center;gap:4px;">' 
+                f'<span style="font-size:11.5px;font-weight:700;color:#e2e8f2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">{fav_star}{item["name"][:13]}</span>' 
+                f'<span style="background:{ex_col};color:#fff;font-size:7.5px;font-weight:800;padding:1px 4px;border-radius:3px;font-family:monospace;">{ex}</span>' 
+                f'</div>' 
+                f'<div style="display:flex;justify-content:space-between;">' 
+                f'<span style="font-family:monospace;font-size:10.5px;color:{cc};font-weight:700;">{pr_str}</span>' 
+                f'<span style="font-family:monospace;font-size:10px;color:{cc};">{chg_str}</span>' 
+                f'</div></div></div>'
+            )
+            st.markdown(card, unsafe_allow_html=True)
+            btn_lbl = f"{fav_star}{item['name'][:13]}  {pr_str}  {chg_str}"
+            if st.button(btn_lbl, key=f"wl_{item['sym']}",
+                         use_container_width=True,
+                         type="primary" if is_sel else "secondary"):
                 st.session_state.mkt_sel    = item
                 st.session_state.mkt_ai     = False
                 st.session_state.mkt_ai_res = None
                 st.rerun()
-
-            # Price display (always visible, fixed width)
-            pr_str = f"{pr:,.4f}" if pr > 0 and pr < 10 else f"{pr:,.2f}" if pr > 0 else "—"
-            chg_str = f"{chg:+.1f}%" if pr > 0 else "—"
-            st.markdown(
-                f'<div style="display:flex;padding:0 6px 4px 6px;font-size:11px;'
-                f'border-bottom:1px solid #1a1e2d;margin-top:-8px;align-items:center;">'
-                f'<span style="color:#6a6e7a;font-size:9px;flex:1;">{item["sym"].replace(".NS","").replace("-USD","").replace("^","")}</span>'
-                f'<span style="color:{cc};font-family:monospace;font-weight:700;min-width:70px;text-align:right;">{pr_str}</span>'
-                f'<span style="color:{cc};min-width:48px;text-align:right;font-weight:600;">{chg_str}</span>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
 
     # ══ RIGHT PANEL ═══════════════════════════════════════════════════════════
     with right:
@@ -1184,8 +1337,25 @@ def render_market_dashboard():
         # ── AI MODE (LightweightCharts with all drawings) ─────────────────────
         if st.session_state.get("mkt_ai"):
             if st.session_state.get("mkt_ai_res") is None:
-                with st.spinner("🤖 SAGE AI: Analyzing fundamentals, drawing Support/Resistance, Fibonacci, Patterns..."):
+                with st.spinner("🤖 SAGE AI: Analyzing fundamentals, quant model, drawing S/R, Fibonacci, Patterns..."):
                     fund   = _fundamental(sym)
+                    # Run quantitative engine for real math analysis
+                    try:
+                        from quant_engine import run_quant_engine
+                        from technical_engine import run_technical_engine
+                        from fundamental_engine import run_fundamental_engine
+                        import yfinance as _yf2
+                        bench_df = _yf2.Ticker("^NSEI" if ".NS" in sym else "^GSPC").history(period="6mo",interval="1d")
+                        quant_res = run_quant_engine(df, bench_df if not bench_df.empty else None)
+                        tech_res  = run_technical_engine(sym, period="6mo")
+                        fund_res2 = run_fundamental_engine(sym)
+                        fund["quant"]  = quant_res
+                        fund["tech2"]  = tech_res
+                        fund["fund2"]  = fund_res2
+                    except Exception as _qe:
+                        fund["quant"] = {"ok":False,"error":str(_qe)}
+                        fund["tech2"] = {"ok":False,"error":str(_qe)}
+                        fund["fund2"] = {"ok":False,"error":str(_qe)}
                     ai_res = _ai_analysis(sym, name, tech, fund)
                     wp     = _white_paper_html(sym, name, tech, fund, ai_res)
                 st.session_state.mkt_ai_res      = ai_res
@@ -1196,21 +1366,75 @@ def render_market_dashboard():
                 fund   = st.session_state.get("mkt_fund", {})
                 wp     = st.session_state.get("mkt_report_html", "")
 
-            # LightweightCharts with AI drawings
+            # ── MAIN AI CHART (LWC with all drawings) ────────────────────
             chart_html = _chart_html(df, tech, ai_res, sym)
             components.html(chart_html, height=CHART_H + 12, scrolling=False)
 
-            # Report header
-            st.markdown(f"""<div style="background:#1e222d;border:1px solid #2a2e39;border-radius:8px;
-            padding:7px 14px;margin:5px 0;display:flex;align-items:center;gap:10px;">
-              <span style="color:#2962ff;font-size:15px;">📄</span>
-              <span style="color:#d1d4dc;font-weight:700;font-size:14px;">SAGE AI Research — {name} ({sym})</span>
-              <span style="background:#2962ff22;color:#2962ff;font-size:9px;padding:2px 7px;border-radius:8px;font-weight:700;">via {ai_res.get('_api','AI')}</span>
+            # ── 6 TRADER CHART PIPELINE ─────────────────────────────────────
+            st.markdown("""<div style="background:linear-gradient(90deg,#0d1219,#111820);
+            border:1px solid rgba(41,98,255,0.2);border-radius:10px;padding:10px 16px;
+            margin:10px 0 6px;display:flex;align-items:center;gap:10px;">
+              <span style="color:#2962ff;font-size:18px;">📊</span>
+              <div>
+                <div style="color:#e2e8f2;font-weight:800;font-size:13px;">6-Trader Perspective Charts</div>
+                <div style="color:#6a7585;font-size:11px;">Same stock · 6 different trader views · Price Action · SMC · Quant · Indicators · Order Flow · Elliott Wave</div>
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+            # Build 6-chart HTML using engines
+            try:
+                from sr_engine import SupportResistanceEngine
+                from volume_profile_engine import VolumeProfileEngine
+                from fib_engine import FibonacciEngine
+                from candle_pattern_detector import CandlePatternDetector
+
+                sr_eng  = SupportResistanceEngine(df)
+                sr_lvls = sr_eng.get_levels()
+                vp_eng  = VolumeProfileEngine(df, bins=30)
+                vp_res  = vp_eng.calculate()
+                fib_eng = FibonacciEngine(df, lookback=60)
+                fib_res = fib_eng.calculate()
+                cpd     = CandlePatternDetector(df)
+                patterns_raw = cpd.detect_all(lookback=10)
+                from six_chart_builder import _build_six_chart_html as _bsc, _build_order_flow_html as _bof
+                _six_html = _bsc(df, tech, ai_res, sr_lvls, vp_res, fib_res, patterns_raw, sym, name)
+                components.html(_six_html, height=920, scrolling=False)
+            except Exception as _e6:
+                st.warning(f"6-chart view loading: {_e6}")
+
+            # ── ORDER FLOW CHART ─────────────────────────────────────────────
+            st.markdown("""<div style="background:linear-gradient(90deg,#0d1219,#111820);
+            border:1px solid rgba(22,201,141,0.2);border-radius:10px;padding:10px 16px;
+            margin:10px 0 6px;display:flex;align-items:center;gap:10px;">
+              <span style="color:#16c98d;font-size:18px;">📦</span>
+              <div>
+                <div style="color:#e2e8f2;font-weight:800;font-size:13px;">Order Flow & Volume Profile</div>
+                <div style="color:#6a7585;font-size:11px;">Point of Control · Value Area High/Low · VWAP · Volume Distribution</div>
+              </div>
+            </div>""", unsafe_allow_html=True)
+            try:
+                from volume_profile_engine import VolumeProfileEngine as VPE2
+                vpe2    = VPE2(df, bins=35)
+                vpr2    = vpe2.calculate()
+                of_html = _bof(df, tech, vpr2, ai_res, sym, name)
+                components.html(of_html, height=520, scrolling=False)
+            except Exception as _evp:
+                st.warning(f"Order flow loading: {_evp}")
+
+            # ── REPORT HEADER ────────────────────────────────────────────────
+            st.markdown(f"""<div style="background:#0d1219;border:1px solid rgba(41,98,255,0.25);
+            border-radius:10px;padding:10px 16px;margin:12px 0 4px;
+            display:flex;align-items:center;gap:10px;">
+              <span style="color:#2962ff;font-size:18px;">📄</span>
+              <div>
+                <div style="color:#e2e8f2;font-weight:800;font-size:13px;">SAGE AI Research Report — {name} ({sym})</div>
+                <div style="color:#6a7585;font-size:11px;">White paper · Black text · Full fundamental + technical · via {ai_res.get('_api','AI')}</div>
+              </div>
             </div>""", unsafe_allow_html=True)
 
             # White paper report
             if wp:
-                components.html(wp, height=3500, scrolling=True)
+                components.html(wp, height=3600, scrolling=True)
 
             col_r1, col_r2, col_r3 = st.columns(3)
             with col_r1:
@@ -1226,51 +1450,39 @@ def render_market_dashboard():
                                    "text/plain", key="dl_wp")
 
         else:
-            # ── TV CHART MODE ─────────────────────────────────────────────────
-            tv_tf = {"1D":"D","1H":"60","15m":"15","4H":"240","1W":"W","1M":"M"}.get(tf,"D")
-            tv_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>*{{margin:0;padding:0;box-sizing:border-box;}}
-html,body{{background:#131722;width:100%;height:{CHART_H}px;overflow:hidden;}}</style>
-</head><body>
-<div style="width:100%;height:{CHART_H}px;">
-  <div id="tv_c" style="width:100%;height:{CHART_H}px;"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-  <script type="text/javascript">
-  new TradingView.widget({{
-    "autosize": false, "width": "100%", "height": {CHART_H},
-    "symbol": "{tv_s}", "interval": "{tv_tf}",
-    "timezone": "Asia/Kolkata", "theme": "dark", "style": "1",
-    "locale": "en", "toolbar_bg": "#1e222d",
-    "enable_publishing": false, "hide_top_toolbar": false,
-    "hide_legend": false, "save_image": true,
-    "container_id": "tv_c",
-    "studies": ["RSI@tv-basicstudies","MACD@tv-basicstudies","Volume@tv-basicstudies"],
-    "overrides": {{
-      "mainSeriesProperties.candleStyle.upColor":     "#26a69a",
-      "mainSeriesProperties.candleStyle.downColor":   "#ef5350",
-      "mainSeriesProperties.candleStyle.borderUpColor":   "#26a69a",
-      "mainSeriesProperties.candleStyle.borderDownColor": "#ef5350",
-      "mainSeriesProperties.candleStyle.wickUpColor":   "#26a69a",
-      "mainSeriesProperties.candleStyle.wickDownColor": "#ef5350"
-    }},
-    "show_popup_button": false,
-    "withdateranges": true,
-    "allow_symbol_change": true
-  }});
-  </script>
-</div></body></html>"""
-            components.html(tv_html, height=CHART_H + 12, scrolling=False)
+            # ── INBUILT CHART (replaces TradingView) ─────────────────────────
+            try:
+                from finsage_chart import build_chart_html, _compute_sr as _fc_sr
+                candles_fc = [
+                    {"t": int(pd.Timestamp(i).timestamp()), "o": round(float(r["Open"]),4),
+                     "h": round(float(r["High"]),4), "l": round(float(r["Low"]),4),
+                     "c": round(float(r["Close"]),4), "v": int(r["Volume"])}
+                    for i, r in df.tail(300).iterrows()
+                ] if not df.empty else []
+                sr_fc = _fc_sr(candles_fc) if candles_fc else {"supports":[],"resistances":[]}
+                pr_d  = _price(sym)
+                ch_html = build_chart_html(sym, pr_d.get("price",0), pr_d.get("chg",0), candles_fc, sr_fc, height=660)
+                components.html(ch_html, height=678, scrolling=False)
+            except Exception as _e:
+                st.warning(f"Chart loading... ({_e})")
+                _render_lwc_fallback(df, tech, sym, CHART_H)
 
-            # Hint bar
             rsi_v  = tech.get("rsi",  50)
             trend  = tech.get("trend","—")
-            tc = "#26a69a" if trend=="BULLISH" else "#ef5350" if trend=="BEARISH" else "#f59e0b"
-            vr = tech.get("vol_ratio", 1)
-            st.markdown(f"""<div style="background:#1e222d;border:1px solid #2962ff22;border-radius:8px;
-            padding:7px 14px;margin-top:5px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-              <span style="color:#d1d4dc;font-weight:700;">📈 {name}</span>
-              <span style="color:{tc};font-weight:700;">{trend}</span>
-              <span style="color:#6a6e7a;">RSI: <b style="color:#d1d4dc;">{rsi_v:.0f}</b></span>
-              <span style="color:#6a6e7a;">Vol: <b style="color:#d1d4dc;">{vr:.1f}x</b></span>
-              <span style="color:#6a6e7a;font-size:11px;margin-left:auto;">👆 Click <b style="color:#2962ff;">🤖 AI</b> to auto-draw S/R, Fibonacci, Patterns + Full Research Report</span>
+            tc_col = "#26a69a" if trend=="BULLISH" else "#ef5350" if trend=="BEARISH" else "#f59e0b"
+            vr     = tech.get("vol_ratio", 1)
+            sup_v  = tech.get("supports",[])
+            res_v  = tech.get("resistances",[])
+            atr_v  = tech.get("atr",0)
+            st.markdown(f"""<div style="background:#0a1018;border:1px solid rgba(255,255,255,0.06);
+            border-radius:8px;padding:7px 14px;margin-top:4px;display:flex;align-items:center;
+            gap:14px;flex-wrap:wrap;font-family:monospace;font-size:11.5px;">
+              <span style="color:#e2e8f2;font-weight:800;">{name}</span>
+              <span style="color:{tc_col};background:{tc_col}22;padding:2px 9px;border-radius:12px;font-weight:700;font-size:11px;">{trend}</span>
+              <span style="color:#6a7585;">RSI <b style="color:#d1d4dc;">{rsi_v:.0f}</b></span>
+              <span style="color:#6a7585;">Vol <b style="color:#d1d4dc;">{vr:.1f}x</b></span>
+              <span style="color:#6a7585;">ATR <b style="color:#d1d4dc;">{atr_v:.4f}</b></span>
+              <span style="color:#6a7585;">Sup <b style="color:#26a69a;">{round(sup_v[0],2) if sup_v else "—"}</b></span>
+              <span style="color:#6a7585;">Res <b style="color:#ef5350;">{round(res_v[0],2) if res_v else "—"}</b></span>
+              <span style="margin-left:auto;color:#3f4d5e;font-size:10px;">⚡ Click <b style="color:#2962ff;">🤖 AI</b> — Full analysis · 6 trader charts · White Paper</span>
             </div>""", unsafe_allow_html=True)

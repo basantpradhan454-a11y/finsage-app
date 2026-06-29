@@ -17,7 +17,7 @@ from admin_panel import render_admin_panel
 from ai_assistant import render_ai_assistant
 from feedback_dashboard import render_feedback_dashboard
 from advanced_features import render_advanced_features
-from chart_analyzer import render_chart_analyzer
+from ai_chart_analyzer import render_chart_analyzer
 from sage_analyst import render_sage_analyst
 from footprint_chart import render_footprint_chart
 from cognitive_assistant import render_cognitive_assistant
@@ -818,27 +818,27 @@ with nb_right:
         nav_groups = [
             ("🤖 AI Analyser", [
                 ("👤 Personal Dashboard","👤 User Dashboard",    "Favourites · AI auto-draws all levels · 6 trader styles"),
-                ("🔬 Pro Chart Studio",  "🔬 Pro Chart Studio",  "Glass UI · 200+ indicators · SMC · Elliott Wave · All trader types"),
-                ("📊 FinSage Chart",     "📊 FinSage Chart",     "TradingView-style chart · 14 types · 200+ indicators · Draw tools"),
+                ("🔬 Pro Chart Studio",  "🔬 Pro Chart Studio",  "200+ indicators · SMC · Elliott Wave · All trader types"),
+                ("📊 FinSage Chart",     "📊 FinSage Chart",     "14 chart types · 200+ indicators · Drawing tools"),
                 ("🧠 SAGE Analyst",      "🧠 SAGE Analyst",      "Multi-timeframe AI chart analysis"),
-                ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow & volume profile"),
-                ("🔬 Pro Analyser",      "🔬 Pro Analyser",      "Advanced AI analysis"),
-                ("🧠 Advanced Intel",    "🧠 Advanced Intel",    "Market intelligence"),
-                ("🧠 Cognitive Asst.",   "🧠 Cognitive Assistant","MTF · Heatmap · Brief"),
+                ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow · Volume profile · Footprint bars"),
+                ("🔬 Pro Analyser",      "🔬 Pro Analyser",      "Deep AI: fundamentals · quant · multi-TF"),
+                ("🧠 Advanced Intel",    "🧠 Advanced Intel",    "Market intelligence · Sector · Global flows"),
+                ("🧠 Cognitive Asst.",   "🧠 Cognitive Assistant","MTF · Heatmap · Brief · Smart overlay"),
             ]),
             ("🛠️ AI Tools", [
-                ("🤖 AI Strategy Bot",   "🤖 AI Strategy Bot",   "AI trading strategy"),
+                ("🤖 AI Strategy Bot",   "🤖 AI Strategy Bot",   "AI trading strategy generator"),
                 ("🤖 AI Assistant",      "🤖 AI Assistant",      "General AI assistant"),
-                ("📸 Chart Analyzer",    "📸 Chart Analyzer",    "Upload & analyze charts"),
+                ("📸 Chart Analyzer",    "📸 Chart Analyzer",    "Upload chart photo → AI detection"),
                 ("📡 Adv. Analyzer",     "📡 Adv. Analyzer",     "Advanced market analyzer"),
-                ("🛡️ Risk Engine",       "🛡️ Risk Engine",       "Position & risk calculator"),
+                ("🛡️ Risk Engine",       "🛡️ Risk Engine",       "Position size & risk calculator"),
                 ("🔍 Screener",          "🔍 Screener",          "Stock screener"),
                 ("📊 Backtester",        "📊 Backtester",        "Strategy backtester"),
-                ("⚙️ Options Greeks",    "⚙️ Options Greeks",    "Options calculator"),
+                ("⚙️ Options Greeks",    "⚙️ Options Greeks",    "Options Greeks calculator"),
                 ("⭐ Community",         "⭐ Community",         "Community & feedback"),
             ]),
             ("📚 Marketplace", [
-                ("📖 Marketplace",       "📖 Marketplace",       "eBooks & resources"),
+                ("📖 Marketplace",       "📖 Marketplace",       "eBooks & trading resources"),
             ]),
         ]
         # Top always-visible navigation
