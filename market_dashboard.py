@@ -124,11 +124,73 @@ ASSET_LOGOS = {
     "DOGE-USD":"https://assets.coingecko.com/coins/images/5/large/dogecoin.png",
     "LINK-USD":"https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png",
     "MATIC-USD":"https://assets.coingecko.com/coins/images/4713/large/matic-token-icon.png",
+    # Extended Indian stocks
+    "HINDUNILVR.NS":"https://logo.clearbit.com/hul.co.in",
+    "KOTAKBANK.NS":"https://logo.clearbit.com/kotak.com",
+    "AXISBANK.NS":"https://logo.clearbit.com/axisbank.com",
+    "LT.NS":"https://logo.clearbit.com/larsentoubro.com",
+    "MARUTI.NS":"https://logo.clearbit.com/marutisuzuki.com",
+    "SUNPHARMA.NS":"https://logo.clearbit.com/sunpharma.com",
+    "TITAN.NS":"https://logo.clearbit.com/tanishq.co.in",
+    "NESTLEIND.NS":"https://logo.clearbit.com/nestle.in",
+    "ASIANPAINT.NS":"https://logo.clearbit.com/asianpaints.com",
+    "ULTRACEMCO.NS":"https://logo.clearbit.com/ultratechcement.com",
+    "HCLTECH.NS":"https://logo.clearbit.com/hcltech.com",
+    "TECHM.NS":"https://logo.clearbit.com/techm.com",
+    "DRREDDY.NS":"https://logo.clearbit.com/drreddys.com",
+    "DIVISLAB.NS":"https://logo.clearbit.com/divislaboratories.com",
+    "BAJAJFINSV.NS":"https://logo.clearbit.com/bajajfinserv.in",
+    "M&M.NS":"https://logo.clearbit.com/mahindra.com",
+    "TATASTEEL.NS":"https://logo.clearbit.com/tatasteel.com",
+    "ITC.NS":"https://logo.clearbit.com/itcportal.com",
+    "ONGC.NS":"https://logo.clearbit.com/ongcindia.com",
+    "POWERGRID.NS":"https://logo.clearbit.com/powergridindia.com",
+    "NTPC.NS":"https://logo.clearbit.com/ntpc.co.in",
+    "COALINDIA.NS":"https://logo.clearbit.com/coalindia.in",
+    "JSWSTEEL.NS":"https://logo.clearbit.com/jsw.in",
+    "HINDALCO.NS":"https://logo.clearbit.com/hindalco.com",
+    "EICHERMOT.NS":"https://logo.clearbit.com/eicher.in",
+    "HEROMOTOCO.NS":"https://logo.clearbit.com/heromotocorp.com",
+    # US extended
+    "AMD":"https://logo.clearbit.com/amd.com",
+    "INTC":"https://logo.clearbit.com/intel.com",
+    "PYPL":"https://logo.clearbit.com/paypal.com",
+    "SNAP":"https://logo.clearbit.com/snapchat.com",
+    "SPOT":"https://logo.clearbit.com/spotify.com",
+    "GOOG":"https://logo.clearbit.com/google.com",
+    "CRM":"https://logo.clearbit.com/salesforce.com",
+    "ORCL":"https://logo.clearbit.com/oracle.com",
+    "IBM":"https://logo.clearbit.com/ibm.com",
+    "QCOM":"https://logo.clearbit.com/qualcomm.com",
+    # More Crypto
+    "DOT-USD":"https://assets.coingecko.com/coins/images/12171/large/polkadot.png",
+    "AVAX-USD":"https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png",
+    "SHIB-USD":"https://assets.coingecko.com/coins/images/11939/large/shiba.png",
+    "LTC-USD":"https://assets.coingecko.com/coins/images/2/large/litecoin.png",
+    "UNI-USD":"https://assets.coingecko.com/coins/images/12504/large/uniswap-uni.png",
+}
+
+# Domain hints for dynamic clearbit lookup
+_CLEARBIT_DOMAIN_HINTS = {
+    "BAJAJ-AUTO": "bajaj-auto.com",
+    "BPCL": "bharatpetroleum.com",
+    "GRASIM": "grasim.com",
+    "IOC": "iocl.com",
+    "SBILIFE": "sbilife.co.in",
+    "SHREECEM": "shreecement.com",
+    "UPL": "upl-ltd.com",
+    "TRENT": "trent.in",
 }
 
 def _asset_logo(sym: str) -> str:
-    """Return logo URL for a symbol, or empty string."""
-    return ASSET_LOGOS.get(sym, "")
+    """Return logo URL for a symbol, or empty string with dynamic clearbit fallback."""
+    if sym in ASSET_LOGOS:
+        return ASSET_LOGOS[sym]
+    # Try dynamic clearbit
+    s = sym.upper().replace(".NS","").replace(".BO","").replace("-USD","").replace("^","").replace("=F","")
+    if s in _CLEARBIT_DOMAIN_HINTS:
+        return f"https://logo.clearbit.com/{_CLEARBIT_DOMAIN_HINTS[s]}"
+    return ""
 
 def _exchange_badge(ex: str) -> str:
     col = EXCHANGE_COLORS.get(ex.upper(), "#37474f")
@@ -890,7 +952,7 @@ Volatility, Beta, and Trend Probability computed via statistical methods (not AI
         verd  = fhs.get("verdict","—")
         fbd   = fhs.get("breakdown",{})
         hs_col= "#1b5e20" if hs>=75 else "#e65100" if hs>=50 else "#b71c1c"
-        bd_rows = "".join([f"<div class=\'row\'><span class=\'rl\'>{k}</span><span class=\'rv\'>{v}/100</span></div>" for k,v in fbd.items()])
+        bd_rows = "".join(['<div class="row"><span class="rl">' + k + '</span><span class="rv">' + str(v) + '/100</span></div>' for k,v in fbd.items()])
         _fund_extra = f"""
 <div style="margin:14px 0;">
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
