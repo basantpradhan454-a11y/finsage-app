@@ -1498,6 +1498,33 @@ def render_market_dashboard():
             if wp:
                 components.html(wp, height=3600, scrolling=True)
 
+            # ── AI SCANNING REPORT + SOCIAL MEDIA ─────────────────────────────
+            st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.06);margin:16px 0;' />", unsafe_allow_html=True)
+            try:
+                from scanning_report import render_scanning_report
+                from chart_analysis_engine import full_analysis as _cae_full
+                import yfinance as _yf_scan
+                import pandas as _pd_scan
+                _raw_scan = _yf_scan.download(sym, interval="1d", period="6mo", progress=False, auto_adjust=True)
+                if _raw_scan is not None and not _raw_scan.empty:
+                    if isinstance(_raw_scan.columns, _pd_scan.MultiIndex):
+                        _raw_scan.columns = [c[0] for c in _raw_scan.columns]
+                    _df_s = _raw_scan.reset_index()
+                    _tc_s = "Date" if "Date" in _df_s.columns else "Datetime"
+                    _df_s = _df_s.rename(columns={_tc_s:"time","Open":"open","High":"high","Low":"low","Close":"close","Volume":"volume"})
+                    _df_s["time"] = _df_s["time"].astype(str)
+                    _df_s = _df_s[["time","open","high","low","close","volume"]].dropna()
+                    if len(_df_s) >= 10:
+                        _scan_data = _cae_full(_df_s, sym)
+                        render_scanning_report(
+                            sym, name,
+                            _scan_data["candles"], _scan_data["indicators"],
+                            _scan_data["support_resistance"], _scan_data["patterns"],
+                            _scan_data["overall_bias"], ai_res
+                        )
+            except Exception as _scan_e:
+                st.warning(f"Scanning report: {_scan_e}")
+
             col_r1, col_r2, col_r3 = st.columns(3)
             with col_r1:
                 if st.button("🔄 Refresh Analysis", key="mkt_ref2", type="primary"):

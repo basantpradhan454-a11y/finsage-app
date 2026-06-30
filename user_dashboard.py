@@ -2618,6 +2618,18 @@ def render_user_dashboard():
                     txt = f"FinSage Personal Dashboard\n{name} ({sym})\n{datetime.now().strftime('%B %d, %Y')}\nRating:{ai_res.get('rating')} Bias:{ai_res.get('bias')} Conf:{ai_res.get('confidence')}%\nEntry:{entry_v:.4f} Stop:{stop_v:.4f} T1:{t1_v:.4f}\nR:R:{rr}\n{ai_res.get('summary','')}\nDISCLAIMER: Educational only."
                     st.download_button("📥 Download", txt, f"finsage_{sym.replace('.','_').replace('^','')}.txt","text/plain",key="pd_dl")
 
+                # ── AI SCANNING REPORT + SOCIAL ──
+                st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.06);margin:14px 0;'/>", unsafe_allow_html=True)
+                try:
+                    from scanning_report import render_scanning_report
+                    _sr_data = st.session_state.get("pd_analysis_data")
+                    if _sr_data:
+                        render_scanning_report(sym, name, _sr_data["candles"], _sr_data["indicators"],
+                            _sr_data["support_resistance"], _sr_data["patterns"],
+                            _sr_data["overall_bias"], ai_res)
+                except Exception as _sre:
+                    st.warning(f"Scanning report: {_sre}")
+
         # ══════════════════════════════════════════════════════════════════
         # FULL REPORT MODE
         # ══════════════════════════════════════════════════════════════════
@@ -2659,6 +2671,33 @@ def render_user_dashboard():
                     components.html(wp2, height=4800, scrolling=True)
                 except Exception as e:
                     st.error(f"Report error: {e}"); import traceback; st.code(traceback.format_exc())
+
+                # Scanning Report + Social below full report
+                st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.06);margin:14px 0;'/>", unsafe_allow_html=True)
+                try:
+                    from scanning_report import render_scanning_report
+                    _sr2_data = st.session_state.get("pd_analysis_data")
+                    if _sr2_data:
+                        render_scanning_report(sym, name, _sr2_data["candles"], _sr2_data["indicators"],
+                            _sr2_data["support_resistance"], _sr2_data["patterns"],
+                            _sr2_data["overall_bias"], ai_res2)
+                    else:
+                        from chart_analysis_engine import full_analysis as _cae2
+                        import yfinance as _yf_s2, pandas as _pd_s2
+                        _r2 = _yf_s2.download(sym, interval=interval_sel, period=period_sel, progress=False, auto_adjust=True)
+                        if _r2 is not None and not _r2.empty:
+                            if isinstance(_r2.columns, _pd_s2.MultiIndex): _r2.columns=[c[0] for c in _r2.columns]
+                            _df_s2 = _r2.reset_index()
+                            _tc2 = "Date" if "Date" in _df_s2.columns else "Datetime"
+                            _df_s2 = _df_s2.rename(columns={_tc2:"time","Open":"open","High":"high","Low":"low","Close":"close","Volume":"volume"})
+                            _df_s2["time"] = _df_s2["time"].astype(str)
+                            _df_s2 = _df_s2[["time","open","high","low","close","volume"]].dropna()
+                            if len(_df_s2)>=10:
+                                _sd2 = _cae2(_df_s2, sym)
+                                render_scanning_report(sym, name, _sd2["candles"], _sd2["indicators"],
+                                    _sd2["support_resistance"], _sd2["patterns"], _sd2["overall_bias"], ai_res2)
+                except Exception as _sre2:
+                    st.warning(f"Scanning report: {_sre2}")
 
 
 
