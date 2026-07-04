@@ -1,5 +1,6 @@
 """FinSage — 6-Chart Builder with Per-Chart Fullscreen & Order Flow"""
 import json as _j
+from json_safe import safe_dumps
 import pandas as pd
 
 
@@ -7,16 +8,16 @@ def _build_six_chart_html(df, tech, ai, sr_lvls, vp_res, fib_res, patterns, sym,
     """6 simultaneous trader-perspective charts with fullscreen toggle per chart."""
     cd = []
     if df is not None and not df.empty:
-        for idx, row in df.tail(200).iterrows():
+        for idx, row in df.tail(300).iterrows():
             ts = int(pd.Timestamp(idx).timestamp())
             try:
                 cd.append({"time":ts,"open":round(float(row["Open"]),4),"high":round(float(row["High"]),4),
                            "low":round(float(row["Low"]),4),"close":round(float(row["Close"]),4),"volume":int(row["Volume"])})
             except: pass
 
-    cj   = _j.dumps(cd)
-    supp = _j.dumps([s["price"] for s in sr_lvls.get("support",[]) ][:5])
-    res  = _j.dumps([r["price"] for r in sr_lvls.get("resistance",[])][:5])
+    cj   = safe_dumps(cd)
+    supp = safe_dumps([s["price"] for s in sr_lvls.get("support",[]) ][:5])
+    res  = safe_dumps([r["price"] for r in sr_lvls.get("resistance",[])][:5])
     poc   = vp_res.poc if hasattr(vp_res,'poc') else 0
     vah   = vp_res.vah if hasattr(vp_res,'vah') else 0
     val   = vp_res.val if hasattr(vp_res,'val') else 0
@@ -24,7 +25,7 @@ def _build_six_chart_html(df, tech, ai, sr_lvls, vp_res, fib_res, patterns, sym,
     fib382= fib_res.levels.get("0.382",0) if hasattr(fib_res,'levels') else 0
     fib618= fib_res.levels.get("0.618",0) if hasattr(fib_res,'levels') else 0
     fib500= fib_res.levels.get("0.5",  0) if hasattr(fib_res,'levels') else 0
-    pat_names = _j.dumps([
+    pat_names = safe_dumps([
         {"name": p.name, "signal": p.signal,
          "ts": int(p.timestamp.timestamp() if hasattr(p.timestamp,"timestamp") else 0)}
         for p in patterns[:12]
@@ -51,7 +52,7 @@ def _build_six_chart_html(df, tech, ai, sr_lvls, vp_res, fib_res, patterns, sym,
             f'<div class="cell-hd" style="border-left:3px solid {ch["col"]};">'
             f'<span class="cell-t" style="color:{ch["col"]};">{ch["title"]}</span>'
             f'<span class="cell-s">{ch["sub"]}</span>'
-            f'<button class="fs-btn" onclick="toggleFS(\'{ch["id"]}\')" title="Fullscreen">⛶</button>'
+            f'<button class="fs-btn" onclick="toggleFS(\'{ch["id"]}\')" title="Click for Fullscreen View"><span class="fs-ic">⛶</span><span class="fs-lbl">Fullscreen</span></button>'
             f'</div>'
             f'<div class="cell-c" id="{ch["id"]}"></div>'
             f'</div>'
@@ -76,10 +77,16 @@ def _build_six_chart_html(df, tech, ai, sr_lvls, vp_res, fib_res, patterns, sym,
         ".cell-t{font-size:11px;font-weight:800;}"
         ".cell-s{font-size:9px;color:#4a5568;flex:1;}"
         ".cell-c{flex:1;min-height:0;}"
-        ".fs-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);"
-        "color:#6a7585;font-size:11px;padding:1px 5px;border-radius:4px;cursor:pointer;"
-        "transition:all .15s;flex-shrink:0;}"
-        ".fs-btn:hover{background:rgba(41,98,255,0.2);color:#4a9eff;border-color:#2962ff55;}"
+        ".fs-btn{background:#ffffff;border:1px solid #ffffff;"
+        "color:#0a1018;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:6px;cursor:pointer;"
+        "transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:4px;"
+        "box-shadow:0 0 0 2px rgba(255,255,255,0.15),0 2px 8px rgba(255,255,255,0.25);"
+        "animation:fsPulse 2.2s ease-in-out infinite;}"
+        ".fs-btn .fs-ic{font-size:13px;line-height:1;}"
+        ".fs-btn .fs-lbl{font-size:10px;letter-spacing:.02em;}"
+        ".fs-btn:hover{background:#2962ff;color:#ffffff;border-color:#2962ff;box-shadow:0 0 0 2px rgba(41,98,255,0.3);animation:none;}"
+        "@keyframes fsPulse{0%,100%{box-shadow:0 0 0 2px rgba(255,255,255,0.15),0 2px 8px rgba(255,255,255,0.25);}"
+        "50%{box-shadow:0 0 0 4px rgba(255,255,255,0.35),0 2px 14px rgba(255,255,255,0.5);}}"
         "#fs-overlay{display:none;position:fixed;inset:0;z-index:9999;"
         "background:#060b14;flex-direction:column;}"
         "#fs-overlay.active{display:flex;}"
@@ -261,14 +268,14 @@ def _build_order_flow_html(df, tech, vp_res, ai, sym, name):
     """Order Flow + Volume Profile chart."""
     cd = []
     if df is not None and not df.empty:
-        for idx, row in df.tail(200).iterrows():
+        for idx, row in df.tail(300).iterrows():
             ts = int(pd.Timestamp(idx).timestamp())
             try:
                 cd.append({"time":ts,"open":round(float(row["Open"]),4),"high":round(float(row["High"]),4),
                            "low":round(float(row["Low"]),4),"close":round(float(row["Close"]),4),"volume":int(row["Volume"])})
             except: pass
 
-    cj   = _j.dumps(cd)
+    cj   = safe_dumps(cd)
     poc  = vp_res.poc  if hasattr(vp_res,'poc')  else 0
     vah  = vp_res.vah  if hasattr(vp_res,'vah')  else 0
     val  = vp_res.val  if hasattr(vp_res,'val')  else 0

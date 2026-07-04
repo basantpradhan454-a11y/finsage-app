@@ -633,7 +633,7 @@ Return ONLY valid JSON (no markdown):
 def _chart_html(df, tech, ai, sym):
     candles = []; vols = []
     if not df.empty:
-        for idx, row in df.tail(200).iterrows():
+        for idx, row in df.tail(300).iterrows():
             ts = int(pd.Timestamp(idx).timestamp())
             o_ = round(float(row["Open"]),  4)
             h_ = round(float(row["High"]),  4)
@@ -708,6 +708,9 @@ html,body{{background:#131722;color:#d1d4dc;font-family:'Trebuchet MS',sans-seri
 #lvl .lh{{font-size:9px;font-weight:700;color:#6a6e7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}}
 #lvl .lr{{font-size:12px;display:flex;justify-content:space-between;gap:7px;padding:3px 0;border-bottom:1px solid #1a1e2d;}}
 #vb{{position:absolute;bottom:40px;right:4px;z-index:21;width:34px;height:34px;background:#2962ff;border:none;border-radius:50%;color:white;font-size:15px;cursor:pointer;box-shadow:0 2px 12px rgba(41,98,255,0.5);}}
+#fswm{{position:absolute;bottom:8px;left:8px;z-index:15;display:flex;align-items:center;gap:5px;opacity:0.55;pointer-events:none;}}
+#fswm img{{width:16px;height:16px;border-radius:4px;object-fit:cover;}}
+#fswm span{{font-size:10px;font-weight:800;color:#8a93a3;letter-spacing:.02em;}}
 #vpc{{position:absolute;bottom:40px;left:8px;right:44px;z-index:20;background:rgba(19,23,34,0.96);border:1px solid #2962ff44;border-radius:8px;padding:7px 12px;display:none;}}
 #vpc.vis{{display:block;}}
 </style></head><body>
@@ -715,6 +718,7 @@ html,body{{background:#131722;color:#d1d4dc;font-family:'Trebuchet MS',sans-seri
 <div id="cw">
   <div id="ca">
     <div id="cd"></div>
+    <div id="fswm"><img src="{LOGO_URL}" onerror="this.style.display='none'"/><span>FinSage AI</span></div>
     <div id="lg">
       <div class="ls">{sym}</div>
       <div class="lp">{cur:.4f}</div>
@@ -1193,7 +1197,7 @@ def _render_lwc_fallback(df, tech, sym, height=650):
     import json as _j
     cd = []
     if df is not None and not df.empty:
-        for idx, row in df.tail(200).iterrows():
+        for idx, row in df.tail(300).iterrows():
             ts = int(pd.Timestamp(idx).timestamp())
             cd.append({"time":ts,"open":round(float(row["Open"]),4),
                        "high":round(float(row["High"]),4),"low":round(float(row["Low"]),4),

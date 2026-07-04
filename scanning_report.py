@@ -5,6 +5,7 @@ FinSage AI Scanning Report
 - Social media feed (news, text, images)
 """
 import json as _j
+from json_safe import safe_dumps
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime
@@ -109,16 +110,16 @@ def _build_scanning_report_html(candles: list, indicators: list, sr_zones: list,
     """
     import json as _j
 
-    candle_data = _j.dumps([
+    candle_data = safe_dumps([
         {"time": c["time"][:10], "open": float(c["open"]), "high": float(c["high"]),
          "low": float(c["low"]), "close": float(c["close"]), "volume": float(c["volume"])}
         for c in candles if c.get("time")
     ])
-    sma20_d = _j.dumps([{"time":c["time"][:10],"value":float(ind["sma20"])}
+    sma20_d = safe_dumps([{"time":c["time"][:10],"value":float(ind["sma20"])}
         for c,ind in zip(candles,indicators) if ind.get("sma20") and str(ind.get("sma20",""))!="nan"])
-    sma50_d = _j.dumps([{"time":c["time"][:10],"value":float(ind["sma50"])}
+    sma50_d = safe_dumps([{"time":c["time"][:10],"value":float(ind["sma50"])}
         for c,ind in zip(candles,indicators) if ind.get("sma50") and str(ind.get("sma50",""))!="nan"])
-    rsi_d   = _j.dumps([{"time":c["time"][:10],"value":float(ind["rsi14"])}
+    rsi_d   = safe_dumps([{"time":c["time"][:10],"value":float(ind["rsi14"])}
         for c,ind in zip(candles,indicators) if ind.get("rsi14") and str(ind.get("rsi14",""))!="nan"])
 
     sr_lines_js = ""
@@ -138,7 +139,7 @@ def _build_scanning_report_html(candles: list, indicators: list, sr_zones: list,
                 shape = "arrowUp" if p["bias"]=="bullish" else "arrowDown" if p["bias"]=="bearish" else "circle"
                 mlist.append({"time":t,"position":pos,"color":color,"shape":shape,"text":p["name"]})
         if mlist:
-            markers_js = f"mainS.setMarkers({_j.dumps(mlist)});"
+            markers_js = f"mainS.setMarkers({safe_dumps(mlist)});"
 
     bias_c = "#3fd0a0" if bias=="bullish" else "#ff5d6c" if bias=="bearish" else "#e8b34d"
     rat = ai_res.get("rating","HOLD"); rc = ai_res.get("rating_color","#f59e0b")

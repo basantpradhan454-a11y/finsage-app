@@ -38,7 +38,7 @@ class VolumeProfileEngine:
         max_vol = float(vol_profile.max()) if vol_profile.max() > 0 else 1
         profile = [{"price": round(float(bin_mids[i]),2), "volume": round(float(vol_profile[i]),0),
                     "volume_pct": round(float(vol_profile[i])/max_vol*100,1),
-                    "is_poc": (i==poc_idx), "in_value_area": (val <= bin_mids[i] <= vah)} for i in range(self.bins)]
+                    "is_poc": bool(i==poc_idx), "in_value_area": bool(val <= bin_mids[i] <= vah)} for i in range(self.bins)]
         return VolumeProfileResult(poc=poc, vah=vah, val=val, vwap=round(vwap,2), profile=profile, total_volume=round(total_vol,0))
 
     def _calculate_vwap(self):
