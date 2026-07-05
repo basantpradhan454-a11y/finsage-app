@@ -19,7 +19,6 @@ from feedback_dashboard import render_feedback_dashboard
 from advanced_features import render_advanced_features
 from ai_chart_analyzer import render_chart_analyzer
 from sage_analyst import render_sage_analyst
-from footprint_chart import render_footprint_chart
 from cognitive_assistant import render_cognitive_assistant
 from tradingview_dashboard import render_tv_dashboard
 from institutional_report import render_institutional_report
@@ -33,9 +32,6 @@ try:
 except Exception:
     render_user_dashboard=None
 from tradingview_page import render_tradingview_page
-try:
-    from finsage_chart import render_finsage_chart
-except Exception: render_finsage_chart = None
 from strategy_bot import render_strategy_bot
 from i18n import t, get_lang, set_lang, TRANSLATIONS, LANG_NAMES
 from ticker_resolver import resolve_ticker
@@ -47,7 +43,6 @@ from advanced_analyzer import render_advanced_analyzer
 from screener import render_screener
 from backtester import render_backtester
 from options_calc import render_options_calc
-from library import show_library_page
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -820,9 +815,7 @@ with nb_right:
             ("🤖 AI Analyser", [
                 ("👤 Personal Dashboard","👤 User Dashboard",    "Favourites · AI auto-draws all levels · 6 trader styles"),
                 ("🔬 Pro Chart Studio",  "🔬 Pro Chart Studio",  "200+ indicators · SMC · Elliott Wave · All trader types"),
-                ("📊 FinSage Chart",     "📊 FinSage Chart",     "14 chart types · 200+ indicators · Drawing tools"),
                 ("🧠 SAGE Analyst",      "🧠 SAGE Analyst",      "Multi-timeframe AI chart analysis"),
-                ("🔢 Footprint Chart",   "🔢 Footprint Chart",   "Order flow · Volume profile · Footprint bars"),
                 ("🔬 Pro Analyser",      "🔬 Pro Analyser",      "Deep AI: fundamentals · quant · multi-TF"),
                 ("🧠 Advanced Intel",    "🧠 Advanced Intel",    "Market intelligence · Sector · Global flows"),
                 ("🧠 Cognitive Asst.",   "🧠 Cognitive Assistant","MTF · Heatmap · Brief · Smart overlay"),
@@ -839,7 +832,6 @@ with nb_right:
                 ("⭐ Community",         "⭐ Community",         "Community & feedback"),
             ]),
             ("📚 Marketplace", [
-                ("📖 Marketplace",       "📖 Marketplace",       "eBooks & trading resources"),
             ]),
         ]
         # Top always-visible navigation
@@ -1117,9 +1109,6 @@ if _ap == "👤 User Dashboard":
 elif _ap == "🔬 Pro Chart Studio":
     if render_pro_chart: render_pro_chart()
     else: st.error("Pro Chart loading... refresh in 10s")
-elif _ap == "📊 FinSage Chart":
-    if render_finsage_chart: render_finsage_chart(); st.stop()
-    else: st.error("FinSage Chart loading...")
 elif _ap == "🤖 AI Assistant":
     _back_btn("back_ai"); render_ai_chat_assistant(); st.stop()
 elif _ap == "🤖 AI Strategy Bot":
@@ -1141,8 +1130,6 @@ elif _ap == "🔒 Privacy Policy":
 elif _ap == "📝 Sign Up":
     _back_btn("back_su"); render_signup_with_privacy(); st.stop()
 
-elif _ap in ("📖 Library", "📖 Marketplace"):
-    _back_btn("back_lib"); show_library_page(); st.stop()
 elif _ap == "🛡️ Risk Engine":
     _back_btn("back_re"); render_risk_dashboard(); st.stop()
 
@@ -1153,8 +1140,6 @@ elif _ap == "🔍 Screener":
     _back_btn("back_sc"); render_screener(); st.stop()
 elif _ap == "📊 Backtester":
     _back_btn("back_bt"); render_backtester(); st.stop()
-elif _ap == "🔢 Footprint Chart":
-    _back_btn("back_fp"); render_footprint_chart(); st.stop()
 elif _ap == "🏠 Market Dashboard":
     render_market_dashboard(); st.stop()
 elif _ap == "📊 Research Report":

@@ -1545,7 +1545,6 @@ def render_market_dashboard():
         else:
             # ── INBUILT CHART (replaces TradingView) ─────────────────────────
             try:
-                from finsage_chart import build_chart_html, _compute_sr as _fc_sr
                 candles_fc = [
                     {"t": int(pd.Timestamp(i).timestamp()), "o": round(float(r["Open"]),4),
                      "h": round(float(r["High"]),4), "l": round(float(r["Low"]),4),

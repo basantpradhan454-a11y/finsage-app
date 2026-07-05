@@ -1592,101 +1592,10 @@ window.addEventListener('resize', fixH);
 
 
 def _render_sage_footprint_mode(parsed: dict, analysis: dict):
-    """Inline footprint chart mode for SAGE Analyst."""
-    import streamlit.components.v1 as components
+    """Footprint mode removed."""
+    st.warning("Footprint Chart has been removed from FinSage.")
+    return
 
-    # Full-screen CSS
-    st.markdown("""<style>
-    header[data-testid="stHeader"], footer,
-    section[data-testid="stSidebar"],
-    div[data-testid="stSidebarNav"],
-    div[data-testid="stSidebarCollapseButton"],
-    #MainMenu, div[data-testid="stDecoration"],
-    div[data-testid="stToolbar"], div[data-testid="stBottom"],
-    div[data-testid="stStatusWidget"], .stDeployButton,
-    [data-testid="collapsedControl"], [data-testid="expandedControl"],
-    .stSidebar, [data-testid="stSidebarContent"] {
-        display:none !important; visibility:hidden !important;
-    }
-    .block-container { padding:0.2rem !important; max-width:100vw !important; margin:0 !important; }
-    .stHorizontalBlock { gap:4px !important; }
-    </style>""", unsafe_allow_html=True)
-
-    yf_sym  = parsed.get("yf_sym", "RELIANCE.NS") if parsed else "RELIANCE.NS"
-    tv_sym  = parsed.get("tv_sym", "NSE:RELIANCE") if parsed else "NSE:RELIANCE"
-    name    = parsed.get("display_name", yf_sym)
-    tf      = parsed.get("timeframe","D") if parsed else "D"
-    tf_map  = {"5":("2d","5m"),"15":("5d","15m"),"60":("1mo","1h"),
-               "240":("3mo","1d"),"D":("1y","1d"),"W":("2y","1wk")}
-    period, interval = tf_map.get(tf,("1y","1d"))
-
-    # Import footprint functions
-    from footprint_chart import _fetch_data, _compute_indicators, _detect_patterns,                                 _build_volume_profile, _ai_footprint_analysis,                                 _build_footprint_html, _render_fp_panel
-
-    from ticker_resolver import resolve_ticker
-    sym = resolve_ticker(yf_sym) if yf_sym else "RELIANCE.NS"
-
-    with st.spinner(f"Loading {name} footprint data..."):
-        df = _fetch_data(sym, period, interval)
-
-    if df.empty:
-        st.error(f"❌ No footprint data for `{sym}`.")
-        if st.button("⬅ Back", key="fp_back_err"):
-            st.session_state.sage_fp_mode = False; st.rerun()
-        return
-
-    ind      = _compute_indicators(df)
-    patterns = _detect_patterns(df)
-    vp       = _build_volume_profile(df)
-
-    cache_key = f"sage_fp_ai_{sym}_{tf}"
-    if st.session_state.get(cache_key) is None:
-        with st.spinner("SAGE AI analyzing footprint..."):
-            ai_res = _ai_footprint_analysis(sym, ind, patterns, vp)
-        st.session_state[cache_key] = ai_res
-    else:
-        ai_res = st.session_state[cache_key]
-
-    # Header
-    bias_color = ai_res.get("bias_color","#f59e0b")
-    st.markdown(f"""<div style="background:#131722;border:1px solid #2a2e39;border-radius:8px;
-    padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-      <span style="color:#2962ff;font-size:16px;">⬡</span>
-      <span style="color:#d1d4dc;font-weight:700;">{name} — Footprint Chart</span>
-      <span style="background:#2962ff22;color:#2962ff;font-size:9px;padding:2px 7px;
-      border-radius:10px;border:1px solid #2962ff44;font-weight:700;">AI ORDER FLOW</span>
-      <span style="background:{bias_color}22;color:{bias_color};font-size:11px;
-      padding:2px 10px;border-radius:10px;font-weight:700;margin-left:auto;">
-      {ai_res.get('overall_bias','NEUTRAL')}</span>
-    </div>""", unsafe_allow_html=True)
-
-    # Main layout: chart (3) + panel (1)
-    chart_col, panel_col = st.columns([3, 1], gap="small")
-
-    with chart_col:
-        chart_html = _build_footprint_html(df, ind, ai_res, patterns, vp, name)
-        components.html(chart_html, height=740, scrolling=False)
-
-    with panel_col:
-        _render_fp_panel(ind, ai_res, patterns, vp, name)
-
-    # Back button
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("⬅ Back to Analysis", key="fp_back_sage"):
-            st.session_state.sage_fp_mode = False
-            st.session_state.get(cache_key) and st.session_state.pop(cache_key, None)
-            st.rerun()
-    with c2:
-        if st.button("🔄 Refresh AI Analysis", key="fp_refresh_sage", type="primary"):
-            st.session_state.pop(cache_key, None)
-            st.rerun()
-    with c3:
-        if st.button("📊 Switch to TradingView", key="fp_to_tv"):
-            st.session_state.sage_fp_mode = False
-            st.session_state.sage_tv_mode = True
-            st.rerun()
 
 
 def _render_sage_tv_integrated(parsed: dict, analysis: dict):
@@ -2228,7 +2137,6 @@ def render_sage_analyst():
 
     # ── FOOTPRINT CHART MODE ────────────────────────────
     if st.session_state.get("sage_fp_mode", False):
-        _render_sage_footprint_mode(parsed, analysis)
         return
 
     # ── TRADINGVIEW INTEGRATED MODE ─────────────────────
