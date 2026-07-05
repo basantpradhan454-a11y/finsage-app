@@ -60,7 +60,7 @@ st.set_page_config(
 # ── Global CSS — Cyberpunk Holographic 3D Futuristic ─────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&family=Noto+Sans+Telugu:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Sans+Gurmukhi:wght@400;600&family=Noto+Sans+Gujarati:wght@400;600&display=swap');
 
 /* ════════════════════════════════════════════
    HIDE STREAMLIT CHROME
@@ -663,8 +663,9 @@ _OB_USER_TYPES = [
 ]
 
 def _ob_ui(key):
-    """Use i18n translation system for onboarding UI."""
-    return t(key)
+    """Use onboarding-specific translations (not generic i18n)."""
+    lang = st.session_state.get("user_lang", "en")
+    return _OB_TITLES.get(lang, _OB_TITLES["en"]).get(key, _OB_TITLES["en"].get(key, key))
 
 def _ob_dots(current_step):
     steps = ["language","user_type","signup"]
