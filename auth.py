@@ -14,7 +14,25 @@ import streamlit as st
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-REDIRECT_URI = os.environ.get("REDIRECT_URI", "https://finsage-app-mzhu9qcb5eappqtqcpah8kp.streamlit.app/")
+def _get_redirect_uri() -> str:
+    """Dynamically build redirect URI from Streamlit headers or env."""
+    env_uri = os.environ.get("REDIRECT_URI")
+    if env_uri:
+        return env_uri
+    try:
+        import streamlit as st
+        ctx = st.runtime.scriptrunner.get_script_run_ctx()
+        if ctx:
+            req = ctx.streamlit_request
+            host = req.headers.get("Host", "")
+            if host:
+                proto = "https"
+                return f"{proto}://{host}/"
+    except Exception:
+        pass
+    return "https://finsage-app.streamlit.app/"
+
+REDIRECT_URI = _get_redirect_uri()
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
