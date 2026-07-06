@@ -4,7 +4,17 @@ Fetches real market data from yfinance (stocks) and CoinGecko (crypto/meme coins
 No API key required — 100% free.
 """
 
-import streamlit as st
+try:
+    import streamlit as st
+except Exception:
+    class _NoOpCache:
+        """Fallback cache shim for non-Streamlit runtimes (e.g. Vercel serverless)."""
+        @staticmethod
+        def cache_data(*dargs, **dkwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
+    st = _NoOpCache()
 import yfinance as yf
 import requests
 import pandas as pd
